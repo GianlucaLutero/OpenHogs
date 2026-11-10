@@ -1,0 +1,37 @@
+# --- Build output ---------------------------------------------------------
+/build/
+/out/
+/cmake-build-*/
+CMakeUserPresets.json
+
+# --- IDE files ------------------------------------------------------------
+/.vs/
+/.vscode/
+/.idea/
+*.user
+
+# --- Original game files --------------------------------------------------
+# Hogs of War assets are copyrighted and must never be committed.
+# They are read from the user's own installation at runtime.
+*.mad
+*.mtd
+*.pmg
+*.pog
+*.ptg
+*.tim
+*.bik
+*.wav
+*.ogg
+*.MAD
+*.MTD
+*.PMG
+*.POG
+*.PTG
+*.TIM
+*.BIK
+*.WAV
+*.OGG
+/extracted/
+
+# Local configuration (copied from config/openhogs.default.ini)
+/config/openhogs.ini
