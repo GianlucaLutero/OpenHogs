@@ -60,8 +60,12 @@ struct TerrainBlock {
     // 4 x 4 tiles, row by row.
     std::array<TerrainTile, 16> tiles{};
 
-    std::int16_t height(int column, int row) const { return heights[row * kSamplesPerBlockSide + column]; }
-    const TerrainTile& tile(int column, int row) const { return tiles[row * kTilesPerBlockSide + column]; }
+    std::int16_t height(int column, int row) const {
+        return heights[static_cast<std::size_t>(row * kSamplesPerBlockSide + column)];
+    }
+    const TerrainTile& tile(int column, int row) const {
+        return tiles[static_cast<std::size_t>(row * kTilesPerBlockSide + column)];
+    }
 };
 
 struct MapTerrain {
