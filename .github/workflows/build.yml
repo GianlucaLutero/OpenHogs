@@ -26,12 +26,12 @@ jobs:
             test: ctest --test-dir build -C Release --output-on-failure
           - name: Linux (GCC)
             os: ubuntu-latest
-            configure: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++ -DOPENHOGS_WARNINGS_AS_ERRORS=ON
+            configure: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DOPENHOGS_WARNINGS_AS_ERRORS=ON
             build: cmake --build build --parallel
             test: ctest --test-dir build --output-on-failure
           - name: Linux (Clang)
             os: ubuntu-latest
-            configure: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++ -DOPENHOGS_WARNINGS_AS_ERRORS=ON
+            configure: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DOPENHOGS_WARNINGS_AS_ERRORS=ON
             build: cmake --build build --parallel
             test: ctest --test-dir build --output-on-failure
 
