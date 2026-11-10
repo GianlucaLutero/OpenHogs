@@ -20,13 +20,14 @@ The goal is to play the original game natively on modern systems
 
 ## Project status
 
-OpenHogs is in early development. Nothing is playable yet.
+OpenHogs is in early development. Nothing is playable yet, but the
+original data can already be read and extracted.
 
 | Block | Status | What it delivers |
 |-------|--------|------------------|
 | `project-foundation` | ✅ done | Build system, core library, content-pack system, unit tests |
-| `asset-extractor`    | ⏳ next | Reads the original archives, text, models and maps |
-| `map-viewer`         | planned | Shows the original maps in 3D |
+| `asset-extractor`    | ✅ done | Reads archives, textures and text; `openhogs-extract` tool |
+| `map-viewer`         | ⏳ next | Reads models and maps and shows them in 3D |
 | gameplay blocks      | planned | Movement, weapons, turns, AI, campaign |
 
 ## Requirements
@@ -85,8 +86,45 @@ Directory = C:\Program Files (x86)\Steam\steamapps\common\HogsofWar
 
 ## Usage
 
-Executables will be added by the next blocks. The configuration described
-below is already in place and is what they will use.
+### Extracting the game data
+
+`openhogs-extract` unpacks the original data into ordinary files you can
+open with any image viewer or text editor. Your installation is only read,
+never modified.
+
+```sh
+# Windows (the executable is in build\bin\Release or build\bin)
+openhogs-extract "C:\Program Files (x86)\Steam\steamapps\common\HogsofWar" extracted
+
+# Linux
+./build/bin/openhogs-extract ~/Games/HogsofWar extracted
+```
+
+Result (all names lower case):
+
+| Original | Extracted |
+|----------|-----------|
+| `Maps/CAMP.MAD` (archive) | folder `maps/camp.mad/` with every file inside |
+| `.TIM` textures | `.png` images next to the original |
+| `Language/Text/gtext.ofs` + `.bin` | `language/text/gtext.txt`, one `[index] TEXT` line per string |
+
+On the Steam release this produces about 17,800 files and 9,300 PNG
+textures (around 130 MB). A summary is printed at the end; the only
+expected warning is `chars/mcap.mad: not a package archive` (that file
+holds animation data, not an archive).
+
+To look inside a single archive without extracting:
+
+```sh
+openhogs-extract --list "C:\...\HogsofWar\Chars\WEAPONS.MTD"
+```
+
+Do not share the extracted files: they are copyrighted game data.
+
+### Game settings
+
+The engine will use the configuration described below; the content-pack
+system is already in place.
 
 ### Choosing the language
 
@@ -118,10 +156,13 @@ OpenHogs/
 ├── config/               user configuration (openhogs.default.ini)
 ├── content/              replaceable content: packs, languages (see content/README.md)
 │   └── packs/_template/  starting point for a new pack
-├── docs/                 architecture and file-format notes
+├── docs/                 architecture notes
+│   └── formats/          one page per original file format
 ├── src/
 │   ├── core/             binary reading, INI files, virtual file system
-│   └── content/          config, content packs, pack selection
+│   ├── content/          config, content packs, pack selection
+│   ├── formats/          parsers: archives, text tables, TIM textures
+│   └── tools/extractor/  openhogs-extract command-line tool
 └── tests/                unit tests (see tests/README.md)
 ```
 

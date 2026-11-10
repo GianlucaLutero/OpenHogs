@@ -9,8 +9,8 @@ listed before it below.
 |--------|--------|----------------|
 | `core`    | done    | Shared building blocks: `BinaryReader`, `IniFile`, path helpers, `VirtualFileSystem`. No dependencies. |
 | `content` | done    | Replaceable content: user config, content packs, language selection. Builds the virtual file system the rest of the game reads from. |
-| `formats` | planned | Parsers for the original file formats (MAD/MTD archives, text tables, models, maps, textures). |
-| `tools`   | planned | Command-line tools, starting with the asset extractor. |
+| `formats` | partial | Parsers for the original file formats. Done: MAD/MTD archives, text tables and encoding, TIM textures. Planned: models, maps. See [formats/](formats/). |
+| `tools/extractor` | done | `openhogs-extract`: unpacks archives, converts textures to PNG and text tables to text. |
 | `engine`  | planned | Window, rendering, audio, input (SDL3 + OpenGL). |
 | `game`    | planned | Game rules: turns, hogs, weapons, AI, campaign. |
 
