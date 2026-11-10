@@ -18,9 +18,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Windows (MSVC 2022)
+          - name: Windows (MSVC)
             os: windows-latest
-            configure: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+            # No -G: CMake picks the newest Visual Studio installed, as on a user PC.
+            configure: cmake -S . -B build -A x64 -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
             build: cmake --build build --config Release
             test: ctest --test-dir build -C Release --output-on-failure
           - name: Linux (GCC)
