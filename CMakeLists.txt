@@ -29,6 +29,8 @@ include(OpenHogsWarnings)
 # Order matters: a module can only depend on modules added before it.
 add_subdirectory(src/core)      # binary reading, INI files, virtual file system
 add_subdirectory(src/content)   # replaceable content: packs, languages, config
+add_subdirectory(src/formats)   # parsers for the original file formats
+add_subdirectory(src/tools/extractor)  # openhogs-extract command-line tool
 
 # --- Tests -----------------------------------------------------------------
 if(OPENHOGS_BUILD_TESTS)

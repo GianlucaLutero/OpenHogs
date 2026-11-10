@@ -34,9 +34,11 @@ a user, a pack author or another module relies on.
 
 ```
 tests/
-├── support/    helpers shared by tests (TempDirectory)
+├── support/    helpers shared by tests (TempDirectory, ByteBuilder)
 ├── core/       tests for src/core
-└── content/    tests for src/content
+├── content/    tests for src/content
+├── formats/    tests for src/formats
+└── extractor/  tests for src/tools/extractor
 ```
 
 Each new module gets its own folder, mirroring `src/`.
@@ -52,3 +54,9 @@ Each new module gets its own folder, mirroring `src/`.
 | `ContentPack` | manifests read completely; invalid ids, types and language packs rejected |
 | `ContentConfig` | relative paths resolved from the config folder, required game folder, normalised ids |
 | `ContentManager` | packs on/off via `EnabledPacks`, language selection, priority order, discovery, original files restored when a pack is off |
+| `PackageArchive` | entries and data read correctly, case-insensitive lookup, out-of-file entries rejected, non-archives detected |
+| `GameText` | font-code mapping, lossless `{xx}` escapes, lower case accepted, undisplayable text rejected |
+| `TextTable` | strings in index order, byte-identical re-encoding, offsets recomputed for longer translations, missing terminators rejected |
+| `TimImage` | 4-bit nibble order and width, PS1 transparency, out-of-palette pixels and non-TIM data rejected |
+| `PngWriter` | checksums against reference values, whole file against an independent encoder |
+| `AssetExtractor` | end-to-end extraction, bad files reported without stopping, entry names cannot escape the output folder, repeated names kept |

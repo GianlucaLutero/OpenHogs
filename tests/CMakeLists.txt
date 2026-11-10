@@ -23,12 +23,20 @@ add_executable(openhogs_tests
     core/VirtualFileSystemTests.cpp
     content/ContentConfigTests.cpp
     content/ContentPackTests.cpp
-    content/ContentManagerTests.cpp)
+    content/ContentManagerTests.cpp
+    formats/GameTextTests.cpp
+    formats/PackageArchiveTests.cpp
+    formats/TextTableTests.cpp
+    formats/TimImageTests.cpp
+    extractor/AssetExtractorTests.cpp
+    extractor/PngWriterTests.cpp)
 
 target_include_directories(openhogs_tests PRIVATE support)
 target_link_libraries(openhogs_tests PRIVATE
     OpenHogs::core
     OpenHogs::content
+    OpenHogs::formats
+    OpenHogs::extractor
     Catch2::Catch2WithMain)
 openhogs_set_warnings(openhogs_tests)
 
