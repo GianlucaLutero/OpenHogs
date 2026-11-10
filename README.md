@@ -1,5 +1,7 @@
 # OpenHogs
 
+[![Build and test](https://github.com/GianlucaLutero/OpenHogs/actions/workflows/build.yml/badge.svg)](https://github.com/GianlucaLutero/OpenHogs/actions/workflows/build.yml)
+
 **OpenHogs** is an open-source reimplementation of *Hogs of War*
 (Infogrames / Gremlin, 2000), the turn-based artillery game with pigs in the
 trenches of a World War I parody.
@@ -35,7 +37,7 @@ original data can already be read and extracted.
 - A copy of **Hogs of War** from Steam or GOG (or a retail CD installation).
 - To build from source:
   - CMake 3.24 or newer
-  - A C++20 compiler: Visual Studio 2022 (Windows), GCC 12+ or Clang 15+
+  - A C++20 compiler: Visual Studio 2022 or newer (Windows), GCC 12+ or Clang 15+
   - Git and an internet connection on first configure (CMake downloads the
     test framework)
 
@@ -52,7 +54,7 @@ cd OpenHogs
 
 ### 2. Build
 
-**Windows (Visual Studio 2022)**: open the folder with *File → Open → Folder*
+**Windows (Visual Studio 2022 or newer)**: open the folder with *File → Open → Folder*
 and Visual Studio configures CMake automatically. Or, from a
 *Developer Command Prompt*:
 
@@ -73,6 +75,10 @@ cmake --build build
 ```sh
 ctest --test-dir build --output-on-failure -C Release
 ```
+
+Every push and pull request is also built and tested automatically on
+Windows (Visual Studio) and Linux (GCC and Clang), with warnings treated as
+errors. See `.github/workflows/build.yml`.
 
 ### 4. Configure
 
