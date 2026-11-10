@@ -38,7 +38,8 @@ tests/
 ├── core/       tests for src/core
 ├── content/    tests for src/content
 ├── formats/    tests for src/formats
-└── extractor/  tests for src/tools/extractor
+├── extractor/  tests for src/tools/extractor
+└── scene/      tests for src/scene
 ```
 
 Each new module gets its own folder, mirroring `src/`.
@@ -60,3 +61,16 @@ Each new module gets its own folder, mirroring `src/`.
 | `TimImage` | 4-bit nibble order and width, PS1 transparency, out-of-palette pixels and non-TIM data rejected |
 | `PngWriter` | checksums against reference values, whole file against an independent encoder |
 | `AssetExtractor` | end-to-end extraction, bad files reported without stopping, entry names cannot escape the output folder, repeated names kept |
+| `Model` | triangle and quad layout (fields grouped by kind), optional normals, out-of-range vertex indices rejected |
+| `MapTerrain` | blocks, row-major heights, tile surface and flag bits, wrong file size rejected |
+| `MapObjects` | 94-byte records, trailing bytes ignored, team/script/flags at the offsets verified on the game data, truncated files rejected |
+| `TextureTable` | equal-size image slices, uneven files rejected |
+| `scene` | terrain rows go towards -Z, tile texture flip/rotation, two triangles per tile grouped by texture, model UV normalisation and quad split, object scale/yaw/Y-flip, objects without a model become markers |
+
+### Not covered by unit tests
+
+The OpenGL renderer (`src/render`) and the viewer application need a GPU
+and a window, so they are not unit tested. They are kept thin on purpose:
+all decisions about geometry live in `src/scene`, which is tested. The
+renderer is checked by rendering real maps (`openhogs-mapviewer
+--screenshot`) and comparing with the original game.

@@ -23,13 +23,14 @@ The goal is to play the original game natively on modern systems
 ## Project status
 
 OpenHogs is in early development. Nothing is playable yet, but the
-original data can already be read and extracted.
+original data can be extracted and every map can be explored in 3D.
 
 | Block | Status | What it delivers |
 |-------|--------|------------------|
 | `project-foundation` | ✅ done | Build system, core library, content-pack system, unit tests |
 | `asset-extractor`    | ✅ done | Reads archives, textures and text; `openhogs-extract` tool |
-| `map-viewer`         | ⏳ next | Reads models and maps and shows them in 3D |
+| `ci-build`           | ✅ done | Automatic build and tests on Windows and Linux |
+| `map-viewer`         | ✅ done | Reads terrain, models and objects; `openhogs-mapviewer` 3D viewer |
 | gameplay blocks      | planned | Movement, weapons, turns, AI, campaign |
 
 ## Requirements
@@ -38,8 +39,13 @@ original data can already be read and extracted.
 - To build from source:
   - CMake 3.24 or newer
   - A C++20 compiler: Visual Studio 2022 or newer (Windows), GCC 12+ or Clang 15+
-  - Git and an internet connection on first configure (CMake downloads the
-    test framework)
+  - Git and an internet connection on first configure (CMake downloads
+    SDL3, GLM and the test framework)
+  - Linux only: the X11/Wayland development packages needed by SDL3, e.g. on
+    Ubuntu/Debian:
+    `sudo apt install libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev libxtst-dev libxfixes-dev libxkbcommon-dev libwayland-dev libegl-dev libgl-dev`
+- To run the map viewer: a graphics card with OpenGL 3.3 (any GPU from the
+  last 15 years).
 
 ## Installation
 
@@ -55,8 +61,8 @@ cd OpenHogs
 ### 2. Build
 
 **Windows (Visual Studio 2022 or newer)**: open the folder with *File → Open → Folder*
-and Visual Studio configures CMake automatically. Or, from a
-*Developer Command Prompt*:
+and Visual Studio configures CMake automatically. Or, from a command
+prompt (the Visual Studio generator finds the compiler by itself):
 
 ```sh
 cmake -S . -B build
@@ -70,6 +76,10 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
+The first build takes a few minutes because SDL3 is compiled from source.
+To build only the command-line tools, without SDL3 and the viewer, add
+`-DOPENHOGS_BUILD_VIEWER=OFF` to the first command.
+
 ### 3. Run the tests (optional)
 
 ```sh
@@ -77,8 +87,8 @@ ctest --test-dir build --output-on-failure -C Release
 ```
 
 Every push and pull request is also built and tested automatically on
-Windows (Visual Studio) and Linux (GCC and Clang), with warnings treated as
-errors. See `.github/workflows/build.yml`.
+Windows (Visual Studio) and Linux (GCC and Clang), with warnings in OpenHogs
+code treated as errors. See `.github/workflows/build.yml`.
 
 ### 4. Configure
 
@@ -127,6 +137,49 @@ openhogs-extract --list "C:\...\HogsofWar\Chars\WEAPONS.MTD"
 
 Do not share the extracted files: they are copyrighted game data.
 
+### Exploring the maps in 3D
+
+`openhogs-mapviewer` shows any map of the game: terrain, textures, trees,
+buildings and the other objects, plus yellow markers on the hogs' start
+positions. Run it from the OpenHogs folder after the configuration step:
+
+```sh
+# Windows
+build\bin\Release\openhogs-mapviewer.exe CAMP
+
+# Linux
+./build/bin/openhogs-mapviewer CAMP
+```
+
+Without a map name the first map is opened. Useful options:
+
+| Option | Effect |
+|--------|--------|
+| `--list` | print the names of all maps (about 70) |
+| `--game <folder>` | read this game folder directly, ignoring `config/openhogs.ini` and content packs |
+| `--config <file>` | use another configuration file |
+| `--size 1920x1080` | window size |
+| `--screenshot camp.png` | save the map as an image and exit, without opening a window |
+| `--camera x,y,z,yaw,pitch` | start from a given view (the viewer prints the current one when a map loads) |
+
+Controls:
+
+| Key | Action |
+|-----|--------|
+| `W` `A` `S` `D` | move forward, left, back, right |
+| `Q` / `E` | move down / up |
+| `Shift` | move faster |
+| right mouse button + drag, or arrow keys | look around |
+| `Page Up` / `Page Down` | previous / next map |
+| `O` | show / hide objects |
+| `M` | show / hide the start-position markers |
+| `F` | view the whole map again |
+| `F12` | save a screenshot (`openhogs-<MAP>.png`) |
+| `Esc` | quit |
+
+Because the viewer reads files through the content system, a texture or
+map pack enabled in `config/openhogs.ini` shows up in the viewer too.
+
 ### Game settings
 
 The engine will use the configuration described below; the content-pack
@@ -167,9 +220,13 @@ OpenHogs/
 ├── src/
 │   ├── core/             binary reading, INI files, virtual file system
 │   ├── content/          config, content packs, pack selection
-│   ├── formats/          parsers: archives, text tables, TIM textures
-│   └── tools/extractor/  openhogs-extract command-line tool
-└── tests/                unit tests (see tests/README.md)
+│   ├── formats/          parsers: archives, text, textures, models, maps
+│   ├── scene/            map data turned into triangles (no GPU code)
+│   ├── render/           OpenGL 3.3 renderer and camera
+│   ├── tools/extractor/  openhogs-extract command-line tool
+│   └── apps/mapviewer/   openhogs-mapviewer application
+├── tests/                unit tests (see tests/README.md)
+└── third_party/          code not written for OpenHogs (glad OpenGL loader)
 ```
 
 More details in [`docs/architecture.md`](docs/architecture.md).
@@ -181,6 +238,23 @@ the block, and is merged into `main` after review. Code is C++20, written
 to be readable and commented in English. See [`CLAUDE.md`](CLAUDE.md) for
 the full rules and [`tests/README.md`](tests/README.md) for the testing
 guidelines.
+
+## Credits
+
+OpenHogs builds on the work of others. Thank you!
+
+| Project | Authors | License | Used for |
+|---------|---------|---------|----------|
+| [OpenHoW](https://github.com/TalonBraveInfo/OpenHoW) | Mark Sowden (hogsy) and contributors | GPL-3.0-or-later | Its [file-format documentation](https://github.com/TalonBraveInfo/OpenHoW/tree/master/doc/file-formats) was the reference for the model (VTX, NO2, FAC) and map (PMG, POG, PTG) formats and confirmed the MAD/MTD layout. No code was copied; every layout was re-checked on the game data and some POG offsets were corrected (see `docs/formats/maps.md`). |
+| [SDL3](https://github.com/libsdl-org/SDL) | Sam Lantinga and SDL contributors | zlib | Window, input and OpenGL context of the map viewer (downloaded at build time). |
+| [GLM](https://github.com/g-truc/glm) | G-Truc Creation (Christophe Riccio) and contributors | MIT | Vector and matrix maths (downloaded at build time). |
+| [glad](https://github.com/Dav1dde/glad) | David Herberth | generated code: WTFPL or CC0-1.0; `khrplatform.h`: Apache-2.0 (Khronos Group) | OpenGL 3.3 function loader, generated into `third_party/glad`. |
+| [Catch2](https://github.com/catchorg/Catch2) | Catch2 authors (Martin Hořeňovský, Phil Nash and contributors) | BSL-1.0 | Unit test framework (downloaded at build time). |
+
+*Hogs of War* was developed by Infogrames Sheffield House (formerly Gremlin
+Interactive) and published by Infogrames in 2000. The PlayStation TIM image
+format is publicly documented; OpenHogs' decoder was written from that
+documentation.
 
 ## License
 
