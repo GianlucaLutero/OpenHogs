@@ -1,0 +1,37 @@
+# OpenHogs - open-source reimplementation of Hogs of War.
+#
+# Top-level build script. Each module lives in its own sub-directory and
+# builds a small static library; applications and tests link against them.
+
+cmake_minimum_required(VERSION 3.24)
+
+project(OpenHogs
+    VERSION 0.1.0
+    DESCRIPTION "Open-source reimplementation of Hogs of War"
+    LANGUAGES CXX)
+
+# --- Options ---------------------------------------------------------------
+option(OPENHOGS_BUILD_TESTS "Build the unit test module" ON)
+
+# --- Global settings -------------------------------------------------------
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Put every executable in the same folder so tools and the game can find
+# the shared `config/` and `content/` folders next to them.
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+include(OpenHogsWarnings)
+
+# --- Modules ---------------------------------------------------------------
+# Order matters: a module can only depend on modules added before it.
+add_subdirectory(src/core)      # binary reading, INI files, virtual file system
+add_subdirectory(src/content)   # replaceable content: packs, languages, config
+
+# --- Tests -----------------------------------------------------------------
+if(OPENHOGS_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
