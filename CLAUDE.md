@@ -40,3 +40,7 @@ These rules were set by the project owner and apply to every change.
 
 - Always keep `README.md` up to date, especially the description and the
   steps to install and use the mod.
+- **Credit the authors** of any code, library or documentation that is reused
+  or used as a reference, in the `Credits` section of the README: name, link,
+  license and what it was used for. Reused code also keeps its original
+  license header.

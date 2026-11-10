@@ -25,11 +25,14 @@ add_executable(openhogs_tests
     content/ContentPackTests.cpp
     content/ContentManagerTests.cpp
     formats/GameTextTests.cpp
+    formats/MapFormatsTests.cpp
+    formats/ModelTests.cpp
     formats/PackageArchiveTests.cpp
     formats/TextTableTests.cpp
     formats/TimImageTests.cpp
     extractor/AssetExtractorTests.cpp
-    extractor/PngWriterTests.cpp)
+    extractor/PngWriterTests.cpp
+    scene/SceneTests.cpp)
 
 target_include_directories(openhogs_tests PRIVATE support)
 target_link_libraries(openhogs_tests PRIVATE
@@ -37,6 +40,7 @@ target_link_libraries(openhogs_tests PRIVATE
     OpenHogs::content
     OpenHogs::formats
     OpenHogs::extractor
+    OpenHogs::scene
     Catch2::Catch2WithMain)
 openhogs_set_warnings(openhogs_tests)
 

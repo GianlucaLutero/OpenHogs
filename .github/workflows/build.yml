@@ -1,8 +1,8 @@
 # Continuous integration: builds OpenHogs and runs the unit tests on every
 # push and pull request, on Windows (Visual Studio) and Linux (GCC, Clang).
 #
-# Warnings are treated as errors here so that new warnings are noticed in
-# review instead of piling up.
+# Warnings in OpenHogs code are treated as errors here, so that new warnings
+# are noticed in review instead of piling up (third-party code is exempt).
 
 name: Build and test
 
@@ -21,22 +21,32 @@ jobs:
           - name: Windows (MSVC)
             os: windows-latest
             # No -G: CMake picks the newest Visual Studio installed, as on a user PC.
-            configure: cmake -S . -B build -A x64 -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+            configure: cmake -S . -B build -A x64 -DOPENHOGS_WARNINGS_AS_ERRORS=ON
             build: cmake --build build --config Release
             test: ctest --test-dir build -C Release --output-on-failure
           - name: Linux (GCC)
             os: ubuntu-latest
-            configure: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++ -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+            configure: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DOPENHOGS_WARNINGS_AS_ERRORS=ON
             build: cmake --build build --parallel
             test: ctest --test-dir build --output-on-failure
           - name: Linux (Clang)
             os: ubuntu-latest
-            configure: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+            configure: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DOPENHOGS_WARNINGS_AS_ERRORS=ON
             build: cmake --build build --parallel
             test: ctest --test-dir build --output-on-failure
 
     steps:
       - uses: actions/checkout@v4
+
+      # SDL3 (map viewer) is built from source and needs the X11/Wayland
+      # development headers on Linux. Windows needs nothing extra.
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev \
+            libxss-dev libxtst-dev libxfixes-dev libxkbcommon-dev libwayland-dev libegl-dev \
+            libgl-dev libdrm-dev libgbm-dev
 
       - name: Configure
         run: ${{ matrix.configure }}
