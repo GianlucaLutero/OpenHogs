@@ -20,7 +20,8 @@ using formats::kTilesPerBlockSide;
 constexpr float kNeutralShading = 255.0f;
 
 float sampleBrightness(const formats::TerrainBlock& block, int column, int row) {
-    return static_cast<float>(block.shading[row * kSamplesPerBlockSide + column]) / kNeutralShading;
+    const auto index = static_cast<std::size_t>(row * kSamplesPerBlockSide + column);
+    return static_cast<float>(block.shading[index]) / kNeutralShading;
 }
 
 } // namespace

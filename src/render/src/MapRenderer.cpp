@@ -160,17 +160,19 @@ formats::RgbaImage captureFramebuffer(int width, int height) {
     formats::RgbaImage image;
     image.width = static_cast<std::uint32_t>(width);
     image.height = static_cast<std::uint32_t>(height);
-    image.pixels.resize(static_cast<std::size_t>(width) * height * 4);
+    const auto w = static_cast<std::size_t>(width);
+    const auto h = static_cast<std::size_t>(height);
+    image.pixels.resize(w * h * 4);
 
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, image.pixels.data());
 
     // OpenGL returns the bottom row first; images store the top row first.
-    const std::size_t rowBytes = static_cast<std::size_t>(width) * 4;
+    const std::size_t rowBytes = w * 4;
     std::vector<std::uint8_t> row(rowBytes);
-    for (int y = 0; y < height / 2; ++y) {
+    for (std::size_t y = 0; y < h / 2; ++y) {
         std::uint8_t* a = image.pixels.data() + y * rowBytes;
-        std::uint8_t* b = image.pixels.data() + (height - 1 - y) * rowBytes;
+        std::uint8_t* b = image.pixels.data() + (h - 1 - y) * rowBytes;
         std::memcpy(row.data(), a, rowBytes);
         std::memcpy(a, b, rowBytes);
         std::memcpy(b, row.data(), rowBytes);
