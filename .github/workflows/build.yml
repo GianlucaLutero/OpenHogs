@@ -1,0 +1,47 @@
+# Continuous integration: builds OpenHogs and runs the unit tests on every
+# push and pull request, on Windows (Visual Studio) and Linux (GCC, Clang).
+#
+# Warnings are treated as errors here so that new warnings are noticed in
+# review instead of piling up.
+
+name: Build and test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows (MSVC 2022)
+            os: windows-latest
+            configure: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+            build: cmake --build build --config Release
+            test: ctest --test-dir build -C Release --output-on-failure
+          - name: Linux (GCC)
+            os: ubuntu-latest
+            configure: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++ -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+            build: cmake --build build --parallel
+            test: ctest --test-dir build --output-on-failure
+          - name: Linux (Clang)
+            os: ubuntu-latest
+            configure: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+            build: cmake --build build --parallel
+            test: ctest --test-dir build --output-on-failure
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: ${{ matrix.configure }}
+
+      - name: Build
+        run: ${{ matrix.build }}
+
+      - name: Test
+        run: ${{ matrix.test }}
