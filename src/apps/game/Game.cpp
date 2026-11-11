@@ -24,6 +24,7 @@ namespace {
 
 constexpr float kOrbitDegreesPerPixel = 0.3f;
 constexpr float kZoomStep = 0.9f;  // distance factor per wheel notch
+constexpr float kPadOrbitDegreesPerSecond = 120.0f;
 
 // The camera looks at the hog's chest, this far above its feet.
 constexpr float kCameraTargetHeight = 180.0f;
@@ -39,6 +40,7 @@ constexpr std::string_view kHurtSound = "P_OWW";
 constexpr std::string_view kDeathSound = "P_MOAN";
 constexpr std::string_view kTurnSound = "S_SELECT";
 constexpr std::string_view kVictorySound = "P_WHOHO";
+constexpr std::string_view kSuddenDeathSound = "E_1000P";  // the big explosion
 
 // Effect colours.
 constexpr glm::vec4 kAimColour{1.0f, 1.0f, 1.0f, 1.0f};
@@ -83,6 +85,7 @@ game::TurnRules turnRules(const GameOptions& options) {
     if (options.turnSeconds) {
         rules.turnSeconds = *options.turnSeconds;
     }
+    rules.suddenDeathRound = options.suddenDeathRound;
     return rules;
 }
 
@@ -93,11 +96,11 @@ constexpr double kEndMessageSeconds = -1.0;  // until the players leave
 } // namespace
 
 Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Interface& userInterface,
-           SoundPlayer& sounds)
+           SoundPlayer& sounds, const Gamepads& gamepads)
     : mapName_(options.mapName), library_(vfs),
       world_(game::loadWorld(vfs, options.mapName, turnRules(options), options.prepareHogs)),
       pauseMenu_(userInterface.strings()), computerTeams_(options.computerTeams.begin(), options.computerTeams.end()),
-      computer_(computerSettings()), interface_(userInterface), sounds_(sounds) {
+      computer_(computerSettings()), interface_(userInterface), sounds_(sounds), gamepads_(gamepads) {
     const auto scene = scene::loadMapScene(vfs, options.mapName);
     for (const auto& warning : scene.warnings) {
         std::cerr << "Warning: " << warning << "\n";
@@ -243,15 +246,18 @@ GameRequest Game::handleEvent(const SDL_Event& event) {
         if (event.key.key == SDLK_F12) {
             return GameRequest::Screenshot;
         }
-        return paused_ ? handlePauseKey(event) : handleKey(event);
+        return paused_ ? handlePauseInput(menuInputForKey(event.key.key)) : handleCommand(commandForKey(event));
+
+    case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
+        return paused_ ? handlePauseInput(Gamepads::menuInputForButton(event.gbutton.button))
+                       : handleCommand(commandForPad(event.gbutton.button));
 
     default:
         return GameRequest::None;
     }
 }
 
-GameRequest Game::handlePauseKey(const SDL_Event& event) {
-    const auto input = menuInputForKey(event.key.key);
+GameRequest Game::handlePauseInput(std::optional<ui::MenuInput> input) {
     if (!input) {
         return GameRequest::None;
     }
@@ -273,40 +279,56 @@ bool Game::computerIsPlaying() const {
     return world_.turns() && isComputerTeam(world_.turns()->activeTeam());
 }
 
-GameRequest Game::handleKey(const SDL_Event& event) {
-    const SDL_Keycode key = event.key.key;
-    if (key == SDLK_ESCAPE || key == SDLK_P) {
+GameRequest Game::handleCommand(Command command) {
+    if (command == Command::Pause) {
         pause();
         playMenuSound(sounds_, ui::MenuSound::Select);
         return GameRequest::None;
     }
     if (world_.phase() == game::MatchPhase::Over) {
-        return (key == SDLK_RETURN || key == SDLK_KP_ENTER) ? GameRequest::LeaveMatch : GameRequest::None;
+        return command == Command::EndTurn ? GameRequest::LeaveMatch : GameRequest::None;
     }
     if (computerIsPlaying()) {
         return GameRequest::None;  // the computer has the hog
     }
-    switch (key) {
-    case SDLK_TAB:
-        world_.switchHog((event.key.mod & SDL_KMOD_SHIFT) ? -1 : 1);
-        break;
-    case SDLK_RETURN:
-    case SDLK_KP_ENTER:
-        world_.endTurn();
-        break;
-    case SDLK_SPACE:
-        jumpPressed_ = true;
-        break;
-    case SDLK_Q:
-        weaponStep_ = -1;
-        break;
-    case SDLK_E:
-        weaponStep_ = 1;
-        break;
-    default:
-        break;
+    switch (command) {
+    case Command::NextHog: world_.switchHog(1); break;
+    case Command::PreviousHog: world_.switchHog(-1); break;
+    case Command::EndTurn: world_.endTurn(); break;
+    case Command::Jump: jumpPressed_ = true; break;
+    case Command::PreviousWeapon: weaponStep_ = -1; break;
+    case Command::NextWeapon: weaponStep_ = 1; break;
+    case Command::None:
+    case Command::Pause: break;
     }
     return GameRequest::None;
+}
+
+Game::Command Game::commandForKey(const SDL_Event& event) {
+    switch (event.key.key) {
+    case SDLK_ESCAPE:
+    case SDLK_P: return Command::Pause;
+    case SDLK_TAB: return (event.key.mod & SDL_KMOD_SHIFT) ? Command::PreviousHog : Command::NextHog;
+    case SDLK_RETURN:
+    case SDLK_KP_ENTER: return Command::EndTurn;
+    case SDLK_SPACE: return Command::Jump;
+    case SDLK_Q: return Command::PreviousWeapon;
+    case SDLK_E: return Command::NextWeapon;
+    default: return Command::None;
+    }
+}
+
+Game::Command Game::commandForPad(Uint8 button) {
+    switch (Gamepads::actionForButton(button)) {
+    case PadAction::Pause: return Command::Pause;
+    case PadAction::SwitchHog: return Command::NextHog;
+    case PadAction::EndTurn: return Command::EndTurn;
+    case PadAction::Jump: return Command::Jump;
+    case PadAction::PreviousWeapon: return Command::PreviousWeapon;
+    case PadAction::NextWeapon: return Command::NextWeapon;
+    case PadAction::None: break;
+    }
+    return Command::None;
 }
 
 game::PlayerInput Game::readInput() {
@@ -328,6 +350,7 @@ game::PlayerInput Game::readInput() {
         const double t = world_.timeSeconds();
         input.fire = t >= *autoFireAt_ && t < *autoFireAt_ + kAutoFireHoldSeconds;
     }
+    gamepads_.addHeldControls(input);
     input.weaponStep = weaponStep_;
     jumpPressed_ = false;
     weaponStep_ = 0;
@@ -357,6 +380,7 @@ void Game::handleEvents(const std::vector<game::GameEvent>& events) {
         case GameEventType::Hurt: playSound(kHurtSound); break;
         case GameEventType::Died: playSound(kDeathSound); break;
         case GameEventType::TurnStarted: playSound(kTurnSound); break;
+        case GameEventType::SuddenDeath: playSound(kSuddenDeathSound); break;
         case GameEventType::MatchOver: playSound(kVictorySound); break;
         }
     }
@@ -395,6 +419,8 @@ void Game::step(double seconds) {
         }
     }
     cameraSwingSecondsLeft_ = std::max(0.0, cameraSwingSecondsLeft_ - seconds);
+    // The pads' right stick turns the camera, like dragging the mouse.
+    camera_.orbit(gamepads_.cameraTurn() * kPadOrbitDegreesPerSecond * static_cast<float>(seconds), 0.0f);
     camera_.update(seconds, cameraTarget());
 }
 

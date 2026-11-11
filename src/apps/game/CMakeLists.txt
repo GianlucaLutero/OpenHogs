@@ -4,6 +4,7 @@
 #   Application    - window, sound, interface; switches menus <-> match
 #   CampaignSession - a campaign: squad pages, briefings, missions, saving
 #   Game           - one match: world, camera, drawing, HUD, pause menu
+#   Gamepads       - game controllers for the menus and the matches
 #   Interface      - fonts, icons, texts and shared drawing of the 2D interface
 #   MenuBackground - the map circling behind the menus
 #   SoundPlayer    - mixer, sound device, sounds by name from the banks
@@ -18,6 +19,7 @@ add_executable(openhogs
     Application.cpp
     CampaignSession.cpp
     Game.cpp
+    Gamepads.cpp
     Interface.cpp
     MenuBackground.cpp
     SoundPlayer.cpp)

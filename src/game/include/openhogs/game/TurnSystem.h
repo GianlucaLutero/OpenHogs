@@ -28,6 +28,9 @@ namespace openhogs::game {
 struct TurnRules {
     double turnSeconds = 60.0;
     float movementAllowance = 3500.0f;  // world units: about 7 seconds of running
+    // Sudden death: when this round begins every hog is left with one
+    // point of health (0 = never). A round is one turn of every team.
+    int suddenDeathRound = 0;
 };
 
 class TurnSystem {
@@ -43,6 +46,8 @@ public:
     int activeTeam() const { return teams_[activeTeamIndex_]; }
     std::size_t activeHog() const { return activeHog_; }
     int turnNumber() const { return turnNumber_; }  // 1 for the first turn
+    // 1 while every team plays its first turn, 2 for their second turns...
+    int round() const;
 
     double secondsLeft() const { return secondsLeft_; }
     float movementLeft() const { return movementLeft_; }

@@ -18,6 +18,7 @@
 #   ComputerPlayer     - the computer opponent: plans and plays a turn
 #   Ranks              - campaign ranks, careers and promotions
 #   Campaign           - the missions, the squad, points and saving
+#   FieldConditions    - multiplayer settings: teams off, hogs per team, health
 
 add_library(openhogs_game STATIC
     src/AnimationPlayer.cpp
@@ -25,6 +26,7 @@ add_library(openhogs_game STATIC
     src/ChaseCamera.cpp
     src/ComputerPlayer.cpp
     src/Combat.cpp
+    src/FieldConditions.cpp
     src/FixedTimestep.cpp
     src/Hog.cpp
     src/HogMovement.cpp

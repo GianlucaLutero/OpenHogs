@@ -2,6 +2,8 @@
 
 #include "openhogs/ui/FrontEnd.h"
 
+#include <array>
+#include <string>
 #include <utility>
 
 namespace openhogs::ui {
@@ -18,11 +20,26 @@ constexpr int kTeamBack = -1;  // nation items use the nation index as id
 enum OptionsItem { kMaster, kEffects, kVoices, kMusic, kOptionsBack };
 enum ConfirmItem { kYes, kNo };
 constexpr int kLevelBack = -1;  // map items use their index as id
-// Players page: team items use their index in the team list as id.
+// Players page: two items per team (its nation, who plays it), with ids
+// from the team's place in the list.
 constexpr int kStartGame = -1;
 constexpr int kPlayersBack = -2;
+constexpr int kFieldConditions = -3;
 constexpr int kHumanChoice = 0;
 constexpr int kComputerChoice = 1;
+constexpr int kOffChoice = 2;
+int nationItem(std::size_t team) { return static_cast<int>(team) * 2; }
+int controlItem(std::size_t team) { return static_cast<int>(team) * 2 + 1; }
+
+// Field conditions page. The values offered follow the original's menu
+// (fetext 303-320): turn times 10 to 99 s, health half/normal/double,
+// sudden death off or after 10, 20, 30 rounds.
+enum FieldItem { kFieldHogs, kFieldTurnTime, kFieldHealth, kFieldSuddenDeath, kFieldBack };
+constexpr int kMostHogsPerTeam = 8;
+constexpr std::array<double, 6> kTurnTimes{10, 20, 30, 45, 60, 99};
+constexpr int kDefaultTurnTime = 4;  // 60 s
+constexpr std::array<float, 3> kHealthFactors{1.0f, 0.5f, 2.0f};
+constexpr std::array<int, 4> kSuddenDeathRounds{0, 10, 20, 30};
 
 MenuItem action(int id, std::string label, bool enabled = true) {
     MenuItem item;
@@ -73,6 +90,31 @@ FrontEnd::FrontEnd(UiStrings strings, std::vector<std::string> maps, VolumeLevel
     nations.push_back(action(kTeamBack, strings_.back));
     selectTeam_ = Menu(strings_.selectTeam, std::move(nations));
 
+    // FIELD CONDITIONS: plain numbers need no translation.
+    MenuItem hogs;
+    hogs.id = kFieldHogs;
+    hogs.label = strings_.pigs;
+    hogs.kind = MenuItem::Kind::Choice;
+    hogs.choices.push_back(strings_.normal);
+    for (int count = 1; count <= kMostHogsPerTeam; ++count) hogs.choices.push_back(std::to_string(count));
+    MenuItem turnTime;
+    turnTime.id = kFieldTurnTime;
+    turnTime.label = strings_.turnTime;
+    turnTime.kind = MenuItem::Kind::Choice;
+    for (const double seconds : kTurnTimes) turnTime.choices.push_back(std::to_string(static_cast<int>(seconds)));
+    turnTime.value = kDefaultTurnTime;
+    MenuItem health;
+    health.id = kFieldHealth;
+    health.label = strings_.health;
+    health.kind = MenuItem::Kind::Choice;
+    health.choices = {strings_.normal, strings_.half, strings_.doubled};
+    MenuItem suddenDeath;
+    suddenDeath.id = kFieldSuddenDeath;
+    suddenDeath.label = strings_.suddenDeath;
+    suddenDeath.kind = MenuItem::Kind::Choice;
+    suddenDeath.choices = {strings_.off, "10", "20", "30"};
+    fieldConditions_ = Menu(strings_.fieldConditions, {hogs, turnTime, health, suddenDeath, action(kFieldBack, strings_.back)});
+
     std::vector<MenuItem> levels;
     for (std::size_t i = 0; i < maps_.size(); ++i) {
         levels.push_back(action(static_cast<int>(i), maps_[i]));
@@ -104,6 +146,7 @@ const Menu& FrontEnd::menu() const {
     case FrontEndScreen::SelectTeam: return selectTeam_;
     case FrontEndScreen::SelectLevel: return selectLevel_;
     case FrontEndScreen::Players: return players_;
+    case FrontEndScreen::FieldConditions: return fieldConditions_;
     case FrontEndScreen::Options: return options_;
     case FrontEndScreen::ConfirmQuit: return confirmQuit_;
     }
@@ -128,6 +171,7 @@ FrontEndResult FrontEnd::handle(MenuInput input) {
     case FrontEndScreen::SelectTeam: return handleSelectTeam(selectTeam_.handle(input));
     case FrontEndScreen::SelectLevel: return handleSelectLevel(selectLevel_.handle(input));
     case FrontEndScreen::Players: return handlePlayers(players_.handle(input));
+    case FrontEndScreen::FieldConditions: return handleFieldConditions(fieldConditions_.handle(input));
     case FrontEndScreen::Options: return handleOptions(options_.handle(input));
     case FrontEndScreen::ConfirmQuit: return handleConfirmQuit(confirmQuit_.handle(input));
     }
@@ -218,21 +262,33 @@ FrontEndResult FrontEnd::setLevelTeams(const std::vector<int>& teams) {
         // The first team is the player's, the others the computer's.
         result.request = Request::StartMatch;
         result.map = chosenMap_;
-        result.computerTeams.assign(teams.begin() + 1, teams.end());
+        result.settings.computerTeams.assign(teams.begin() + 1, teams.end());
         return result;
     }
-    // Every team starts as a human player; left/right hands it to the CPU.
+
+    // Two rows per team: its nation, then who plays it. Every team starts
+    // as a human player in its usual nation.
+    const auto nationCount = static_cast<int>(strings_.teamNames.size());
     std::vector<MenuItem> items;
     for (std::size_t i = 0; i < teams.size(); ++i) {
-        MenuItem item;
-        item.id = static_cast<int>(i);
-        item.label = strings_.teamName(teams[i]);
-        item.kind = MenuItem::Kind::Choice;
-        item.choices = {strings_.player, strings_.cpu};
-        item.value = kHumanChoice;
-        items.push_back(item);
+        MenuItem nation;
+        nation.id = nationItem(i);
+        nation.label = strings_.teamLabel(i);
+        nation.kind = MenuItem::Kind::Choice;
+        nation.choices.assign(strings_.teamNames.begin(), strings_.teamNames.end());
+        nation.value = ((teams[i] % nationCount) + nationCount) % nationCount;
+        items.push_back(nation);
+
+        MenuItem control;
+        control.id = controlItem(i);
+        control.label = "";
+        control.kind = MenuItem::Kind::Choice;
+        control.choices = {strings_.player, strings_.cpu, strings_.off};
+        control.value = kHumanChoice;
+        items.push_back(control);
     }
     items.push_back(action(kStartGame, strings_.startGame));
+    items.push_back(action(kFieldConditions, strings_.fieldConditions));
     items.push_back(action(kPlayersBack, strings_.back));
     players_ = Menu(strings_.multiPlayer, std::move(items));
     players_.select(kStartGame);
@@ -246,14 +302,48 @@ FrontEndResult FrontEnd::handlePlayers(const MenuResponse& response) {
     if (response.type == Type::Back || (response.type == Type::Activated && response.itemId == kPlayersBack)) {
         open(FrontEndScreen::SelectLevel);
         result.sound = MenuSound::Back;
+    } else if (response.type == Type::Activated && response.itemId == kFieldConditions) {
+        open(FrontEndScreen::FieldConditions);
     } else if (response.type == Type::Activated && response.itemId == kStartGame) {
-        result.request = Request::StartMatch;
-        result.map = chosenMap_;
+        MatchSettings settings = fieldSettings();
+        int playing = 0;
         for (std::size_t i = 0; i < levelTeams_.size(); ++i) {
-            if (players_.item(static_cast<int>(i)).value == kComputerChoice) {
-                result.computerTeams.push_back(levelTeams_[i]);
+            const int team = levelTeams_[i];
+            settings.teamNations[team] = players_.item(nationItem(i)).value;
+            switch (players_.item(controlItem(i)).value) {
+            case kComputerChoice: settings.computerTeams.push_back(team); ++playing; break;
+            case kOffChoice: settings.conditions.removedTeams.push_back(team); break;
+            default: ++playing; break;
             }
         }
+        if (playing < 2) {
+            result.sound = MenuSound::Back;  // a match needs two teams
+            return result;
+        }
+        result.request = Request::StartMatch;
+        result.map = chosenMap_;
+        result.settings = settings;
+    }
+    return result;
+}
+
+MatchSettings FrontEnd::fieldSettings() const {
+    MatchSettings settings;
+    const int hogs = fieldConditions_.item(kFieldHogs).value;  // 0 = as on the map
+    settings.conditions.hogsPerTeam = hogs;
+    settings.conditions.healthFactor = kHealthFactors.at(static_cast<std::size_t>(fieldConditions_.item(kFieldHealth).value));
+    settings.turnSeconds = kTurnTimes.at(static_cast<std::size_t>(fieldConditions_.item(kFieldTurnTime).value));
+    settings.suddenDeathRound =
+        kSuddenDeathRounds.at(static_cast<std::size_t>(fieldConditions_.item(kFieldSuddenDeath).value));
+    return settings;
+}
+
+FrontEndResult FrontEnd::handleFieldConditions(const MenuResponse& response) {
+    FrontEndResult result;
+    result.sound = soundFor(response);
+    if (response.type == Type::Back || (response.type == Type::Activated && response.itemId == kFieldBack)) {
+        open(FrontEndScreen::Players);
+        result.sound = MenuSound::Back;
     }
     return result;
 }

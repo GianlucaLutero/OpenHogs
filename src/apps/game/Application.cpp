@@ -4,6 +4,8 @@
 
 #include "MenuControls.h"
 
+#include "openhogs/game/FieldConditions.h"
+
 #include "openhogs/render/GlObjects.h"
 
 #include <SDL3/SDL.h>
@@ -43,6 +45,7 @@ Application::Application(const core::VirtualFileSystem& vfs, ApplicationOptions 
     : vfs_(vfs), maps_(std::move(options.maps)), width_(options.width), height_(options.height),
       window_("OpenHogs", options.width, options.height, options.hiddenWindow), savePath_(options.savePath) {
     sounds_ = options.sound ? std::make_unique<SoundPlayer>(vfs, options.volumes) : std::make_unique<SoundPlayer>();
+    gamepads_ = std::make_unique<Gamepads>();
     interface_ = std::make_unique<Interface>(vfs);
     frontEnd_ = std::make_unique<ui::FrontEnd>(interface_->strings(), maps_, toVolumeLevels(options.volumes));
     frontEnd_->setSavedCampaign(CampaignSession::hasSave(savePath_));
@@ -63,6 +66,7 @@ Application::~Application() {
     // window's OpenGL context (members are destroyed in reverse order, this
     // only makes it obvious).
     game_.reset();
+    gamepads_.reset();
     campaign_.reset();
     frontEnd_.reset();
     background_.reset();
@@ -86,7 +90,7 @@ void Application::drawLoading() {
 void Application::startMatch(const GameOptions& options) {
     drawLoading();
     game_.reset();  // free the previous match first
-    game_ = std::make_unique<Game>(vfs_, options, *interface_, *sounds_);
+    game_ = std::make_unique<Game>(vfs_, options, *interface_, *sounds_, *gamepads_);
 }
 
 void Application::leaveMatch() {
@@ -145,7 +149,12 @@ bool Application::handleFrontEndResult(const ui::FrontEndResult& result) {
     case ui::FrontEndResult::Request::StartMatch: {
         GameOptions options;
         options.mapName = result.map;
-        options.computerTeams = result.computerTeams;
+        options.computerTeams = result.settings.computerTeams;
+        options.teamNations = result.settings.teamNations;
+        options.turnSeconds = result.settings.turnSeconds;
+        options.suddenDeathRound = result.settings.suddenDeathRound;
+        const auto conditions = result.settings.conditions;
+        options.prepareHogs = [conditions](std::vector<game::Hog>& hogs) { game::applyFieldConditions(hogs, conditions); };
         try {
             startMatch(options);
         } catch (const std::exception& error) {
@@ -190,6 +199,9 @@ void Application::handleEvent(const SDL_Event& event, bool& running) {
         running = false;
         return;
     }
+    if (gamepads_->handleDeviceEvent(event)) {
+        return;
+    }
     if (game_) {
         switch (game_->handleEvent(event)) {
         case GameRequest::LeaveMatch:
@@ -206,10 +218,14 @@ void Application::handleEvent(const SDL_Event& event, bool& running) {
         }
         return;
     }
+    std::optional<ui::MenuInput> input;
     if (event.type == SDL_EVENT_KEY_DOWN) {
-        if (const auto input = menuInputForKey(event.key.key)) {
-            running = handleMenuInput(*input);
-        }
+        input = menuInputForKey(event.key.key);
+    } else if (event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN) {
+        input = Gamepads::menuInputForButton(event.gbutton.button);
+    }
+    if (input) {
+        running = handleMenuInput(*input);
     }
 }
 

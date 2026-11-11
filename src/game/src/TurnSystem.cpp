@@ -29,6 +29,11 @@ TurnSystem::TurnSystem(const std::vector<Hog>& hogs, TurnRules rules) : rules_(r
     startTurn(hogs);
 }
 
+int TurnSystem::round() const {
+    const auto teams = static_cast<int>(teams_.size());
+    return teams > 0 ? (turnNumber_ - 1) / teams + 1 : 1;
+}
+
 std::vector<std::size_t> TurnSystem::hogsOfTeam(int team, const std::vector<Hog>& hogs) const {
     std::vector<std::size_t> result;
     for (std::size_t i = 0; i < hogs.size(); ++i) {

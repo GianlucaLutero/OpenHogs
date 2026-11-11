@@ -93,6 +93,7 @@ private:
     // every member below needs.
     apps::GlWindow window_;
     std::unique_ptr<SoundPlayer> sounds_;  // never null (silent without sound)
+    std::unique_ptr<Gamepads> gamepads_;
     std::unique_ptr<Interface> interface_;
     std::unique_ptr<MenuBackground> background_;  // empty if the map failed to load
     std::unique_ptr<ui::FrontEnd> frontEnd_;

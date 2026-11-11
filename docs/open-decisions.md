@@ -47,6 +47,8 @@ answer.
 | 50 | Campaign | What happens to a squad place when a hog is lost for good? | A new grunt takes its place, with the next unused name of the nation (then PIG 1, PIG 2...). | `Campaign::recordMission` |
 | 51 | Ranks | Ranks' health and weapons come from the manual and player guides; missing weapons (flame thrower, airburst, healing, poison gas, jetpack, airstrike...) and ammunition limits are left out. The PC files have one body model per career line: which model does each rank wear? | Gunner–Pyrotechnic: heavy; Orderly–Surgeon: medic; Scout, Sniper: sniper; Spy: spy; Sapper, Engineer: sapper; Saboteur and Commando: saboteur; Hero: legend. | `kRanks` in `src/game/src/Ranks.cpp` |
 | 52 | Campaign | The turn-time table has 99 for Boot Camp and missions 1–2: no limit, or 99 seconds? | 99 seconds. | `kMissions` in `src/game/src/Campaign.cpp` |
+| 56 | Multiplayer | The original's PIGS setting offers "-1 / NORMAL / +1" or numbers (fetext 314–329 are not labelled); its default "depends on the number of teams". Up to four teams in the original. | PIGS: NORMAL (as on the map) or 1 to 8 per team (fewer if the map has fewer); every team of the map can play (FINAL has six). | `FrontEnd` field conditions, `applyFieldConditions` |
+| 57 | Multiplayer | Sudden death "at a turn": counted in turns or in rounds? What does it do besides health 1? | In rounds (every team has played once more): when round 10, 20 or 30 begins every hog is left with 1 health; banner SUDDEN DEATH and the big explosion sound (E_1000P). | `World::turnBegan` |
 
 ## Design: what do we want?
 
@@ -54,7 +56,7 @@ answer.
 |---|------|---------------|------------------------|-------|
 | 14 | Teams | Which nation's uniform does each team wear? (Decided by the campaign and the multiplayer menus in the original.) | Teams take the nations in a fixed order: British, American, French, German, Japanese, Russian, Team Lard. | `teamNation` in `src/game/src/Hog.cpp` |
 | 15 | Camera | How should the camera follow the hog: fixed behind it, or free? | It orbits freely with the mouse, swings round behind the hog while it runs or jumps and for 1.5 s after a change of hog. | `src/apps/game/Game.cpp`, `ChaseCamera` |
-| 16 | Controls | Final key bindings (and gamepad support). | W/S or arrows to run/walk back, A/D or arrows to turn, Space to jump, Tab to change hog, Enter to end the turn, Esc or P for the pause menu; in menus arrows/WASD, Enter, Esc. | `src/apps/game/Game.cpp` |
+| 16 | Controls | Final key bindings. | W/S or arrows to run/walk back, A/D or arrows to turn, Space to jump, Tab to change hog, Enter to end the turn, Esc or P for the pause menu; in menus arrows/WASD, Enter, Esc. | `src/apps/game/Game.cpp` |
 | 17 | Movement | Should a hog stop when it runs into an obstacle, or keep the run animation? | It stands (idle animation) as soon as a step is completely blocked; walking at an angle slides along the obstacle. | `HogMovement.cpp` |
 | 18 | Damage | Fall damage: from which height, how much? | Falls up to 400 units are harmless, then 1 point per 10 units. | `src/game/include/openhogs/game/Combat.h` |
 | 28 | Controls | Weapon keys. | Q/E change weapon, R/F aim up/down, Ctrl or X fire (hold to throw further). | `src/apps/game/Game.cpp` |
@@ -72,6 +74,9 @@ answer.
 | 53 | Campaign | Newspapers after missions (`Papers/`), the debriefing pictures (`Debrief/`) and island bonuses ("five medals for every region conquered", from the Wikipedia article). | No newspapers or debriefing pictures yet (a text results page instead); +5 points for each island's last mission. | `ui::CampaignMenu`, `kIslandPoints` |
 | 54 | Campaign | Saving: the original has numbered `savearmy` files, SAVE TEAM / LOAD SQUAD and renaming hogs. | One campaign, saved automatically to `saves/campaign.ini` after every change; no renaming yet. | `CampaignSession` |
 | 55 | Text | Words the game's tables do not have: "PROMOTION POINTS: n" and the end-of-campaign line. | English only (`UiStrings::promotionPoints`, `campaignComplete`). | `src/ui/include/openhogs/ui/UiStrings.h` |
+| 58 | Multiplayer | Not implemented yet: deathmatch limit, SELECT PIG (choose the hog each turn), team ranks (CHANGE RANKS), renaming teams, the generated levels (SURVIVAL / DEATHMATCH, CUSTOM / RANDOM / CODE) and network play. | – | `docs/formats/campaign.md`, `FrontEnd` |
+| 59 | Controls | Gamepad layout, and whether each human team should own a controller instead of sharing. | Xbox layout as in the README; any pad (or the keyboard) controls the team whose turn it is. | `src/apps/game/Gamepads.h` |
+| 60 | Multiplayer | May two teams fight for the same nation? | Yes: each team's nation is chosen freely (same uniform, same name). | `FrontEnd::handlePlayers` |
 
 ## Settled
 

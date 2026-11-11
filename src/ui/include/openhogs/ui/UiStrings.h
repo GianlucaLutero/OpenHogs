@@ -45,6 +45,17 @@ struct UiStrings {
     std::string player = "PLAYER";  // a team played by a human
     std::string cpu = "CPU";        // a team played by the computer
     std::string startGame = "START GAME";
+    std::string off = "OFF";
+    std::array<std::string, 4> teamLetters{"TEAM A", "TEAM B", "TEAM C", "TEAM D"};
+    // The label of the `index`-th team of a match: TEAM A to D, then TEAM 5...
+    std::string teamLabel(std::size_t index) const;
+    std::string fieldConditions = "FIELD CONDITIONS";
+    std::string pigs = "PIGS";
+    std::string turnTime = "TURN TIME";
+    std::string health = "HEALTH";
+    std::string normal = "NORMAL";
+    std::string half = "HALF";
+    std::string doubled = "DOUBLE";
 
     // In game (gtext).
     std::string paused = "-GAME PAUSED-";
@@ -55,6 +66,7 @@ struct UiStrings {
     std::string draw = "IT'S A DRAW!!";
     std::string getReady = "GET READY >S...";
     std::string enemyTurn = "THE ENEMY RETALIATES...";  // a computer team's turn
+    std::string suddenDeath = "SUDDEN DEATH";            // fetext
 
     // Team names, in the order of scene::characterTeams() (british,
     // american, french, german, japanese, russian, teamlard).

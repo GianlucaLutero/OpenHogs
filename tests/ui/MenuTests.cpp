@@ -107,29 +107,73 @@ TEST_CASE("DEATH MATCH: picking a level starts a match against the computer", "[
     const auto start = frontEnd.setLevelTeams({2, 0, 5});
     CHECK(start.request == FrontEndResult::Request::StartMatch);
     CHECK(start.map == "BRIDGE");
-    CHECK(start.computerTeams == std::vector<int>{0, 5});
+    CHECK(start.settings.computerTeams == std::vector<int>{0, 5});
 }
 
-TEST_CASE("MULTI-PLAYER: each team can be given to a person or the computer", "[ui][frontend]") {
-    // The PLAYERS page lists the map's teams; left/right switches a team
-    // between PLAYER and CPU, and START GAME passes the choice on.
+TEST_CASE("MULTI-PLAYER: each team gets a nation and a player, CPU or nobody", "[ui][frontend]") {
+    // The PLAYERS page has two rows per team of the map: its nation, and who
+    // plays it (PLAYER, CPU or OFF). START GAME passes the choices on.
     auto frontEnd = makeFrontEnd();
     press(frontEnd, {MenuInput::Down, MenuInput::Confirm, MenuInput::Confirm});  // MULTI-PLAYER, BOOM
-    REQUIRE(frontEnd.setLevelTeams({0, 1}).request == FrontEndResult::Request::None);
+    REQUIRE(frontEnd.setLevelTeams({0, 1, 2}).request == FrontEndResult::Request::None);
     REQUIRE(frontEnd.screen() == FrontEndScreen::Players);
     CHECK(frontEnd.menu().selectedItem().label == "START GAME");  // ready to go: everybody human
+    CHECK(frontEnd.menu().item(0).label == "TEAM A");
+    CHECK(frontEnd.menu().item(0).choiceText() == "TOMMY'S TROTTERS");  // team 0's usual nation
 
-    press(frontEnd, {MenuInput::Up, MenuInput::Right});  // the second team -> CPU
+    press(frontEnd, {MenuInput::Up, MenuInput::Left});  // the third team: who plays -> OFF (wraps round)
+    CHECK(frontEnd.menu().selectedItem().choiceText() == "OFF");
+    press(frontEnd, {MenuInput::Up, MenuInput::Up, MenuInput::Right});  // the second team -> CPU
     CHECK(frontEnd.menu().selectedItem().choiceText() == "CPU");
-    const auto start = press(frontEnd, {MenuInput::Down, MenuInput::Confirm});
+    press(frontEnd, {MenuInput::Up, MenuInput::Right, MenuInput::Right});  // its nation, two steps on
+    CHECK(frontEnd.menu().selectedItem().choiceText() == "SOW-A-KRAUTS");
+
+    for (int i = 0; i < 4; ++i) press(frontEnd, {MenuInput::Down});  // START GAME
+    const auto start = press(frontEnd, {MenuInput::Confirm});
     CHECK(start.request == FrontEndResult::Request::StartMatch);
     CHECK(start.map == "BOOM");
-    CHECK(start.computerTeams == std::vector<int>{1});
+    CHECK(start.settings.computerTeams == std::vector<int>{1});
+    CHECK(start.settings.conditions.removedTeams == std::vector<int>{2});
+    CHECK(start.settings.teamNations.at(1) == 3);
+    CHECK(start.settings.teamNations.at(0) == 0);
 
     // Back from PLAYERS returns to the level list.
     frontEnd.setLevelTeams({0, 1});
     press(frontEnd, {MenuInput::Back});
     CHECK(frontEnd.screen() == FrontEndScreen::SelectLevel);
+}
+
+TEST_CASE("A match needs at least two teams in play", "[ui][frontend]") {
+    // With every team but one switched off there is nobody to fight.
+    auto frontEnd = makeFrontEnd();
+    press(frontEnd, {MenuInput::Down, MenuInput::Confirm, MenuInput::Confirm});
+    frontEnd.setLevelTeams({0, 1});
+    press(frontEnd, {MenuInput::Up, MenuInput::Left});  // the second team -> OFF
+    const auto start = press(frontEnd, {MenuInput::Down, MenuInput::Confirm});
+    CHECK(start.request == FrontEndResult::Request::None);
+    CHECK(frontEnd.screen() == FrontEndScreen::Players);
+}
+
+TEST_CASE("Field conditions set hogs per team, turn time, health and sudden death", "[ui][frontend]") {
+    // The original's FIELD CONDITIONS page; the defaults leave the map as it is.
+    auto frontEnd = makeFrontEnd();
+    press(frontEnd, {MenuInput::Down, MenuInput::Confirm, MenuInput::Confirm});
+    frontEnd.setLevelTeams({0, 1});
+    press(frontEnd, {MenuInput::Down, MenuInput::Confirm});  // FIELD CONDITIONS
+    REQUIRE(frontEnd.screen() == FrontEndScreen::FieldConditions);
+    CHECK(frontEnd.menu().item(1).choiceText() == "60");  // turn time
+    press(frontEnd, {MenuInput::Right, MenuInput::Right, MenuInput::Right});  // 3 hogs per team
+    press(frontEnd, {MenuInput::Down, MenuInput::Left, MenuInput::Left});     // 30 s
+    press(frontEnd, {MenuInput::Down, MenuInput::Right, MenuInput::Right});   // double health
+    press(frontEnd, {MenuInput::Down, MenuInput::Right});                     // sudden death at 10
+    press(frontEnd, {MenuInput::Back});
+    REQUIRE(frontEnd.screen() == FrontEndScreen::Players);
+    const auto start = press(frontEnd, {MenuInput::Up, MenuInput::Confirm});  // START GAME
+    REQUIRE(start.request == FrontEndResult::Request::StartMatch);
+    CHECK(start.settings.conditions.hogsPerTeam == 3);
+    CHECK(start.settings.turnSeconds == 30.0);
+    CHECK(start.settings.conditions.healthFactor == 2.0f);
+    CHECK(start.settings.suddenDeathRound == 10);
 }
 
 TEST_CASE("A level without teams cannot be started", "[ui][frontend]") {

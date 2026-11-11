@@ -55,7 +55,8 @@ animations.
 | `weapons`            | ✅ done | 20 weapons (melee, bullets, grenades, shells, TNT, mines), health, explosions, knockback, fall damage, death, victory |
 | `menus-and-hud`      | ✅ done | Main menu, level choice, volume options, pause menu, HUD (team, class, health, weapon icon, time, movement, power), match messages; the game's bitmap fonts with accented letters |
 | `ai`                 | ✅ done | Computer opponents: shot planning with the real flight rules, approach, aiming errors; ONE PLAYER skirmish against the computer, PLAYER/CPU choice per team in multiplayer |
-| `campaign`           | 🔍 in review | The 25 missions in the original order with their maps, names and turn times; squad of eight, ranks and careers, promotion points, losses; briefings; mission results; saving |
+| `campaign`           | ✅ done | The 25 missions in the original order with their maps, names and turn times; squad of eight, ranks and careers, promotion points, losses; briefings; mission results; saving |
+| `local-multiplayer`  | 🔍 in review | Nation and PLAYER/CPU/OFF for every team, field conditions (hogs per team, turn time, health, sudden death), gamepads in menus and matches |
 | gameplay blocks      | planned | Movement, weapons, turns, AI, campaign |
 
 ## Requirements
@@ -150,9 +151,13 @@ Directory = C:\Program Files (x86)\Steam\steamapps\common\HogsofWar
   one of the six nations (see below); **LOAD GAME** continues it;
   **DEATH MATCH** → pick a map: you play the team that starts, the
   computer plays all the others;
-- **MULTI-PLAYER** → pick a map → **PLAYERS**: for each team choose
-  *PLAYER* (a person at this keyboard) or *CPU* (the computer) with the
-  left/right keys, then **START GAME**;
+- **MULTI-PLAYER** → pick a map → **PLAYERS**: two rows per team of the
+  map: its nation, and who plays it, *PLAYER* (a person at this PC),
+  *CPU* (the computer) or *OFF* (left out), changed with left/right; at
+  least two teams must play. **FIELD CONDITIONS** sets the number of
+  hogs per team, the turn time (10–99 s), starting health (normal, half,
+  double) and sudden death (every hog left with one point of health when
+  round 10, 20 or 30 begins). Then **START GAME**;
 - **OPTIONS** → **VOLUME CONTROL**: master, effects, voices and music
   volume (for this session; the starting values come from
   `config/openhogs.ini`);
@@ -226,9 +231,24 @@ build\bin\Release\openhogs.exe --map ESTU
 | `Esc` or `P` | pause menu: CONTINUE, or ABORT SKIRMISH (asks for confirmation) |
 | `F12` | save a screenshot (`openhogs-<MAP>.png`) |
 
-Teams wear the nations' uniforms in a fixed order for now (team 1 British,
-team 2 American, team 3 French...); choosing them comes with the
-campaign and multiplayer setup.
+**Gamepads** (any controller SDL knows, with Xbox button names) work in
+the menus and in matches alongside the keyboard. The players share the
+PC: whoever's turn it is plays with the keyboard or any pad.
+
+| Pad | Menus | Match |
+|-----|-------|-------|
+| D-pad / left stick | move, change | run, walk back, turn |
+| A | pick | jump |
+| B | back | – |
+| X or right trigger | – | fire (hold to throw further) |
+| right stick | – | up/down aim, left/right camera |
+| LB / RB | – | previous / next weapon |
+| Y | – | end the turn |
+| Back | – | another hog (before moving) |
+| Start | pick | pause menu |
+
+Without the menus' choices, teams wear the nations' uniforms in a fixed
+order (team 1 British, team 2 American, team 3 French...).
 A turn lasts 60 seconds and allows about 7 seconds of running. These values,
 and the other choices still to be compared with the original game, are
 listed in [`docs/open-decisions.md`](docs/open-decisions.md).
