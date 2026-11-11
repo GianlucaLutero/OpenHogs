@@ -112,8 +112,8 @@ ctest --test-dir build --output-on-failure -C Release
 ```
 
 Every pull request is also built and tested automatically on
-Windows (Visual Studio) and Linux (GCC and Clang), with warnings in OpenHogs
-code treated as errors. See `.github/workflows/build.yml`.
+Windows (Visual Studio), with warnings in OpenHogs code treated as errors
+(the Linux jobs with GCC and Clang are temporarily switched off). See `.github/workflows/build.yml`.
 
 ### 4. Configure
 

@@ -1,6 +1,7 @@
 # Continuous integration: builds OpenHogs and runs the unit tests on every
 # pull request (when it is opened and each time commits are added to it),
-# on Windows (Visual Studio) and Linux (GCC, Clang). Pushes to branches
+# on Windows (Visual Studio). The Linux jobs (GCC, Clang) are temporarily
+# disabled, see the matrix below. Pushes to branches
 # without a pull request are not built: every block reaches main through a
 # pull request, so that is where the check is needed.
 #
@@ -26,16 +27,19 @@ jobs:
             configure: cmake -S . -B build -A x64 -DOPENHOGS_WARNINGS_AS_ERRORS=ON
             build: cmake --build build --config Release
             test: ctest --test-dir build -C Release --output-on-failure
-          - name: Linux (GCC)
-            os: ubuntu-latest
-            configure: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DOPENHOGS_WARNINGS_AS_ERRORS=ON
-            build: cmake --build build --parallel
-            test: ctest --test-dir build --output-on-failure
-          - name: Linux (Clang)
-            os: ubuntu-latest
-            configure: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DOPENHOGS_WARNINGS_AS_ERRORS=ON
-            build: cmake --build build --parallel
-            test: ctest --test-dir build --output-on-failure
+          # The two Linux jobs are switched off for now: their "Install Linux
+          # dependencies" step kept hanging on the package servers (November
+          # 2026). To switch them back on, remove the "# " from the lines below.
+          # - name: Linux (GCC)
+          #   os: ubuntu-latest
+          #   configure: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DOPENHOGS_WARNINGS_AS_ERRORS=ON
+          #   build: cmake --build build --parallel
+          #   test: ctest --test-dir build --output-on-failure
+          # - name: Linux (Clang)
+          #   os: ubuntu-latest
+          #   configure: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DOPENHOGS_WARNINGS_AS_ERRORS=ON
+          #   build: cmake --build build --parallel
+          #   test: ctest --test-dir build --output-on-failure
 
     steps:
       - uses: actions/checkout@v4
