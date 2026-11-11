@@ -92,4 +92,8 @@ private:
     GLuint id_ = 0;
 };
 
+// Reads back the current framebuffer as an image (top row first), e.g. to
+// save a screenshot.
+formats::RgbaImage captureFramebuffer(int width, int height);
+
 } // namespace openhogs::render

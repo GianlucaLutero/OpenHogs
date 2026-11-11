@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
@@ -29,6 +30,10 @@ public:
         u16(static_cast<std::uint16_t>(value & 0xFFFF));
         return u16(static_cast<std::uint16_t>(value >> 16));
     }
+
+    ByteBuilder& i16(std::int16_t value) { return u16(static_cast<std::uint16_t>(value)); }
+    ByteBuilder& i32(std::int32_t value) { return u32(static_cast<std::uint32_t>(value)); }
+    ByteBuilder& f32(float value) { return u32(std::bit_cast<std::uint32_t>(value)); }
 
     // Writes `text` padded with zeros to exactly `length` bytes.
     ByteBuilder& fixedString(std::string_view text, std::size_t length) {

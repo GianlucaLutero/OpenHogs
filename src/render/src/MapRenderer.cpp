@@ -2,56 +2,14 @@
 
 #include "openhogs/render/MapRenderer.h"
 
+#include "BasicShader.h"
+
 #include <glm/gtc/matrix_transform.hpp>
 
-#include <algorithm>
-#include <cstring>
 
 namespace openhogs::render {
 
 namespace {
-
-// One shader for everything: texture colour times the vertex brightness
-// (baked terrain lighting) times a tint colour (used for markers).
-// Fully transparent texels are discarded: that is how the game cuts out
-// tree leaves, fences and similar shapes.
-const char* const kVertexShader = R"(
-#version 330 core
-layout(location = 0) in vec3 inPosition;
-layout(location = 1) in vec2 inUv;
-layout(location = 2) in float inBrightness;
-
-uniform mat4 uModel;
-uniform mat4 uViewProjection;
-
-out vec2 uv;
-out float brightness;
-
-void main() {
-    gl_Position = uViewProjection * uModel * vec4(inPosition, 1.0);
-    uv = inUv;
-    brightness = inBrightness;
-}
-)";
-
-const char* const kFragmentShader = R"(
-#version 330 core
-in vec2 uv;
-in float brightness;
-
-uniform sampler2D uTexture;
-uniform vec4 uTint;
-
-out vec4 outColor;
-
-void main() {
-    vec4 texel = texture(uTexture, uv);
-    if (texel.a < 0.5) {
-        discard;
-    }
-    outColor = vec4(texel.rgb * brightness, 1.0) * uTint;
-}
-)";
 
 // Sky colour behind the map.
 constexpr glm::vec4 kSkyColour{0.45f, 0.62f, 0.85f, 1.0f};
@@ -79,7 +37,7 @@ std::vector<scene::Vertex> makeMarkerVertices() {
 } // namespace
 
 MapRenderer::MapRenderer(const scene::MapScene& scene) {
-    shader_ = std::make_unique<GlShaderProgram>(kVertexShader, kFragmentShader);
+    shader_ = std::make_unique<GlShaderProgram>(kBasicVertexShader, kBasicFragmentShader);
     whiteTexture_ = std::make_unique<GlTexture>(formats::RgbaImage{1, 1, {255, 255, 255, 255}});
 
     for (const auto& image : scene.terrainTextures) {
@@ -154,30 +112,6 @@ void MapRenderer::draw(const Camera& camera, int width, int height, const DrawOp
             markerMesh_->draw();
         }
     }
-}
-
-formats::RgbaImage captureFramebuffer(int width, int height) {
-    formats::RgbaImage image;
-    image.width = static_cast<std::uint32_t>(width);
-    image.height = static_cast<std::uint32_t>(height);
-    const auto w = static_cast<std::size_t>(width);
-    const auto h = static_cast<std::size_t>(height);
-    image.pixels.resize(w * h * 4);
-
-    glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, image.pixels.data());
-
-    // OpenGL returns the bottom row first; images store the top row first.
-    const std::size_t rowBytes = w * 4;
-    std::vector<std::uint8_t> row(rowBytes);
-    for (std::size_t y = 0; y < h / 2; ++y) {
-        std::uint8_t* a = image.pixels.data() + y * rowBytes;
-        std::uint8_t* b = image.pixels.data() + (h - 1 - y) * rowBytes;
-        std::memcpy(row.data(), a, rowBytes);
-        std::memcpy(a, b, rowBytes);
-        std::memcpy(b, row.data(), rowBytes);
-    }
-    return image;
 }
 
 } // namespace openhogs::render

@@ -33,10 +33,13 @@ add_executable(openhogs_tests
     formats/TextTableTests.cpp
     formats/TimImageTests.cpp
     formats/AudioFormatsTests.cpp
+    formats/CharacterFormatsTests.cpp
     audio/AudioTests.cpp
     extractor/AssetExtractorTests.cpp
     extractor/PngWriterTests.cpp
     scene/SceneTests.cpp
+    scene/CharacterPoseTests.cpp
+    scene/CharacterLibraryTests.cpp
     langpack/LangpackTests.cpp)
 
 target_include_directories(openhogs_tests PRIVATE support)

@@ -58,8 +58,5 @@ private:
     std::vector<glm::vec3> markers_;
 };
 
-// Reads back the current framebuffer as an image (top row first), e.g. to
-// save a screenshot.
-formats::RgbaImage captureFramebuffer(int width, int height);
 
 } // namespace openhogs::render

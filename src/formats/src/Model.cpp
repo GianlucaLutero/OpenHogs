@@ -4,7 +4,6 @@
 
 #include "openhogs/core/BinaryReader.h"
 
-#include <bit>
 #include <string>
 
 namespace openhogs::formats {
@@ -20,11 +19,6 @@ void requireMultipleOf(std::span<const std::byte> data, std::size_t recordSize, 
         throw core::FormatError(std::string(format) + ": size " + std::to_string(data.size()) +
                                 " is not a multiple of " + std::to_string(recordSize) + " bytes");
     }
-}
-
-float readFloat(core::BinaryReader& reader) {
-    // IEEE 754 single precision, stored little-endian like everything else.
-    return std::bit_cast<float>(reader.readU32());
 }
 
 // Reads one face of `cornerCount` corners. The on-disk layout groups the
@@ -74,9 +68,9 @@ std::vector<ModelNormal> parseNo2(std::span<const std::byte> data) {
     std::vector<ModelNormal> normals(data.size() / kNo2RecordSize);
     core::BinaryReader reader(data);
     for (auto& normal : normals) {
-        normal.x = readFloat(reader);
-        normal.y = readFloat(reader);
-        normal.z = readFloat(reader);
+        normal.x = reader.readF32();
+        normal.y = reader.readF32();
+        normal.z = reader.readF32();
         reader.skip(4);  // bone index stored as a float, duplicated from VTX
     }
     return normals;

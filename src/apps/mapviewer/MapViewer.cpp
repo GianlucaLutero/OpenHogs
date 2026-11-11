@@ -2,13 +2,11 @@
 
 #include "MapViewer.h"
 
-#include "openhogs/extractor/PngWriter.h"
 #include "openhogs/scene/MapScene.h"
 
 #include <SDL3/SDL.h>
 #include <glad/gl.h>
 
-#include <fstream>
 #include <iostream>
 #include <stdexcept>
 
@@ -21,59 +19,17 @@ constexpr float kFastMultiplier = 4.0f;     // while Shift is held
 constexpr float kMouseDegreesPerPixel = 0.2f;
 constexpr float kKeyTurnDegreesPerSecond = 90.0f;
 
-void writeFile(const std::filesystem::path& path, const std::vector<std::byte>& data) {
-    std::ofstream file(path, std::ios::binary);
-    file.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
-    if (!file) {
-        throw std::runtime_error("Cannot write " + path.string());
-    }
-}
-
-std::string sdlError(const std::string& what) {
-    return what + ": " + SDL_GetError();
-}
-
 } // namespace
 
 MapViewer::MapViewer(const core::VirtualFileSystem& vfs, std::vector<std::string> maps, std::size_t startIndex,
                      int width, int height, bool hiddenWindow)
-    : vfs_(vfs), maps_(std::move(maps)), width_(width), height_(height) {
-    if (!SDL_Init(SDL_INIT_VIDEO)) {
-        throw std::runtime_error(sdlError("Cannot initialise SDL"));
-    }
-
-    // OpenGL 3.3 core is supported by every GPU of the last 15 years.
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-
-    SDL_WindowFlags flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
-    if (hiddenWindow) {
-        flags |= SDL_WINDOW_HIDDEN;
-    }
-    window_ = SDL_CreateWindow("OpenHogs map viewer", width_, height_, flags);
-    if (window_ == nullptr) {
-        throw std::runtime_error(sdlError("Cannot create the window"));
-    }
-    glContext_ = SDL_GL_CreateContext(window_);
-    if (glContext_ == nullptr) {
-        throw std::runtime_error(sdlError("Cannot create an OpenGL 3.3 context"));
-    }
-    if (gladLoadGL(reinterpret_cast<GLADloadfunc>(SDL_GL_GetProcAddress)) == 0) {
-        throw std::runtime_error("Cannot load the OpenGL functions");
-    }
-    SDL_GL_SetSwapInterval(1);  // vsync: no need to draw faster than the screen
-
+    : vfs_(vfs), maps_(std::move(maps)), window_("OpenHogs map viewer", width, height, hiddenWindow),
+      width_(width), height_(height) {
     loadMap(startIndex);
 }
 
 MapViewer::~MapViewer() {
-    renderer_.reset();  // GPU resources must go before the context
-    if (glContext_ != nullptr) SDL_GL_DestroyContext(static_cast<SDL_GLContext>(glContext_));
-    if (window_ != nullptr) SDL_DestroyWindow(window_);
-    SDL_Quit();
+    renderer_.reset();  // GPU resources must go before the window's context
 }
 
 void MapViewer::loadMap(std::size_t index) {
@@ -96,7 +52,7 @@ void MapViewer::loadMap(std::size_t index) {
 
     const std::string title = "OpenHogs map viewer - " + name + " (" + std::to_string(index + 1) + "/" +
                               std::to_string(maps_.size()) + ")";
-    SDL_SetWindowTitle(window_, title.c_str());
+    window_.setTitle(title);
 }
 
 void MapViewer::handleEvent(const SDL_Event& event, bool& running) {
@@ -173,9 +129,9 @@ void MapViewer::run() {
         updateCamera(seconds);
 
         // The window can be resized: always draw at its current pixel size.
-        SDL_GetWindowSizeInPixels(window_, &width_, &height_);
+        window_.sizeInPixels(width_, height_);
         renderer_->draw(camera_, width_, height_, options_);
-        SDL_GL_SwapWindow(window_);
+        window_.swap();
     }
 }
 
@@ -193,7 +149,7 @@ void MapViewer::saveScreenshot(const std::filesystem::path& path) {
     const auto image = render::captureFramebuffer(width_, height_);
     render::GlFramebuffer::unbind();
 
-    writeFile(path, extractor::encodePng(image));
+    apps::savePng(image, path);
 }
 
 } // namespace openhogs::mapviewer

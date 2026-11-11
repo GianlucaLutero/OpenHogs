@@ -25,8 +25,8 @@ The goal is to play the original game natively on modern systems
 OpenHogs is in early development. Nothing is playable yet, but the
 original data can be extracted, every map can be explored in 3D, and an
 Italian (or French, German, Spanish) language pack can be built from your
-PlayStation disc, and every sound effect, voice and music track can be
-played.
+PlayStation disc, every sound effect, voice and music track can be
+played, and the hogs can be watched in all their animations.
 
 | Block | Status | What it delivers |
 |-------|--------|------------------|
@@ -36,6 +36,7 @@ played.
 | `map-viewer`         | ✅ done | Reads terrain, models and objects; `openhogs-mapviewer` 3D viewer |
 | `italian-pack`       | ✅ done | Italian text, menus and briefings from the PlayStation disc; `openhogs-langpack`, `openhogs-text` |
 | `audio`              | ✅ done | Plays effects, speech and music with separate volumes; `openhogs-soundtest` |
+| `characters`         | ✅ done | Hog skeleton, 93 animations, models of every class and team; `openhogs-characterviewer` |
 | gameplay blocks      | planned | Movement, weapons, turns, AI, campaign |
 
 ## Requirements
@@ -253,6 +254,50 @@ Controls:
 Because the viewer reads files through the content system, a texture or
 map pack enabled in `config/openhogs.ini` shows up in the viewer too.
 
+### Watching the hogs
+
+`openhogs-characterviewer` shows one hog, animated, on a ground grid: any
+class, team uniform, level of detail and any of the 93 animations.
+
+```sh
+# Windows
+build\bin\Release\openhogs-characterviewer.exe --class ace --team american
+
+# Linux
+./build/bin/openhogs-characterviewer --class sniper --animation 44
+```
+
+| Option | Effect |
+|--------|--------|
+| `--list` | print the classes, teams and animations (with their names from the game) |
+| `--class <id>` | `ace`, `grunt`, `heavy`, `legend`, `medic`, `sapper`, `saboteur`, `sniper`, `spy` |
+| `--team <name>` | `british`, `american`, `french`, `german`, `japanese`, `russian`, `teamlard` |
+| `--detail <level>` | `high`, `medium` or `low` |
+| `--animation <n>` / `--frame <n>` | animation and frame to start from |
+| `--fps <n>` | playback speed (default 25 frames per second) |
+| `--view <yaw,pitch>` | camera angles around the hog (-90 = from the front) |
+| `--screenshot <file>` | save the chosen frame as an image and exit |
+| `--game <folder>` / `--config <file>` / `--size <W>x<H>` | as for the map viewer |
+
+Controls:
+
+| Key | Action |
+|-----|--------|
+| `←` / `→` | previous / next animation |
+| `↑` / `↓` | previous / next class |
+| `T` | next team |
+| `L` | next level of detail |
+| `Space` | pause / play |
+| `,` / `.` | one frame back / forward |
+| `-` / `+` | slower / faster |
+| left mouse button + drag | orbit around the hog |
+| mouse wheel | zoom |
+| `F12` | save a screenshot |
+| `Esc` | quit |
+
+How the skeleton and animations work is described in
+[`docs/formats/characters.md`](docs/formats/characters.md).
+
 ### Listening to the game's sounds
 
 `openhogs-soundtest` plays any sound of the game, alone or several at
@@ -338,14 +383,17 @@ OpenHogs/
 ├── src/
 │   ├── core/             binary reading, INI files, virtual file system
 │   ├── content/          config, content packs, pack selection
-│   ├── formats/          parsers: archives, text, textures, models, maps, sounds, PlayStation disc
+│   ├── formats/          parsers: archives, text, textures, models, maps, sounds, skeleton,
+│   │                     animations, PlayStation disc
 │   ├── audio/            sound effects, speech, music: decoding, mixing, sound card
-│   ├── scene/            map data turned into triangles (no GPU code)
+│   ├── scene/            maps and posed hogs turned into triangles (no GPU code)
 │   ├── render/           OpenGL 3.3 renderer and camera
 │   ├── tools/extractor/  openhogs-extract command-line tool
 │   ├── tools/text/       openhogs-text: text tables <-> editable text
 │   ├── tools/langpack/   openhogs-langpack: language packs from the PlayStation disc
 │   ├── apps/mapviewer/   openhogs-mapviewer application
+│   ├── apps/common/      window, screenshots and game-file opening shared by the apps
+│   ├── apps/characterviewer/ openhogs-characterviewer application
 │   └── apps/soundtest/   openhogs-soundtest application
 ├── tests/                unit tests (see tests/README.md)
 └── third_party/          code not written for OpenHogs (glad, stb_vorbis)
@@ -368,7 +416,7 @@ OpenHogs builds on the work of others. Thank you!
 | Project | Authors | License | Used for |
 |---------|---------|---------|----------|
 | [OpenHoW](https://github.com/TalonBraveInfo/OpenHoW) | Mark Sowden (hogsy) and contributors | GPL-3.0-or-later | Its [file-format documentation](https://github.com/TalonBraveInfo/OpenHoW/tree/master/doc/file-formats) was the reference for the model (VTX, NO2, FAC) and map (PMG, POG, PTG) formats and confirmed the MAD/MTD layout. No code was copied; every layout was re-checked on the game data and some POG offsets were corrected (see `docs/formats/maps.md`). |
-| [SDL3](https://github.com/libsdl-org/SDL) | Sam Lantinga and SDL contributors | zlib | Window, input and OpenGL context of the map viewer, sound output of the sound test (downloaded at build time). |
+| [SDL3](https://github.com/libsdl-org/SDL) | Sam Lantinga and SDL contributors | zlib | Window, input and OpenGL context of the viewers, sound output of the sound test (downloaded at build time). |
 | [GLM](https://github.com/g-truc/glm) | G-Truc Creation (Christophe Riccio) and contributors | MIT | Vector and matrix maths (downloaded at build time). |
 | [glad](https://github.com/Dav1dde/glad) | David Herberth | generated code: WTFPL or CC0-1.0; `khrplatform.h`: Apache-2.0 (Khronos Group) | OpenGL 3.3 function loader, generated into `third_party/glad`. |
 | [stb_vorbis](https://github.com/nothings/stb) | Sean Barrett and contributors | public domain (Unlicense) or MIT, at your choice | Decodes the Ogg Vorbis music. Copied unmodified into `third_party/stb_vorbis` (v1.22). |

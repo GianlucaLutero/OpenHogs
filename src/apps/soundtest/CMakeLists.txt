@@ -4,7 +4,7 @@
 
 add_executable(openhogs-soundtest main.cpp)
 target_link_libraries(openhogs-soundtest PRIVATE
-    OpenHogs::content
+    OpenHogs::app_common
     OpenHogs::audio
     OpenHogs::audio_device)
 openhogs_set_warnings(openhogs-soundtest)

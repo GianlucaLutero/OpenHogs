@@ -38,6 +38,10 @@ public:
     std::int16_t readI16();
     std::int32_t readI32();
 
+    // IEEE 754 single-precision float, stored little-endian (PC files only:
+    // the PlayStation had no floating point).
+    float readF32();
+
     // Reads a fixed-length text field (e.g. a 16-byte file name).
     // The original tools padded names with zero bytes, so everything from
     // the first zero byte onwards is dropped.

@@ -20,7 +20,7 @@
 #include "openhogs/audio/AudioSettings.h"
 #include "openhogs/audio/Mixer.h"
 #include "openhogs/audio/SoundLibrary.h"
-#include "openhogs/content/ContentManager.h"
+#include "openhogs/apps/GameFiles.h"
 #include "openhogs/core/IniFile.h"
 #include "openhogs/core/PathUtils.h"
 
@@ -197,17 +197,9 @@ void playOnSpeakers(audio::Mixer& mixer, double seconds) {
 }
 
 int run(const Options& options) {
-    core::VirtualFileSystem vfs;
+    const auto vfs = apps::openGameFiles(options.gameFolder, options.configPath);
     audio::Volumes volumes;
-    if (options.gameFolder) {
-        vfs.mount(content::kGameLayerName, *options.gameFolder);
-    } else {
-        if (!fs::exists(options.configPath)) {
-            throw std::runtime_error("Configuration not found: " + options.configPath.string() +
-                                     "\nCopy config/openhogs.default.ini to config/openhogs.ini, or use --game <folder>.");
-        }
-        auto loaded = content::loadContent(content::ContentConfig::load(options.configPath));
-        vfs = std::move(loaded.files);
+    if (!options.gameFolder) {
         volumes = audio::volumesFromIni(core::IniFile::load(options.configPath));
     }
 

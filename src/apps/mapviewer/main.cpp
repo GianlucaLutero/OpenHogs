@@ -16,7 +16,7 @@
 
 #include "MapViewer.h"
 
-#include "openhogs/content/ContentManager.h"
+#include "openhogs/apps/GameFiles.h"
 #include "openhogs/core/PathUtils.h"
 #include "openhogs/scene/MapScene.h"
 
@@ -111,27 +111,8 @@ std::optional<Options> parseArguments(const std::vector<std::string>& args) {
     return options;
 }
 
-// Builds the virtual file system: either the bare game folder, or the game
-// folder plus the content packs selected in the configuration.
-core::VirtualFileSystem openFileSystem(const Options& options) {
-    if (options.gameFolder) {
-        core::VirtualFileSystem vfs;
-        vfs.mount(content::kGameLayerName, *options.gameFolder);
-        return vfs;
-    }
-    if (!std::filesystem::exists(options.configPath)) {
-        throw std::runtime_error("Configuration not found: " + options.configPath.string() +
-                                 "\nCopy config/openhogs.default.ini to config/openhogs.ini, or use --game <folder>.");
-    }
-    auto loaded = content::loadContent(content::ContentConfig::load(options.configPath));
-    for (const auto& pack : loaded.activePacks) {
-        std::cout << "Content pack: " << pack.id << "\n";
-    }
-    return std::move(loaded.files);
-}
-
 int runViewer(const Options& options) {
-    const auto vfs = openFileSystem(options);
+    const auto vfs = apps::openGameFiles(options.gameFolder, options.configPath);
     const auto maps = scene::listMaps(vfs);
     if (maps.empty()) {
         throw std::runtime_error("No maps found: is the game folder correct?");
