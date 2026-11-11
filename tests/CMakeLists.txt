@@ -34,6 +34,7 @@ add_executable(openhogs_tests
     formats/TimImageTests.cpp
     formats/AudioFormatsTests.cpp
     formats/CharacterFormatsTests.cpp
+    formats/FontFormatsTests.cpp
     audio/AudioTests.cpp
     extractor/AssetExtractorTests.cpp
     extractor/PngWriterTests.cpp
@@ -44,6 +45,9 @@ add_executable(openhogs_tests
     game/GameTests.cpp
     game/MovementTests.cpp
     game/WeaponTests.cpp
+    ui/TextLayoutTests.cpp
+    ui/MenuTests.cpp
+    ui/HudTests.cpp
     langpack/LangpackTests.cpp)
 
 target_include_directories(openhogs_tests PRIVATE support)
@@ -55,6 +59,7 @@ target_link_libraries(openhogs_tests PRIVATE
     OpenHogs::scene
     OpenHogs::audio
     OpenHogs::game
+    OpenHogs::ui
     OpenHogs::langpack
     Catch2::Catch2WithMain)
 openhogs_set_warnings(openhogs_tests)

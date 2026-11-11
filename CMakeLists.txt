@@ -39,6 +39,7 @@ add_subdirectory(third_party/stb_vorbis) # Ogg Vorbis decoder (music)
 add_subdirectory(src/audio)     # sound effects, speech, music: decoding and mixing
 add_subdirectory(src/scene)     # map data turned into renderable geometry (no GPU code)
 add_subdirectory(src/game)      # match state and rules: world, hogs, camera, fixed timestep
+add_subdirectory(src/ui)        # menus, HUD and text layout (no drawing code)
 
 if(OPENHOGS_BUILD_VIEWER)
     add_subdirectory(third_party/glad)        # OpenGL function loader

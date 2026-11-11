@@ -65,6 +65,9 @@ languages of the PlayStation disc).
   the accent table above.
 - Strings starting with `>` (e.g. `>N`, `>S`, `>L2`) appear to be
   placeholders or control sequences replaced at runtime (names, numbers).
+  `>S` (a name) and `>N` (a number) inside messages are filled in by
+  OpenHogs; see [fonts.md](fonts.md#menu-and-hud-texts), which also lists
+  the entries used by the menus and the HUD.
 
 ## Extracted form
 

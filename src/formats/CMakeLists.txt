@@ -14,10 +14,14 @@
 #   SoundBank       - .SRL lists that number the sound effects
 #   Skeleton        - .HIR skeleton of the hogs
 #   MotionCapture   - mcap.mad animations of the hogs
+#   BitmapImage     - .BMP pictures (fonts, menu icons)
+#   BitmapFont      - FEText .tab + .BMP fonts
 #
 # Format documentation lives in docs/formats/.
 
 add_library(openhogs_formats STATIC
+    src/BitmapFont.cpp
+    src/BitmapImage.cpp
     src/GameText.cpp
     src/MapObjects.cpp
     src/MapTerrain.cpp

@@ -33,6 +33,13 @@ answer.
 | 26 | Weapons | Are belt and back weapons (grenades, launchers) moved into the hands when used? | Drawn where their model's bones place them (belt, back). | `docs/formats/weapons.md` |
 | 27 | Combat | Does an explosion leave a crater in the terrain? | No. | – |
 | 13 | Collisions | The tile flags and object boxes are used as found; the meaning of the 16-bit field after the box (1 for some bridge parts) and of the bytes at POG offsets 56–58 is unknown. Objects' X/Z tilts are ignored for collisions. | Boxes are upright and flat-topped; low boxes are floors, tall ones obstacles. | `src/game/src/MapCollision.cpp` |
+| 32 | Menus | The original's menu backgrounds, title screens, newspapers and cards are the `.mgl` pictures of `FEBmps/FEBMP.MAD`, whose compression is only partly decoded (`docs/formats/fonts.md`). | The menus are drawn over the first map of the list, seen from a slowly circling camera and darkened. | `src/apps/game/MenuBackground.cpp` |
+| 33 | Menus | What are the levels called, and which belong to multiplayer? gtext has names such as PLAY PEN or THE LAKE (entries 1–62), but how they map to the map files is not known yet. | The level list shows the map file names (BOOM, BRIDGE, CAMP...), every map of the game. | `ui::FrontEnd` |
+| 34 | Fonts | How wide is a space? The font tables give it no size. | A third of the letter height (10 pixels in BIG, 4 in SMALL). | `kSpaceWidthDivisor` in `src/formats/src/BitmapFont.cpp` |
+| 35 | Text | Does `>2N` mean a number with two digits ("MISSION 03")? | Yes: a zero-padded number of that width. | `ui::fillPlaceholders` |
+| 36 | HUD | What did the original HUD look like (layout, colours, which information)? Its pictures are probably among the undecoded `.mgl` files. | OpenHogs' own layout: team, class and health top left, turn clock top right (red under 10 s), weapon icon and name with the movement bar bottom left, power bar above it while charging; team colours red, blue, light blue, grey, white, gold, pink. | `Game::drawHud`, `teamColour` in `src/apps/game/Interface.cpp` |
+| 37 | HUD | Which rank name does each class show? The game names ranks (GRUNT, GUNNER, BOMBARDIER, ACE...), OpenHogs has one model per class. | The rank the model stands for; the heavy weapons hog is a GUNNER. | `kGtClassNames` in `src/ui/src/UiStrings.cpp` |
+| 38 | Match end | The original has a results screen (BATTLE RESULTS, ENEMY GRILLED, FRIENDS FRIED..., gtext 195–199). | "VICTORY TO ...!!" stays on screen; Enter goes back to the main menu. | `Game::handleKey` |
 
 ## Design: what do we want?
 
@@ -40,7 +47,7 @@ answer.
 |---|------|---------------|------------------------|-------|
 | 14 | Teams | Which nation's uniform does each team wear? (Decided by the campaign and the multiplayer menus in the original.) | Teams take the nations in a fixed order: British, American, French, German, Japanese, Russian, Team Lard. | `teamNation` in `src/game/src/Hog.cpp` |
 | 15 | Camera | How should the camera follow the hog: fixed behind it, or free? | It orbits freely with the mouse, swings round behind the hog while it runs or jumps and for 1.5 s after a change of hog. | `src/apps/game/Game.cpp`, `ChaseCamera` |
-| 16 | Controls | Final key bindings (and gamepad support). | W/S or arrows to run/walk back, A/D or arrows to turn, Space to jump, Tab to change hog, Enter to end the turn. | `src/apps/game/Game.cpp` |
+| 16 | Controls | Final key bindings (and gamepad support). | W/S or arrows to run/walk back, A/D or arrows to turn, Space to jump, Tab to change hog, Enter to end the turn, Esc or P for the pause menu; in menus arrows/WASD, Enter, Esc. | `src/apps/game/Game.cpp` |
 | 17 | Movement | Should a hog stop when it runs into an obstacle, or keep the run animation? | It stands (idle animation) as soon as a step is completely blocked; walking at an angle slides along the obstacle. | `HogMovement.cpp` |
 | 18 | Damage | Fall damage: from which height, how much? | Falls up to 400 units are harmless, then 1 point per 10 units. | `src/game/include/openhogs/game/Combat.h` |
 | 28 | Controls | Weapon keys. | Q/E change weapon, R/F aim up/down, Ctrl or X fire (hold to throw further). | `src/apps/game/Game.cpp` |
@@ -48,6 +55,11 @@ answer.
 | 30 | Sound | Sounds for hurt, death, a new turn and victory. | `P_OWW`, `P_MOAN`, `S_SELECT`, `P_WHOHO`. | `src/apps/game/Game.cpp` |
 | 31 | Aiming | What should the aiming arc show when not charging? | The arc at full power; while charging, at the current power. | `World::aimPreview` |
 | 19 | CI | Re-enable the Linux jobs (GCC, Clang) once their package installation step no longer hangs. | Only Windows (MSVC) runs on pull requests; GCC and Clang are run locally before each PR. | `.github/workflows/build.yml` |
+| 39 | Menus | ONE PLAYER (campaign) and the multiplayer setup (teams, game modes such as DEATH MATCH or SURVIVAL, turn time, health). | ONE PLAYER is shown greyed out; MULTI-PLAYER goes straight to the level list and the map's own teams play. | `ui::FrontEnd` |
+| 40 | Options | Should volume changes made in the menu be saved? | They last for the session; the starting values come from `[Audio]` in `config/openhogs.ini`. | `Application::handleFrontEndResult` |
+| 41 | Sound | Menu sounds and menu music. | `click1` to move, `click5` to pick, `Indu006` to go back (FESounds bank); no music yet. | `src/apps/game/MenuControls.h` |
+| 42 | Menus | Behaviour of the menu cursor and of confirmations. | The cursor wraps around and skips greyed-out entries; ARE YOU SURE? starts on NO, so a double Enter never quits or aborts. | `ui::Menu`, `ui::FrontEnd`, `ui::PauseMenu` |
+| 43 | Match | Messages and pause. | "GET READY ..." for 2.5 s at each turn (fading out); the match pauses by itself when the window loses focus; the pause menu stops the turn clock and the camera. | `src/apps/game/Game.cpp` |
 
 ## Settled
 

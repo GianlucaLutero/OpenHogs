@@ -1,19 +1,30 @@
-# openhogs: the game itself. For now it loads a map, puts the hogs on it
-# and lets the player look around; the next blocks add movement, weapons
-# and the rest.
+# openhogs: the game itself. Main menu, level choice and volume options,
+# then hot-seat matches with a HUD and a pause menu.
 #
-# The match state lives in the game module, drawing in the render module,
-# sound in the audio module; this application connects them to the window
-# and the input.
+#   Application    - window, sound, interface; switches menus <-> match
+#   Game           - one match: world, camera, drawing, HUD, pause menu
+#   Interface      - fonts, icons, texts and shared drawing of the 2D interface
+#   MenuBackground - the map circling behind the menus
+#   SoundPlayer    - mixer, sound device, sounds by name from the banks
+#   MenuControls   - menu keys and sounds
+#
+# The match state lives in the game module, menus and HUD logic in the ui
+# module, drawing in the render module, sound in the audio module; this
+# application connects them to the window and the input.
 
 add_executable(openhogs
     main.cpp
-    Game.cpp)
+    Application.cpp
+    Game.cpp
+    Interface.cpp
+    MenuBackground.cpp
+    SoundPlayer.cpp)
 
 target_link_libraries(openhogs PRIVATE
     OpenHogs::app_common
     OpenHogs::game
     OpenHogs::render
+    OpenHogs::ui
     OpenHogs::audio
     OpenHogs::audio_device
     SDL3::SDL3)
