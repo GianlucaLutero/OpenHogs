@@ -12,6 +12,8 @@
 #   RawImage        - headerless 15-bit PlayStation pictures (briefings)
 #   WaveFile        - .WAV sound effects and speech
 #   SoundBank       - .SRL lists that number the sound effects
+#   Skeleton        - .HIR skeleton of the hogs
+#   MotionCapture   - mcap.mad animations of the hogs
 #
 # Format documentation lives in docs/formats/.
 
@@ -20,9 +22,11 @@ add_library(openhogs_formats STATIC
     src/MapObjects.cpp
     src/MapTerrain.cpp
     src/Model.cpp
+    src/MotionCapture.cpp
     src/PackageArchive.cpp
     src/PsxDisc.cpp
     src/RawImage.cpp
+    src/Skeleton.cpp
     src/SoundBank.cpp
     src/TextTable.cpp
     src/TextureTable.cpp

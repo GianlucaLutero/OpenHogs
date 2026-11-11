@@ -73,17 +73,23 @@ Each new module gets its own folder, mirroring `src/`.
 | `OggDecoder` | rate, channels, length and content of a generated Ogg Vorbis file; invalid data rejected |
 | `AudioSettings` | volumes as percentages, defaults, out-of-range values rejected |
 | `SoundLibrary` | music track numbering and discovery, bank paths resolved case-insensitively, decoded sounds cached |
+| `Skeleton` (HIR) | parent and offset of each bone, parents that do not come first rejected |
+| `MotionCapture` | table without count, root positions, bone angles (fourth float skipped), animations outside the file or with partial frames rejected |
+| `CharacterPose` | the game's rotation convention (transpose of Rz·Ry·Rx, arms down), rest pose, children following parents, blending between frames, the ±180° wrap blended the short way, looping, mismatched frames rejected |
+| `buildPosedModelMesh` | each vertex moved by its own bone, unknown bones rejected |
+| `CharacterLibrary` | class catalogue and model names, animation names, loading through the VFS in any letter case, team textures in archive order, wrong skeleton rejected |
 | `TextureTable` | equal-size image slices, uneven files rejected |
 | `scene` | terrain rows go towards -Z, tile texture flip/rotation, two triangles per tile grouped by texture, model UV normalisation and quad split, object scale/yaw/Y-flip, objects without a model become markers |
 | `langpack` | translations follow the English text to the PC indices, differently worded and missing strings keep the English, overrides apply and reject foreign indices, the shipped Italian overrides encode, bottom-up BMPs, the OS/2 BMP header, bilinear scaling, a complete pack built from a miniature disc, clear errors for unusable discs |
 
 ### Not covered by unit tests
 
-The OpenGL renderer (`src/render`), the sound-card output (`AudioDevice`)
+The OpenGL renderers (`src/render`), the sound-card output (`AudioDevice`)
 and the applications need a GPU, a window or speakers, so they are not unit
 tested. They are kept thin on purpose:
-all decisions about geometry live in `src/scene`, which is tested. The
-renderer is checked by rendering real maps (`openhogs-mapviewer
---screenshot`) and comparing with the original game; the audio output by
+all decisions about geometry and posing live in `src/scene`, which is tested. The
+renderer is checked by rendering real maps and hogs (`openhogs-mapviewer
+--screenshot`, `openhogs-characterviewer --screenshot`) and comparing with
+the original game; the audio output by
 rendering real sounds with `openhogs-soundtest --render` and checking
 their length and level.

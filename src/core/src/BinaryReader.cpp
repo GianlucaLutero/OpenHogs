@@ -2,6 +2,8 @@
 
 #include "openhogs/core/BinaryReader.h"
 
+#include <bit>
+
 namespace openhogs::core {
 
 BinaryReader::BinaryReader(std::span<const std::byte> data)
@@ -44,6 +46,10 @@ std::int16_t BinaryReader::readI16() {
 
 std::int32_t BinaryReader::readI32() {
     return static_cast<std::int32_t>(readU32());
+}
+
+float BinaryReader::readF32() {
+    return std::bit_cast<float>(readU32());
 }
 
 std::string BinaryReader::readFixedString(std::size_t length) {

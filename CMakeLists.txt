@@ -12,7 +12,7 @@ project(OpenHogs
 
 # --- Options ---------------------------------------------------------------
 option(OPENHOGS_BUILD_TESTS "Build the unit test module" ON)
-option(OPENHOGS_BUILD_VIEWER "Build the applications that need SDL3: map viewer, sound test (downloads and builds SDL3)" ON)
+option(OPENHOGS_BUILD_VIEWER "Build the applications that need SDL3: map viewer, character viewer, sound test (downloads and builds SDL3)" ON)
 
 # --- Global settings -------------------------------------------------------
 set(CMAKE_CXX_STANDARD 20)
@@ -42,7 +42,9 @@ add_subdirectory(src/scene)     # map data turned into renderable geometry (no G
 if(OPENHOGS_BUILD_VIEWER)
     add_subdirectory(third_party/glad)        # OpenGL function loader
     add_subdirectory(src/render)              # OpenGL renderer and camera
+    add_subdirectory(src/apps/common)         # window and screenshots shared by the SDL apps
     add_subdirectory(src/apps/mapviewer)      # openhogs-mapviewer application
+    add_subdirectory(src/apps/characterviewer) # openhogs-characterviewer application
     add_subdirectory(src/apps/soundtest)      # openhogs-soundtest application
 endif()
 

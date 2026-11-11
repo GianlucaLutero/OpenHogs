@@ -1,14 +1,16 @@
-# render: draws a scene::MapScene with OpenGL 3.3.
+# render: draws maps and characters with OpenGL 3.3.
 #
 #   Camera       - free-flying camera (position + yaw/pitch)
 #   GlObjects    - small RAII wrappers for OpenGL textures, buffers, shaders
 #   MapRenderer  - uploads a MapScene to the GPU and draws it
+#   CharacterRenderer - draws one posed hog on a ground grid
 #
 # The OpenGL context itself is created by the application (with SDL), so
 # this module does not depend on any windowing library.
 
 add_library(openhogs_render STATIC
     src/Camera.cpp
+    src/CharacterRenderer.cpp
     src/GlObjects.cpp
     src/MapRenderer.cpp)
 

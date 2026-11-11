@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include "openhogs/apps/GlWindow.h"
 #include "openhogs/core/VirtualFileSystem.h"
 #include "openhogs/render/Camera.h"
 #include "openhogs/render/MapRenderer.h"
@@ -24,7 +25,6 @@
 #include <string>
 #include <vector>
 
-struct SDL_Window;
 union SDL_Event;
 
 namespace openhogs::mapviewer {
@@ -57,8 +57,7 @@ private:
     std::vector<std::string> maps_;
     std::size_t currentMap_ = 0;
 
-    SDL_Window* window_ = nullptr;
-    void* glContext_ = nullptr;  // SDL_GLContext
+    apps::GlWindow window_;
     int width_;
     int height_;
 
