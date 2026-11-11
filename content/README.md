@@ -82,6 +82,24 @@ for OpenHogs that anyone can improve:
 Keys are string indices of the PC tables (see them with
 `openhogs-text export`). Generated `lang-*` packs are ignored by git.
 
+## Facial expressions
+
+The hogs change their eyes and mouth with what they are doing. Which face
+goes with which animation is decided by built-in rules (see
+`docs/formats/characters.md`); a pack can change them by adding
+`data/Chars/expressions.ini`:
+
+```ini
+[Animations]
+; animation number = neutral, happy, sad, shocked, angry, eyes-closed, dying or gormless
+44 = gormless
+51 = shocked
+```
+
+Animation numbers and names are listed by `openhogs-characterviewer --list`;
+press `E` in the viewer to try each face. Animations not in the file keep
+the built-in rule.
+
 ## Copyright
 
 Do not publish packs that contain files copied from the original game. A

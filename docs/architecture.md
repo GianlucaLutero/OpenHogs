@@ -13,7 +13,7 @@ listed before it below.
 | `tools/text` | done | `openhogs-text`: converts text tables to editable UTF-8 listings and back. |
 | `tools/langpack` | done | `openhogs-langpack`: builds a language pack from the PlayStation disc (text alignment, overrides, briefing conversion). |
 | `tools/extractor` | done | `openhogs-extract`: unpacks archives, converts textures to PNG and text tables to text. |
-| `scene`   | done | Turns map data into triangles grouped by texture, places objects. Poses the hogs (`CharacterPose`: bone transforms, blending between frames) and loads them (`CharacterLibrary`: classes, teams, animation names). Pure CPU code, unit tested. |
+| `scene`   | done | Turns map data into triangles grouped by texture, places objects. Poses the hogs (`CharacterPose`: bone transforms, blending between frames) and loads them (`CharacterLibrary`: classes, teams, animation names); facial expressions and blinking (`CharacterExpressions`). Pure CPU code, unit tested. |
 | `render`  | done | OpenGL 3.3 renderers for maps and characters (glad), RAII GPU objects, free camera. No window code: the application creates the context. |
 | `apps/common` | done | Shared by the applications: opening the game files (`--game` or configuration + packs), the SDL3/OpenGL window, PNG screenshots. |
 | `apps/mapviewer` | done | `openhogs-mapviewer`: input, map switching, screenshots. |

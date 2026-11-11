@@ -15,7 +15,7 @@ how each convention was found is explained so it can be checked again.
 | `Chars/mcap.mad` | 93 animations (not a `.MAD` archive despite the name) |
 | `Chars/british.mad` | body models of the 9 classes, 3 levels of detail each (81 files) |
 | `Chars/<team>.mtd` | textures of one team: `british`, `american`, `french`, `german`, `japanese`, `russian`, `teamlard` (120 TIMs each, same names in every team) |
-| `Chars/FACES.MTD` | 7 eye and 7 mouth textures (`eyes001`–`007`, `gobs001`–`007`), presumably swapped in for expressions |
+| `Chars/FACES.MTD` | 7 eye and 7 mouth textures (`eyes001`–`007`, `gobs001`–`007`) for facial expressions (see below) |
 | `Chars/BRITHATS.MAD`, `FHATS.MAD` + `.MTD` | separate hats, skinned to the head bone like the body (not used yet) |
 | `Chars/WEAPONS.MAD` + `.MTD` | weapon models (next blocks) |
 
@@ -62,8 +62,8 @@ Frame (272 bytes for 15 bones):
 | `int32` x 5 | unknown; mostly 0, sometimes small values (maybe events such as footsteps) |
 | 15 × (`float` x 3, `float`) | Euler angles of each bone in radians, then a float that is always 1.0 |
 
-Frame rate: not stored. OpenHogs plays animations at 25 frames per second
-for now; this still has to be compared with the original game.
+Frame rate: not stored. 25 frames per second, checked by comparing with the
+original game.
 
 ### How the angles combine
 
@@ -143,6 +143,48 @@ character-specific rules:
 | Spy | `pcspy_hi` | `pcspy_me` | `sp_hi` | `SPYU`, `SPLO` |
 
 High detail models have about 650 vertices, medium about 475, low about 200.
+
+## Facial expressions
+
+Every body model draws its eyes with texture 118 and its mouth with texture
+119 of the team archive (`eyes000`, `gobs000`), on all three levels of
+detail, saboteur included. All face textures have the same size (56×21 for
+eyes, 56×17 for mouths), so an expression is shown by drawing those
+triangles with another texture of the same kind; the texture coordinates do
+not change.
+
+| Texture | Eyes | Mouth |
+|---------|------|-------|
+| `000` (team archive) | open, raised brows | open, tongue out |
+| `001` | open | grin |
+| `002` | closed | neutral |
+| `003` | sad | frown |
+| `004` | wide open | open "O" |
+| `005` | angry | gritted teeth |
+| `006` | open, on black | grin, on black |
+| `007` | closed, on black | neutral, on black |
+
+The black variants are drawn on the saboteur's black balaclava.
+
+`warhogs_.exe` loads `chars\faces.mtd` as a texture group but the code that
+picks a face was not found by looking for the file name or the texture
+numbers, so **the original rules are not known yet**. OpenHogs uses its own,
+based on the animation names, and lets content packs replace them
+(`Chars/expressions.ini`, see `content/README.md`):
+
+| Expression | Eyes / mouth | Animations |
+|------------|--------------|------------|
+| neutral | 001 / 002 | everything not listed below |
+| happy | 001 / 001 | 30 Lord Flash-Heart pose, 41–43 celebrations, 44 salute |
+| sad | 003 / 003 | 1–2 running wounded, 29 very wounded, 40 getting to feet, 51–52 idle cold/hot, 57 hari kiri |
+| shocked | 004 / 004 | 8–9 jumping, 11 scramble, 33 cowering, 38 flying, 39 bouncing, 50 drowning, 58 parachuting |
+| angry | 005 / 005 | 12–26 weapons (getting out, using, aiming), 34–36 brushing off, 56 air strike |
+| eyes-closed | 002 / 002 | 37 sneeze |
+| dying | 002 / 004 | 47–49 dying |
+| gormless | 000 / 000 | 32 looking gormless |
+
+On top of that the hogs blink: eyes closed for 0.15 s about every 5.5 s, at
+irregular moments that differ from hog to hog.
 
 ## Placing a hog
 

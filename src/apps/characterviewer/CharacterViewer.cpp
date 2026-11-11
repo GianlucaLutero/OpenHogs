@@ -74,8 +74,9 @@ void CharacterViewer::loadModel() {
 
 void CharacterViewer::loadTeam() {
     const auto textures = library_.loadTeamTextures(scene::characterTeams()[state_.teamIndex]);
-    textureSizes_ = scene::textureSizes(textures);
-    renderer_->setTextures(textures);
+    textureSizes_ = scene::textureSizes(textures.images);
+    faceSlots_ = textures.faces;
+    renderer_->setTextures(textures.images);
 }
 
 void CharacterViewer::changeAnimation(int step) {
@@ -87,6 +88,22 @@ void CharacterViewer::stepFrame(int step) {
     state_.playing = false;
     const auto frameCount = library_.animations()[state_.animation].frames.size();
     state_.frame = static_cast<float>(wrapIndex(static_cast<std::size_t>(state_.frame), step, frameCount));
+}
+
+scene::Expression CharacterViewer::currentExpression() const {
+    return state_.expression.value_or(library_.expressionRules().forAnimation(state_.animation));
+}
+
+void CharacterViewer::nextExpression() {
+    // Automatic, then every expression in order, then automatic again.
+    constexpr int kLast = static_cast<int>(scene::Expression::Gormless);
+    if (!state_.expression) {
+        state_.expression = scene::Expression::Neutral;
+    } else if (static_cast<int>(*state_.expression) == kLast) {
+        state_.expression.reset();
+    } else {
+        state_.expression = static_cast<scene::Expression>(static_cast<int>(*state_.expression) + 1);
+    }
 }
 
 void CharacterViewer::updateCamera() {
@@ -101,13 +118,15 @@ void CharacterViewer::updateTitle() {
     const auto frame = static_cast<std::size_t>(state_.frame) % animation.frames.size();
 
     const std::string name(scene::animationName(state_.animation));
-    char title[320];
+    const std::string expression(scene::expressionName(currentExpression()));
+    char title[384];
     std::snprintf(title, sizeof(title),
-                  "OpenHogs character viewer - %s (%s, %s) - animation %zu/%zu%s%s, frame %zu/%zu%s",
+                  "OpenHogs character viewer - %s (%s, %s) - animation %zu/%zu%s%s, frame %zu/%zu%s - face: %s%s",
                   std::string(characterClass.name).c_str(),
                   std::string(scene::characterTeams()[state_.teamIndex]).c_str(), detailName(state_.detail),
                   state_.animation, library_.animations().size() - 1, name.empty() ? "" : ": ", name.c_str(),
-                  frame, animation.frames.size() - 1, state_.playing ? "" : " (paused)");
+                  frame, animation.frames.size() - 1, state_.playing ? "" : " (paused)", expression.c_str(),
+                  state_.expression ? "" : " (auto)");
     window_.setTitle(title);
 }
 
@@ -151,6 +170,8 @@ void CharacterViewer::handleEvent(const SDL_Event& event, bool& running) {
             state_.detail = nextDetail(state_.detail);
             loadModel();
             break;
+        case SDLK_E: nextExpression(); break;
+        case SDLK_B: state_.blinking = !state_.blinking; break;
         case SDLK_SPACE: state_.playing = !state_.playing; break;
         case SDLK_COMMA: stepFrame(-1); break;
         case SDLK_PERIOD: stepFrame(1); break;
@@ -176,7 +197,10 @@ void CharacterViewer::handleEvent(const SDL_Event& event, bool& running) {
 void CharacterViewer::draw(int width, int height) {
     const auto& animation = library_.animations()[state_.animation];
     const auto pose = scene::samplePose(library_.skeleton(), animation, state_.frame);
-    const auto mesh = scene::buildPosedModelMesh(model_, textureSizes_, pose);
+    auto mesh = scene::buildPosedModelMesh(model_, textureSizes_, pose);
+    const bool eyesClosed = state_.blinking && scene::isBlinking(clockSeconds_, 0);
+    const bool masked = scene::characterClasses()[state_.classIndex].masked;
+    scene::applyExpression(mesh, faceSlots_, currentExpression(), eyesClosed, masked);
     renderer_->draw(camera_, width, height, mesh, scene::kStandingFeetDepth);
 }
 
@@ -193,6 +217,7 @@ void CharacterViewer::run() {
         const Uint64 now = SDL_GetTicksNS();
         const float seconds = static_cast<float>(now - previous) / 1e9f;
         previous = now;
+        clockSeconds_ += seconds;
         if (state_.playing) {
             state_.frame += seconds * state_.framesPerSecond;
             const auto frameCount = static_cast<float>(library_.animations()[state_.animation].frames.size());
@@ -208,7 +233,9 @@ void CharacterViewer::run() {
 }
 
 void CharacterViewer::saveScreenshot(const std::filesystem::path& path) {
-    // Off-screen, so it works even with a hidden or covered window.
+    // Off-screen, so it works even with a hidden or covered window. The
+    // clock stays at 0, where no hog is blinking, so the face is the one
+    // asked for.
     updateCamera();
     render::GlFramebuffer target(width_, height_);
     target.bind();

@@ -77,7 +77,8 @@ Each new module gets its own folder, mirroring `src/`.
 | `MotionCapture` | table without count, root positions, bone angles (fourth float skipped), animations outside the file or with partial frames rejected |
 | `CharacterPose` | the game's rotation convention (transpose of Rz·Ry·Rx, arms down), rest pose, children following parents, blending between frames, the ±180° wrap blended the short way, looping, mismatched frames rejected |
 | `buildPosedModelMesh` | each vertex moved by its own bone, unknown bones rejected |
-| `CharacterLibrary` | class catalogue and model names, animation names, loading through the VFS in any letter case, team textures in archive order, wrong skeleton rejected |
+| `CharacterLibrary` | class catalogue and model names, animation names, loading through the VFS in any letter case, team textures in archive order followed by the face textures found by name, expressions.ini from a pack, wrong skeleton rejected |
+| `CharacterExpressions` | only eye and mouth textures swapped, blinking, the saboteur's balaclava faces, fallback to the default face, rules per animation and their overrides, blinking brief, regular and different per hog |
 | `TextureTable` | equal-size image slices, uneven files rejected |
 | `scene` | terrain rows go towards -Z, tile texture flip/rotation, two triangles per tile grouped by texture, model UV normalisation and quad split, object scale/yaw/Y-flip, objects without a model become markers |
 | `langpack` | translations follow the English text to the PC indices, differently worded and missing strings keep the English, overrides apply and reject foreign indices, the shipped Italian overrides encode, bottom-up BMPs, the OS/2 BMP header, bilinear scaling, a complete pack built from a miniature disc, clear errors for unusable discs |

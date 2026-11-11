@@ -9,6 +9,8 @@
 //   Up / Down        previous / next class
 //   T                next team
 //   L                next level of detail (high, medium, low)
+//   E                next expression (automatic, then each one by hand)
+//   B                blinking on / off
 //   Space            pause / play
 //   , / .            one frame back / forward (pauses)
 //   - / +            slower / faster playback
@@ -26,6 +28,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <string>
 
 union SDL_Event;
@@ -41,6 +44,9 @@ struct ViewerState {
     float frame = 0.0f;           // fractional frame position
     float framesPerSecond = 25.0f;
     bool playing = true;
+    // Empty: the expression follows the animation (scene::ExpressionRules).
+    std::optional<scene::Expression> expression;
+    bool blinking = true;
     // Hogs face +X. Yaw -90 looks at a hog from the front, 0 from its
     // left side; the default is a three-quarter view from the front.
     float orbitYawDegrees = -60.0f;
@@ -71,6 +77,8 @@ private:
     void stepFrame(int step);
     void updateCamera();
     void updateTitle();
+    void nextExpression();
+    scene::Expression currentExpression() const;
     void draw(int width, int height);
 
     const scene::CharacterLibrary& library_;
@@ -84,6 +92,8 @@ private:
     std::unique_ptr<render::CharacterRenderer> renderer_;
     formats::Model model_;
     std::vector<glm::uvec2> textureSizes_;
+    scene::FaceTextureSlots faceSlots_;
+    double clockSeconds_ = 0.0;  // drives blinking, runs even when paused
 };
 
 } // namespace openhogs::characterviewer
