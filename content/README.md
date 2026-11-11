@@ -67,6 +67,21 @@ EnabledPacks = hd-music, ps1-ai   ; activates these optional packs
 - To switch an optional pack off, remove its Id from `EnabledPacks`.
 - To go back to the original English text and speech, set `Language = en`.
 
+## Language packs from the PlayStation disc
+
+`openhogs-langpack` builds `content/packs/lang-it` (or `-fr`, `-de`, `-es`)
+from your own PlayStation disc; see the README. Strings the disc cannot
+provide come from `content/translations/<lang>.ini`, original text written
+for OpenHogs that anyone can improve:
+
+```ini
+[gtext]
+213 = PREMI SPAZIO PER SELEZIONARE L'ARMA.
+```
+
+Keys are string indices of the PC tables (see them with
+`openhogs-text export`). Generated `lang-*` packs are ignored by git.
+
 ## Copyright
 
 Do not publish packs that contain files copied from the original game. A

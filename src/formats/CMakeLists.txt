@@ -8,6 +8,8 @@
 #   MapTerrain      - .PMG map terrain (heights and tiles)
 #   MapObjects      - .POG objects placed on a map
 #   TextureTable    - .PTG terrain textures
+#   PsxDisc         - files on a PlayStation disc image (.bin / .iso)
+#   RawImage        - headerless 15-bit PlayStation pictures (briefings)
 #
 # Format documentation lives in docs/formats/.
 
@@ -17,6 +19,8 @@ add_library(openhogs_formats STATIC
     src/MapTerrain.cpp
     src/Model.cpp
     src/PackageArchive.cpp
+    src/PsxDisc.cpp
+    src/RawImage.cpp
     src/TextTable.cpp
     src/TextureTable.cpp
     src/TimImage.cpp)

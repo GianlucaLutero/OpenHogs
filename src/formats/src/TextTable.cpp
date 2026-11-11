@@ -6,7 +6,9 @@
 #include "openhogs/formats/GameText.h"
 
 #include <cstdint>
+#include <cstdio>
 #include <limits>
+#include <sstream>
 
 namespace openhogs::formats {
 
@@ -57,6 +59,61 @@ TextTable::EncodedFiles TextTable::encode() const {
         files.strings.push_back(std::byte{0});
     }
     return files;
+}
+
+std::string TextTable::toListing() const {
+    std::string text;
+    char index[32];  // large enough for any std::size_t
+    for (std::size_t i = 0; i < entries.size(); ++i) {
+        std::snprintf(index, sizeof(index), "[%04zu] ", i);
+        text += index;
+        text += entries[i];
+        text += '\n';
+    }
+    return text;
+}
+
+TextTable TextTable::fromListing(std::string_view listing) {
+    TextTable table;
+    std::istringstream stream{std::string(listing)};
+    std::string line;
+    std::size_t lineNumber = 0;
+
+    while (std::getline(stream, line)) {
+        ++lineNumber;
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();  // files edited on Windows
+        }
+        if (line.empty()) {
+            continue;
+        }
+
+        const auto close = line.find(']');
+        const bool wellFormed = line.front() == '[' && close != std::string::npos && close > 1;
+        std::size_t index = 0;
+        bool numeric = wellFormed;
+        for (std::size_t i = 1; numeric && i < close; ++i) {
+            numeric = line[i] >= '0' && line[i] <= '9';
+            index = index * 10 + static_cast<std::size_t>(line[i] - '0');
+        }
+        if (!numeric) {
+            throw core::FormatError("Text listing line " + std::to_string(lineNumber) +
+                                    ": expected \"[index] text\"");
+        }
+        if (index != table.entries.size()) {
+            throw core::FormatError("Text listing line " + std::to_string(lineNumber) + ": expected index " +
+                                    std::to_string(table.entries.size()) + ", found " + std::to_string(index));
+        }
+
+        // One space separates the index from the text; the rest is kept as
+        // is (strings may legitimately start or end with spaces).
+        std::string text = line.substr(close + 1);
+        if (!text.empty() && text.front() == ' ') {
+            text.erase(0, 1);
+        }
+        table.entries.push_back(std::move(text));
+    }
+    return table;
 }
 
 } // namespace openhogs::formats

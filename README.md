@@ -23,7 +23,9 @@ The goal is to play the original game natively on modern systems
 ## Project status
 
 OpenHogs is in early development. Nothing is playable yet, but the
-original data can be extracted and every map can be explored in 3D.
+original data can be extracted, every map can be explored in 3D, and an
+Italian (or French, German, Spanish) language pack can be built from your
+PlayStation disc.
 
 | Block | Status | What it delivers |
 |-------|--------|------------------|
@@ -31,11 +33,14 @@ original data can be extracted and every map can be explored in 3D.
 | `asset-extractor`    | ✅ done | Reads archives, textures and text; `openhogs-extract` tool |
 | `ci-build`           | ✅ done | Automatic build and tests on Windows and Linux |
 | `map-viewer`         | ✅ done | Reads terrain, models and objects; `openhogs-mapviewer` 3D viewer |
+| `italian-pack`       | ✅ done | Italian text, menus and briefings from the PlayStation disc; `openhogs-langpack`, `openhogs-text` |
 | gameplay blocks      | planned | Movement, weapons, turns, AI, campaign |
 
 ## Requirements
 
 - A copy of **Hogs of War** from Steam or GOG (or a retail CD installation).
+- Optional, for the Italian language: your own **European PlayStation disc**
+  (SLES-01041) as a disc image (`.bin` or `.iso`).
 - To build from source:
   - CMake 3.24 or newer
   - A C++20 compiler: Visual Studio 2022 or newer (Windows), GCC 12+ or Clang 15+
@@ -137,6 +142,72 @@ openhogs-extract --list "C:\...\HogsofWar\Chars\WEAPONS.MTD"
 
 Do not share the extracted files: they are copyrighted game data.
 
+### Italian language (from your PlayStation disc)
+
+The PC release is English only. The European PlayStation release
+(SLES-01041) has the game in English, French, German, **Italian** and
+Spanish text, with English voices. `openhogs-langpack` takes the
+translated text and mission briefings from **your own** disc image and
+builds a content pack in the PC layout. The disc and the PC installation
+are only read.
+
+1. **Make an image of your disc** with any CD dumping tool. Only the first
+   track (the data track, the largest `.bin` file) is needed; a plain
+   `.iso` works too. Keep it outside the repository or in a folder named
+   `HogsOfWar/`, which git ignores.
+
+2. **Build the pack** from the OpenHogs folder:
+
+   ```sh
+   # Windows
+   build\bin\Release\openhogs-langpack.exe --disc "D:\HogsOfWar\Hogs of War (Europe) (Track 1).bin" --game "C:\Program Files (x86)\Steam\steamapps\common\HogsofWar"
+
+   # Linux
+   ./build/bin/openhogs-langpack --disc ~/HogsOfWar/track1.bin --game ~/Games/HogsofWar
+   ```
+
+   This creates `content/packs/lang-it/` and prints a report:
+
+   ```
+   Game text: 258 of 272 strings from the disc, 14 from the overrides, 0 left in English
+   Menu text: 751 of 786 strings from the disc, 13 from the overrides, 22 left in English
+   Briefings: 31
+   ```
+
+   Strings the PlayStation version does not have (e.g. tutorial hints that
+   name PC keys instead of pad buttons) come from
+   [`content/translations/it.ini`](content/translations/it.ini), written for
+   OpenHogs. What stays in English is mostly people's names in the credits.
+   Use `--language fr`, `de` or `es` for the other languages (they have no
+   hand-written overrides yet).
+
+3. **Select it** in `config/openhogs.ini`:
+
+   ```ini
+   [Content]
+   Language = it
+   ```
+
+   Set `Language = en` to go back to English at any time.
+
+The pack is used by every OpenHogs program that reads game files; the
+menus and briefing screens that show it are part of the next blocks. To
+read or edit the text, convert a table with `openhogs-text`:
+
+```sh
+openhogs-text export content/packs/lang-it/data/Language/Text/gtext gtext-it.txt
+openhogs-text import gtext-it.txt content/packs/lang-it/data/Language/Text/gtext
+```
+
+The listing has one `[index] TEXT` line per string, in UTF-8 with accented
+capitals (À, È, Ì…). **Do not share the generated pack**: it contains data
+from your disc. Improvements to `content/translations/it.ini` are welcome,
+since that file is original text.
+
+Not converted yet: newspapers, cards and title screens (their `.MGL`
+picture format is still unknown, see
+[`docs/formats/psx-disc.md`](docs/formats/psx-disc.md)).
+
 ### Exploring the maps in 3D
 
 `openhogs-mapviewer` shows any map of the game: terrain, textures, trees,
@@ -214,16 +285,19 @@ OpenHogs/
 ├── cmake/                CMake helpers
 ├── config/               user configuration (openhogs.default.ini)
 ├── content/              replaceable content: packs, languages (see content/README.md)
-│   └── packs/_template/  starting point for a new pack
+│   ├── packs/_template/  starting point for a new pack
+│   └── translations/     hand-written translations used by openhogs-langpack
 ├── docs/                 architecture notes
 │   └── formats/          one page per original file format
 ├── src/
 │   ├── core/             binary reading, INI files, virtual file system
 │   ├── content/          config, content packs, pack selection
-│   ├── formats/          parsers: archives, text, textures, models, maps
+│   ├── formats/          parsers: archives, text, textures, models, maps, PlayStation disc
 │   ├── scene/            map data turned into triangles (no GPU code)
 │   ├── render/           OpenGL 3.3 renderer and camera
 │   ├── tools/extractor/  openhogs-extract command-line tool
+│   ├── tools/text/       openhogs-text: text tables <-> editable text
+│   ├── tools/langpack/   openhogs-langpack: language packs from the PlayStation disc
 │   └── apps/mapviewer/   openhogs-mapviewer application
 ├── tests/                unit tests (see tests/README.md)
 └── third_party/          code not written for OpenHogs (glad OpenGL loader)
@@ -253,8 +327,11 @@ OpenHogs builds on the work of others. Thank you!
 
 *Hogs of War* was developed by Infogrames Sheffield House (formerly Gremlin
 Interactive) and published by Infogrames in 2000. The PlayStation TIM image
-format is publicly documented; OpenHogs' decoder was written from that
-documentation.
+format, the CD sector layout and the ISO 9660 file system (ECMA-119) are
+publicly documented; OpenHogs' readers were written from that
+documentation. The Italian overrides in `content/translations/it.ini` were
+written for OpenHogs and follow the wording of the original Italian
+translation.
 
 ## License
 
