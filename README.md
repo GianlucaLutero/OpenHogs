@@ -77,6 +77,19 @@ cmake -S . -B build
 cmake --build build --config Release
 ```
 
+If CMake answers *"CMake 3.24 or higher is required"*, an older CMake
+installed by some other program comes first in your `PATH`. Visual Studio
+ships a recent CMake: open the **Developer PowerShell for VS 2022** from the
+Start menu and run the commands there, or call Visual Studio's CMake
+directly from any PowerShell:
+
+```powershell
+$vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath
+$cmake = "$vs\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
+& $cmake -S . -B build
+& $cmake --build build --config Release
+```
+
 **Linux**
 
 ```sh
