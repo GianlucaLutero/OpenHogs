@@ -123,12 +123,11 @@ core::VirtualFileSystem openFileSystem(const Options& options) {
         throw std::runtime_error("Configuration not found: " + options.configPath.string() +
                                  "\nCopy config/openhogs.default.ini to config/openhogs.ini, or use --game <folder>.");
     }
-    const auto config = content::ContentConfig::load(options.configPath);
-    const auto packs = content::selectActivePacks(config, content::discoverPacks(config.packsDirectory));
-    for (const auto& pack : packs) {
+    auto loaded = content::loadContent(content::ContentConfig::load(options.configPath));
+    for (const auto& pack : loaded.activePacks) {
         std::cout << "Content pack: " << pack.id << "\n";
     }
-    return content::buildFileSystem(config, packs);
+    return std::move(loaded.files);
 }
 
 int runViewer(const Options& options) {
