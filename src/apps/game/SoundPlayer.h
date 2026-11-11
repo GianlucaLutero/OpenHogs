@@ -44,8 +44,9 @@ public:
     // ("P_OWW", case does not matter). Unknown names are reported once.
     void play(SoundBankId bank, std::string_view name);
 
-    // The background sound of a match, in a loop, until stopAmbience().
-    void startAmbience();
+    // The background sound of a match, in a loop, until stopAmbience():
+    // the day or the night ambience (see startAmbience in the .cpp).
+    void startAmbience(bool night = false);
     void stopAmbience();
 
     void setVolumes(const audio::Volumes& volumes);

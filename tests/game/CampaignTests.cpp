@@ -37,14 +37,18 @@ MissionReport won(std::vector<std::size_t> deaths = {}) {
 
 TEST_CASE("The 25 missions follow the game's order, one map each", "[game][campaign]") {
     // Taken from the executable's tables: mission 1 is The War Foundation
-    // on DEMO, the last Well, Well, Well! on ESTU; every mission has its
-    // own map and islands go in order.
+    // on ESTU (the only mission with three hogs), the last Well, Well, Well!
+    // on FINAL (six enemies); every mission has its own map and islands go
+    // in order.
     const auto missions = campaignMissions();
     REQUIRE(missions.size() == 25);
-    CHECK(campaignMission(1).map == "DEMO");
+    CHECK(campaignMission(1).map == "ESTU");
     CHECK(campaignMission(1).nameEntry == 36);  // THE WAR FOUNDATION
     CHECK(campaignMission(2).map == "ROAD");
-    CHECK(campaignMission(25).map == "ESTU");
+    CHECK(campaignMission(22).map == "KEEP");   // ASSASSINATION
+    CHECK(campaignMission(22).nameEntry == 31);
+    CHECK(campaignMission(25).map == "FINAL");
+    CHECK(campaignMission(25).nameEntry == 35);  // WELL, WELL, WELL!
     CHECK(campaignMission(25).island == 5);
     std::set<std::string_view> maps;
     int island = 0;

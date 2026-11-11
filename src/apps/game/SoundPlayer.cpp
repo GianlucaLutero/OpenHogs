@@ -18,6 +18,7 @@ const char* const kFrontEndBank = "FESounds/Fesounds.srl";
 // (Audio/AMB_1D.wav), played in a loop under the footsteps.
 constexpr std::size_t kAmbientSound = 0;
 constexpr float kAmbientVolume = 0.6f;
+constexpr std::string_view kNightAmbience = "Audio/AMB_1N.wav";
 
 // File name without folder and extension, in lower case:
 // "AUDIO\\FT_GRASS.wav" -> "ft_grass".
@@ -97,12 +98,26 @@ void SoundPlayer::play(SoundBankId bank, std::string_view name) {
     }
 }
 
-void SoundPlayer::startAmbience() {
+void SoundPlayer::startAmbience(bool night) {
     if (!mixer_ || !matchBank_.files || ambience_) {
         return;
     }
     try {
-        const auto sound = library_->loadFromBank(*matchBank_.files, kAmbientSound);
+        // At night the original loads Audio/sfxnight.srl, but in the PC
+        // release that bank is a copy of the day one and its night
+        // ambience, AMB_1N.wav, is never played. OpenHogs plays it, as the
+        // night bank's name intends (docs/open-decisions.md).
+        std::shared_ptr<const formats::PcmSound> sound;
+        if (night) {
+            try {
+                sound = library_->load(kNightAmbience);
+            } catch (const std::exception&) {
+                sound.reset();  // not there: the day ambience will do
+            }
+        }
+        if (!sound) {
+            sound = library_->loadFromBank(*matchBank_.files, kAmbientSound);
+        }
         ambience_ = mixer_->play(sound, audio::SoundCategory::Effects, kAmbientVolume, true);
     } catch (const std::exception& error) {
         std::cerr << "Warning: no background sound (" << error.what() << ")\n";

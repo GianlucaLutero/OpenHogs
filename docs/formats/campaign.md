@@ -11,24 +11,29 @@ Offsets are file offsets in the executable.
 
 ### Level names: `0xD0790`
 
-An array of 52 pointers to map names: index *n* is level *n*. The first
-26 are the campaign's levels and Boot Camp, the rest the multiplayer
-arenas, the generated-map types and some test maps:
+An array of 59 pointers to map names: index *n* is level *n*. The first
+26 are the campaign's levels and Boot Camp, then the demo map, the
+multiplayer arenas, two test maps and the generated-map types. The full
+list is in `src/game/src/Levels.cpp`; the campaign part is:
 
 | # | Map | # | Map | # | Map | # | Map |
 |---|-----|---|-----|---|-----|---|-----|
-| 0 | ROAD | 7 | GUNS | 14 | EYRIE | 21 | TESTER |
-| 1 | TRENCH | 8 | OASIS | 15 | BRIDGE | 22 | FOOT |
-| 2 | RUMBLE | 9 | MASHED | 16 | BAY | 23 | FINAL |
-| 3 | DEVI | 10 | CAMP | 17 | DESVAL | 24 | ESTU |
-| 4 | TWIN | 11 | LIBERATE | 18 | SNAKE | 25 | DEMO |
-| 5 | ZULUS | 12 | MEDIX | 19 | EMPLACE | 26… | BOOM, BHILL, LECPROD, DVAL, ICE… |
-| 6 | SNIPER | 13 | FJORDS | 20 | SUPLINE | | |
+| 0 | ROAD | 7 | GUNS | 14 | EYRIE | 21 | SUPLINE |
+| 1 | TRENCH | 8 | OASIS | 15 | BRIDGE | 22 | TESTER |
+| 2 | RUMBLE | 9 | MASHED | 16 | BAY | 23 | FOOT |
+| 3 | DEVI | 10 | CAMP | 17 | DESVAL | 24 | FINAL |
+| 4 | TWIN | 11 | LIBERATE | 18 | SNAKE | 25 | ESTU |
+| 5 | ZULUS | 12 | MEDIX | 19 | EMPLACE | 26 | DEMO |
+| 6 | SNIPER | 13 | FJORDS | 20 | KEEP | 27… | BOOM, BHILL, LECPROD, DVAL, ICE… |
 
 The name of level *n* is entry **11 + *n*** of the game text table
-`gtext` (11 ROUTINE PATROL = ROAD, 21 BOOT CAMP = CAMP, 36 THE WAR
-FOUNDATION = DEMO, 51 PIGIN' HELL = HELL2, 62 ONE WAY SYSTEM = ONEWAY):
-all 52 names pair up with their maps this way.
+`gtext` (11 ROUTINE PATROL = ROAD, 21 BOOT CAMP = CAMP, 31
+ASSASSINATION = KEEP, 35 WELL, WELL, WELL! = FINAL, 36 THE WAR
+FOUNDATION = ESTU).
+
+> An earlier version of this page (and of OpenHogs) left KEEP out and
+> shifted every later level by one, so mission 1 was DEMO and missions
+> 21–25 had the wrong maps. The table above is read pointer by pointer.
 
 ### Mission order: `0xD05F0`
 
@@ -36,9 +41,9 @@ all 52 names pair up with their maps this way.
 
     10, 25, 0, 1, 3, 2, 5, 4, 6, 9, 7, 11, 8, 13, 14, 16, 12, 15, 17, 18, 19, 21, 20, 22, 23, 24
 
-So mission 1 is THE WAR FOUNDATION (DEMO) and mission 25 WELL, WELL, WELL!
-(ESTU), which matches the walkthroughs and the achievement list of the
-retail game.
+So mission 1 is ESTU (three player hogs, a short estuary map) and
+mission 25 is FINAL (five enemy teams), mission 22 is KEEP
+(ASSASSINATION).
 
 ### Turn times: `0xD0660`
 
@@ -62,8 +67,8 @@ these tables (OpenHogs' choice: `docs/open-decisions.md`).
 ## The maps' teams
 
 Every campaign map marks the player's hogs (POG flag bit 0): three in
-DEMO, five everywhere else. The enemy is one other team, except FINAL
-(mission 24), which has five enemy teams. CAMP has a single hog.
+ESTU (mission 1), five everywhere else. The enemy is one other team, except FINAL
+(mission 25), which has five enemy teams. CAMP has a single hog.
 
 ## Pictures
 
