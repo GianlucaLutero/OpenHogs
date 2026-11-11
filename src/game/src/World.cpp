@@ -539,4 +539,15 @@ World loadWorld(const core::VirtualFileSystem& vfs, std::string_view mapName, Tu
     return World(MapCollision(std::move(terrain), std::move(boxes)), std::move(hogs), rules);
 }
 
+std::vector<int> mapTeams(const core::VirtualFileSystem& vfs, std::string_view mapName) {
+    const World world = loadWorld(vfs, mapName);
+    if (!world.turns()) {
+        return {};
+    }
+    std::vector<int> teams = world.turns()->teams();
+    const auto first = std::find(teams.begin(), teams.end(), world.turns()->activeTeam());
+    std::rotate(teams.begin(), first, teams.end());
+    return teams;
+}
+
 } // namespace openhogs::game

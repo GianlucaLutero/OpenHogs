@@ -94,9 +94,19 @@ void Application::leaveMatch() {
 bool Application::handleFrontEndResult(const ui::FrontEndResult& result) {
     playMenuSound(*sounds_, result.sound);
     switch (result.request) {
+    case ui::FrontEndResult::Request::LevelChosen: {
+        std::vector<int> teams;
+        try {
+            teams = game::mapTeams(vfs_, result.map);
+        } catch (const std::exception& error) {
+            std::cerr << "Error: cannot read " << result.map << ": " << error.what() << "\n";
+        }
+        return handleFrontEndResult(frontEnd_->setLevelTeams(teams));
+    }
     case ui::FrontEndResult::Request::StartMatch: {
         GameOptions options;
         options.mapName = result.map;
+        options.computerTeams = result.computerTeams;
         try {
             startMatch(options);
         } catch (const std::exception& error) {

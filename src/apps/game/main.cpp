@@ -17,6 +17,8 @@
 //   --auto-walk          with --screenshot: the active hog runs forward meanwhile
 //   --weapon <n>         with --screenshot: the active hog selects its n-th weapon (1 = first)
 //   --fire-at <s>        with --screenshot: the active hog fires at s seconds
+//   --computer <who>     with --map: "others" = the computer plays every team
+//                        but the first, "all" = it plays every team
 //   --pause              with --screenshot: show the pause menu
 //   --menu-keys <keys>   with --screenshot and no --map: press these menu keys
 //                        first, e.g. "down,enter" (up, down, left, right,
@@ -62,6 +64,7 @@ struct Options {
     std::optional<std::size_t> weaponSlot;  // 1-based, as typed
     std::optional<double> fireAt;
     bool pause = false;
+    std::string computer;  // "", "others" or "all"
     std::vector<ui::MenuInput> menuKeys;
     int width = 1280;
     int height = 720;
@@ -80,6 +83,7 @@ void printUsage() {
                  "  --auto-walk          with --screenshot: the active hog runs forward meanwhile\n"
                  "  --weapon <n>         with --screenshot: the active hog selects its n-th weapon\n"
                  "  --fire-at <s>        with --screenshot: the active hog fires at s seconds\n"
+                 "  --computer <who>     with --map: others (computer plays all teams but the first) or all\n"
                  "  --pause              with --screenshot: show the pause menu\n"
                  "  --menu-keys <keys>   with --screenshot and no --map: press these menu keys first,\n"
                  "                       e.g. down,enter (up, down, left, right, enter, back)\n"
@@ -165,6 +169,9 @@ std::optional<Options> parseArguments(const std::vector<std::string>& args) {
                 options.seconds = std::stod(value);
             } else if (arg == "--screenshot") {
                 options.screenshotPath = value;
+            } else if (arg == "--computer") {
+                if (value != "others" && value != "all") return std::nullopt;
+                options.computer = value;
             } else if (arg == "--menu-keys") {
                 const auto keys = parseMenuKeys(value);
                 if (!keys) return std::nullopt;
@@ -212,6 +219,13 @@ int runGame(const Options& options) {
         gameOptions.mapName = *options.mapName;
         if (options.hog) {
             gameOptions.startHog = *options.hog - 1;
+        }
+        if (!options.computer.empty()) {
+            auto teams = game::mapTeams(vfs, *options.mapName);
+            if (options.computer == "others" && !teams.empty()) {
+                teams.erase(teams.begin());
+            }
+            gameOptions.computerTeams = teams;
         }
         if (screenshotOnly) {
             gameOptions.autoWalk = options.autoWalk;

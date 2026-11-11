@@ -16,6 +16,11 @@ enum MainItem { kOnePlayer, kMultiPlayer, kOptions, kQuit };
 enum OptionsItem { kMaster, kEffects, kVoices, kMusic, kOptionsBack };
 enum ConfirmItem { kYes, kNo };
 constexpr int kLevelBack = -1;  // map items use their index as id
+// Players page: team items use their index in the team list as id.
+constexpr int kStartGame = -1;
+constexpr int kPlayersBack = -2;
+constexpr int kHumanChoice = 0;
+constexpr int kComputerChoice = 1;
 
 MenuItem action(int id, std::string label, bool enabled = true) {
     MenuItem item;
@@ -51,8 +56,7 @@ MenuSound soundFor(const MenuResponse& response) {
 
 FrontEnd::FrontEnd(UiStrings strings, std::vector<std::string> maps, VolumeLevels volumes)
     : strings_(std::move(strings)), maps_(std::move(maps)), volumes_(volumes) {
-    // The campaign comes in a later block: ONE PLAYER is there, greyed out.
-    main_ = Menu(strings_.mainMenu, {action(kOnePlayer, strings_.onePlayer, false),
+    main_ = Menu(strings_.mainMenu, {action(kOnePlayer, strings_.onePlayer),
                                      action(kMultiPlayer, strings_.multiPlayer), action(kOptions, strings_.options),
                                      action(kQuit, strings_.quit)});
 
@@ -76,6 +80,7 @@ const Menu& FrontEnd::menu() const {
     switch (screen_) {
     case FrontEndScreen::Main: return main_;
     case FrontEndScreen::SelectLevel: return selectLevel_;
+    case FrontEndScreen::Players: return players_;
     case FrontEndScreen::Options: return options_;
     case FrontEndScreen::ConfirmQuit: return confirmQuit_;
     }
@@ -97,6 +102,7 @@ FrontEndResult FrontEnd::handle(MenuInput input) {
     switch (screen_) {
     case FrontEndScreen::Main: return handleMain(main_.handle(input));
     case FrontEndScreen::SelectLevel: return handleSelectLevel(selectLevel_.handle(input));
+    case FrontEndScreen::Players: return handlePlayers(players_.handle(input));
     case FrontEndScreen::Options: return handleOptions(options_.handle(input));
     case FrontEndScreen::ConfirmQuit: return handleConfirmQuit(confirmQuit_.handle(input));
     }
@@ -110,7 +116,13 @@ FrontEndResult FrontEnd::handleMain(const MenuResponse& response) {
         open(FrontEndScreen::ConfirmQuit);
     } else if (response.type == Type::Activated) {
         switch (response.itemId) {
-        case kMultiPlayer: open(FrontEndScreen::SelectLevel); break;
+        case kOnePlayer:
+        case kMultiPlayer:
+            // The same level list, titled after the mode.
+            onePlayer_ = response.itemId == kOnePlayer;
+            selectLevel_.setTitle(onePlayer_ ? strings_.onePlayer : strings_.selectLevel);
+            open(FrontEndScreen::SelectLevel);
+            break;
         case kOptions: open(FrontEndScreen::Options); break;
         case kQuit: open(FrontEndScreen::ConfirmQuit); break;
         default: break;
@@ -126,8 +138,60 @@ FrontEndResult FrontEnd::handleSelectLevel(const MenuResponse& response) {
         open(FrontEndScreen::Main);
         result.sound = MenuSound::Back;
     } else if (response.type == Type::Activated) {
+        chosenMap_ = maps_.at(static_cast<std::size_t>(response.itemId));
+        result.request = Request::LevelChosen;
+        result.map = chosenMap_;
+    }
+    return result;
+}
+
+FrontEndResult FrontEnd::setLevelTeams(const std::vector<int>& teams) {
+    FrontEndResult result;
+    levelTeams_ = teams;
+    if (teams.empty()) {
+        open(FrontEndScreen::SelectLevel);  // nothing to play on this map
+        return result;
+    }
+    if (onePlayer_) {
+        // The first team is the player's, the others the computer's.
         result.request = Request::StartMatch;
-        result.map = maps_.at(static_cast<std::size_t>(response.itemId));
+        result.map = chosenMap_;
+        result.computerTeams.assign(teams.begin() + 1, teams.end());
+        return result;
+    }
+    // Every team starts as a human player; left/right hands it to the CPU.
+    std::vector<MenuItem> items;
+    for (std::size_t i = 0; i < teams.size(); ++i) {
+        MenuItem item;
+        item.id = static_cast<int>(i);
+        item.label = strings_.teamName(teams[i]);
+        item.kind = MenuItem::Kind::Choice;
+        item.choices = {strings_.player, strings_.cpu};
+        item.value = kHumanChoice;
+        items.push_back(item);
+    }
+    items.push_back(action(kStartGame, strings_.startGame));
+    items.push_back(action(kPlayersBack, strings_.back));
+    players_ = Menu(strings_.multiPlayer, std::move(items));
+    players_.select(kStartGame);
+    open(FrontEndScreen::Players);
+    return result;
+}
+
+FrontEndResult FrontEnd::handlePlayers(const MenuResponse& response) {
+    FrontEndResult result;
+    result.sound = soundFor(response);
+    if (response.type == Type::Back || (response.type == Type::Activated && response.itemId == kPlayersBack)) {
+        open(FrontEndScreen::SelectLevel);
+        result.sound = MenuSound::Back;
+    } else if (response.type == Type::Activated && response.itemId == kStartGame) {
+        result.request = Request::StartMatch;
+        result.map = chosenMap_;
+        for (std::size_t i = 0; i < levelTeams_.size(); ++i) {
+            if (players_.item(static_cast<int>(i)).value == kComputerChoice) {
+                result.computerTeams.push_back(levelTeams_[i]);
+            }
+        }
     }
     return result;
 }

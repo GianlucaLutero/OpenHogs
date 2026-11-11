@@ -26,6 +26,7 @@ constexpr float kMenuMinWidth = 300.0f;
 constexpr float kSliderWidth = 150.0f;
 constexpr float kSliderHeight = 12.0f;
 constexpr float kBannerScale = 1.25f;
+constexpr float kChoiceGap = 40.0f;  // between a choice's label and its word
 
 // The weapon icons are stored in MENUTIMS.MAD in the order of the weapon
 // entries of the game text table, right after "menu.bmp": entry 1 is the
@@ -133,6 +134,11 @@ void Interface::drawMenu(const ui::Menu& menu, std::size_t rows) {
     for (const auto& item : items) {
         float itemWidth = render::UiRenderer::textWidth(*bigFont_, item.label, kMenuItemScale);
         if (item.kind == ui::MenuItem::Kind::Slider) itemWidth += kSliderWidth + kMenuPadding;
+        for (const auto& choice : item.choices) {
+            itemWidth = std::max(itemWidth, render::UiRenderer::textWidth(*bigFont_, item.label, kMenuItemScale) +
+                                                kChoiceGap +
+                                                render::UiRenderer::textWidth(*bigFont_, choice, kMenuItemScale));
+        }
         width = std::max(width, itemWidth);
     }
     width = std::max(kMenuMinWidth, width + 2.0f * kMenuPadding);
@@ -169,6 +175,12 @@ void Interface::drawMenu(const ui::Menu& menu, std::size_t rows) {
                 item.maxValue > 0 ? static_cast<float>(item.value) / static_cast<float>(item.maxValue) : 0.0f;
             drawBar(sliderX, y + (kMenuRowHeight - kSliderHeight) / 2.0f - 2.0f, kSliderWidth, kSliderHeight,
                     fraction, style.colour);
+        } else if (item.kind == ui::MenuItem::Kind::Choice) {
+            renderer_.drawText(*bigFont_, item.label, left + kMenuPadding, textY, style);
+            render::TextStyle choiceStyle = style;
+            choiceStyle.align = render::TextAlign::Right;
+            if (item.enabled && !selected) choiceStyle.colour = colours::kTitle;
+            renderer_.drawText(*bigFont_, item.choiceText(), left + width - kMenuPadding, textY, choiceStyle);
         } else {
             style.align = render::TextAlign::Centre;
             renderer_.drawText(*bigFont_, item.label, left + width / 2.0f, textY, style);

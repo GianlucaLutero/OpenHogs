@@ -38,6 +38,9 @@ struct UiStrings {
     std::string yes = "YES";
     std::string no = "NO";
     std::string loading = "LOADING, PLEASE WAIT.";
+    std::string player = "PLAYER";  // a team played by a human
+    std::string cpu = "CPU";        // a team played by the computer
+    std::string startGame = "START GAME";
 
     // In game (gtext).
     std::string paused = "-GAME PAUSED-";
@@ -47,6 +50,7 @@ struct UiStrings {
     std::string victory = "VICTORY TO >S!!";
     std::string draw = "IT'S A DRAW!!";
     std::string getReady = "GET READY >S...";
+    std::string enemyTurn = "THE ENEMY RETALIATES...";  // a computer team's turn
 
     // Team names, in the order of scene::characterTeams() (british,
     // american, french, german, japanese, russian, teamlard).

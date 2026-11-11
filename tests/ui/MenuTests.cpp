@@ -90,16 +90,65 @@ TEST_CASE("Long menus scroll so the selected item stays visible", "[ui][menu]") 
     CHECK(menu.firstVisible(9) == 11);                         // the list ends at the bottom
 }
 
-TEST_CASE("Picking a level from the main menu starts that level", "[ui][frontend]") {
-    // MULTI-PLAYER -> SELECT LEVEL -> a map is the way into a match.
+TEST_CASE("ONE PLAYER: picking a level starts a match against the computer", "[ui][frontend]") {
+    // Until the campaign exists, ONE PLAYER is a skirmish: the player has
+    // the team that plays first, the computer all the others.
     auto frontEnd = makeFrontEnd();
     CHECK(frontEnd.screen() == FrontEndScreen::Main);
-    press(frontEnd, {MenuInput::Confirm});  // MULTI-PLAYER (ONE PLAYER is disabled)
+    press(frontEnd, {MenuInput::Confirm});  // ONE PLAYER
     CHECK(frontEnd.screen() == FrontEndScreen::SelectLevel);
 
-    const auto result = press(frontEnd, {MenuInput::Down, MenuInput::Confirm});
-    CHECK(result.request == FrontEndResult::Request::StartMatch);
-    CHECK(result.map == "BRIDGE");
+    const auto chosen = press(frontEnd, {MenuInput::Down, MenuInput::Confirm});
+    CHECK(chosen.request == FrontEndResult::Request::LevelChosen);
+    CHECK(chosen.map == "BRIDGE");
+
+    const auto start = frontEnd.setLevelTeams({2, 0, 5});
+    CHECK(start.request == FrontEndResult::Request::StartMatch);
+    CHECK(start.map == "BRIDGE");
+    CHECK(start.computerTeams == std::vector<int>{0, 5});
+}
+
+TEST_CASE("MULTI-PLAYER: each team can be given to a person or the computer", "[ui][frontend]") {
+    // The PLAYERS page lists the map's teams; left/right switches a team
+    // between PLAYER and CPU, and START GAME passes the choice on.
+    auto frontEnd = makeFrontEnd();
+    press(frontEnd, {MenuInput::Down, MenuInput::Confirm, MenuInput::Confirm});  // MULTI-PLAYER, BOOM
+    REQUIRE(frontEnd.setLevelTeams({0, 1}).request == FrontEndResult::Request::None);
+    REQUIRE(frontEnd.screen() == FrontEndScreen::Players);
+    CHECK(frontEnd.menu().selectedItem().label == "START GAME");  // ready to go: everybody human
+
+    press(frontEnd, {MenuInput::Up, MenuInput::Right});  // the second team -> CPU
+    CHECK(frontEnd.menu().selectedItem().choiceText() == "CPU");
+    const auto start = press(frontEnd, {MenuInput::Down, MenuInput::Confirm});
+    CHECK(start.request == FrontEndResult::Request::StartMatch);
+    CHECK(start.map == "BOOM");
+    CHECK(start.computerTeams == std::vector<int>{1});
+
+    // Back from PLAYERS returns to the level list.
+    frontEnd.setLevelTeams({0, 1});
+    press(frontEnd, {MenuInput::Back});
+    CHECK(frontEnd.screen() == FrontEndScreen::SelectLevel);
+}
+
+TEST_CASE("A level without teams cannot be started", "[ui][frontend]") {
+    // Some maps are scenery only; picking one must not start an empty match.
+    auto frontEnd = makeFrontEnd();
+    press(frontEnd, {MenuInput::Confirm, MenuInput::Confirm});
+    CHECK(frontEnd.setLevelTeams({}).request == FrontEndResult::Request::None);
+    CHECK(frontEnd.screen() == FrontEndScreen::SelectLevel);
+}
+
+TEST_CASE("Choices go round with left and right", "[ui][menu]") {
+    // With two words (PLAYER / CPU) either key must swap them.
+    MenuItem choice = action(1);
+    choice.kind = MenuItem::Kind::Choice;
+    choice.choices = {"PLAYER", "CPU"};
+    Menu menu("PLAYERS", {choice});
+    CHECK(menu.handle(MenuInput::Left).type == MenuResponse::Type::Changed);
+    CHECK(menu.item(1).choiceText() == "CPU");
+    menu.handle(MenuInput::Left);
+    CHECK(menu.item(1).choiceText() == "PLAYER");
+    CHECK(menu.handle(MenuInput::Confirm).type == MenuResponse::Type::None);  // not an action
 }
 
 TEST_CASE("Back always leads back to the main menu", "[ui][frontend]") {
@@ -108,7 +157,7 @@ TEST_CASE("Back always leads back to the main menu", "[ui][frontend]") {
     press(frontEnd, {MenuInput::Confirm, MenuInput::Back});
     CHECK(frontEnd.screen() == FrontEndScreen::Main);
 
-    press(frontEnd, {MenuInput::Down, MenuInput::Confirm});  // OPTIONS
+    press(frontEnd, {MenuInput::Down, MenuInput::Down, MenuInput::Confirm});  // OPTIONS
     CHECK(frontEnd.screen() == FrontEndScreen::Options);
     // BACK is the last entry, after the four sliders.
     const auto result = press(frontEnd, {MenuInput::Up, MenuInput::Confirm});
@@ -133,7 +182,7 @@ TEST_CASE("Volume sliders report every change", "[ui][frontend]") {
     // The application applies the new volumes at once, so the player hears
     // the difference while moving the slider.
     auto frontEnd = makeFrontEnd();
-    press(frontEnd, {MenuInput::Down, MenuInput::Confirm});  // OPTIONS, on MASTER
+    press(frontEnd, {MenuInput::Down, MenuInput::Down, MenuInput::Confirm});  // OPTIONS, on MASTER
     const auto result = press(frontEnd, {MenuInput::Left, MenuInput::Left});
     CHECK(result.request == FrontEndResult::Request::VolumesChanged);
     CHECK(frontEnd.volumes().master == kMaxVolumeLevel - 2);

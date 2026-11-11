@@ -15,10 +15,12 @@
 #   Projectiles        - grenades, shells, TNT and mines in flight or lying
 #   World              - the map, the hogs and the turns of the match
 #   ChaseCamera        - the camera that follows the active hog
+#   ComputerPlayer     - the computer opponent: plans and plays a turn
 
 add_library(openhogs_game STATIC
     src/AnimationPlayer.cpp
     src/ChaseCamera.cpp
+    src/ComputerPlayer.cpp
     src/Combat.cpp
     src/FixedTimestep.cpp
     src/Hog.cpp
