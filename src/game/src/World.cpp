@@ -5,6 +5,7 @@
 #include "openhogs/core/PathUtils.h"
 #include "openhogs/formats/MapObjects.h"
 #include "openhogs/formats/MapTerrain.h"
+#include "openhogs/formats/PackageArchive.h"
 
 #include <stdexcept>
 #include <string>
@@ -12,35 +13,51 @@
 
 namespace openhogs::game {
 
-World::World(TerrainHeightField terrain, std::vector<Hog> hogs) : terrain_(std::move(terrain)), hogs_(std::move(hogs)) {
+World::World(MapCollision map, std::vector<Hog> hogs, TurnRules rules) : map_(std::move(map)), hogs_(std::move(hogs)) {
+    if (!hogs_.empty()) {
+        turns_.emplace(hogs_, rules);
+    }
+}
+
+std::optional<std::size_t> World::activeHog() const {
+    if (!turns_) {
+        return std::nullopt;
+    }
+    return turns_->activeHog();
+}
+
+MovementEvents World::update(double seconds, const MovementInput& input,
+                             const std::vector<formats::Animation>& animations) {
+    timeSeconds_ += seconds;
+    MovementEvents events;
+    const auto active = activeHog();
+
     for (std::size_t i = 0; i < hogs_.size(); ++i) {
-        if (hogs_[i].playerControlled) {
-            selectedHog_ = i;
-            break;
+        if (active && i == *active) {
+            events = moveHog(hogs_, i, input, turns_->canMove(), seconds, map_, animations);
+        } else {
+            // Waiting hogs keep moving only if they are still in the air
+            // (e.g. the previous team's hog was mid-jump when its turn ended).
+            moveHog(hogs_, i, MovementInput{}, false, seconds, map_, animations);
         }
     }
-    if (!selectedHog_ && !hogs_.empty()) {
-        selectedHog_ = 0;
+    if (turns_) {
+        turns_->update(seconds, events.distanceMoved, hogs_);
+    }
+    return events;
+}
+
+bool World::switchHog(int step) {
+    return turns_ && turns_->switchHog(step, hogs_);
+}
+
+void World::endTurn() {
+    if (turns_) {
+        turns_->endTurn(hogs_);
     }
 }
 
-void World::update(double seconds, const std::vector<formats::Animation>& animations) {
-    timeSeconds_ += seconds;
-    for (auto& hog : hogs_) {
-        hog.animator.update(seconds, animations);
-    }
-}
-
-void World::selectNextHog(int step) {
-    if (!selectedHog_) {
-        return;
-    }
-    const auto count = static_cast<long long>(hogs_.size());
-    const long long next = (static_cast<long long>(*selectedHog_) + step) % count;
-    selectedHog_ = static_cast<std::size_t>(next < 0 ? next + count : next);
-}
-
-World loadWorld(const core::VirtualFileSystem& vfs, std::string_view mapName) {
+World loadWorld(const core::VirtualFileSystem& vfs, std::string_view mapName, TurnRules rules) {
     const std::string base = "maps/" + core::toLower(mapName);
     if (!vfs.exists(base + ".pmg")) {
         throw std::runtime_error("Map '" + std::string(mapName) + "' not found (no " + base + ".pmg)");
@@ -48,10 +65,21 @@ World loadWorld(const core::VirtualFileSystem& vfs, std::string_view mapName) {
     TerrainHeightField terrain(formats::MapTerrain::parse(vfs.readFile(base + ".pmg")));
 
     std::vector<Hog> hogs;
+    std::vector<CollisionBox> boxes;
     if (vfs.exists(base + ".pog")) {
-        hogs = spawnHogs(formats::parseMapObjects(vfs.readFile(base + ".pog")), terrain);
+        const auto objects = formats::parseMapObjects(vfs.readFile(base + ".pog"));
+        hogs = spawnHogs(objects, terrain);
+
+        // Only objects with a model in the map's archive get a collision box.
+        std::optional<formats::PackageArchive> models;
+        if (vfs.exists(base + ".mad")) {
+            models = formats::PackageArchive::parse(vfs.readFile(base + ".mad"));
+        }
+        boxes = collisionBoxes(objects, [&](const std::string& name) {
+            return models && models->find(name + ".vtx") != nullptr;
+        });
     }
-    return World(std::move(terrain), std::move(hogs));
+    return World(MapCollision(std::move(terrain), std::move(boxes)), std::move(hogs), rules);
 }
 
 } // namespace openhogs::game

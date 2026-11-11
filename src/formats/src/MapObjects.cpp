@@ -32,7 +32,12 @@ MapObject readObject(core::BinaryReader& reader) {
     object.angleZ = reader.readI16();
     object.typeId = reader.readI16();
 
-    reader.skip(8);  // bounding box width, height, length and type
+    // Collision box, stored Z first (offset 48), then Y, then X; then a
+    // 16-bit field of unknown meaning (1 for some bridge parts).
+    object.boxSizeZ = reader.readI16();
+    object.boxSizeY = reader.readI16();
+    object.boxSizeX = reader.readI16();
+    reader.skip(2);
     reader.skip(3);  // unknown 16-bit + 8-bit fields
     object.team = reader.readU8();            // offset 59
     object.scriptType = reader.readI16();     // offset 60

@@ -21,6 +21,9 @@ namespace openhogs::formats {
 // Angles are stored as 1/4096 of a full turn (PlayStation convention).
 inline constexpr int kAngleUnitsPerTurn = 4096;
 
+// Collision box sizes are stored in steps of 64 world units.
+inline constexpr int kBoxSizeUnit = 64;
+
 struct MapObject {
     std::string modelName;  // e.g. "CRATE1": model files are CRATE1.VTX/.FAC/.NO2
 
@@ -36,6 +39,13 @@ struct MapObject {
 
     std::int16_t id = 0;
     std::int16_t typeId = 0;
+    // Collision box: full size along the model's own X, Y and Z axes, in
+    // kBoxSizeUnit steps, centred on the position. For trees it covers
+    // only the trunk. Verified on the game data: e.g. a 1024 x 64 x 512
+    // bridge deck has sizes 16, 1, 8 (see docs/formats/maps.md).
+    std::int16_t boxSizeX = 0;
+    std::int16_t boxSizeY = 0;
+    std::int16_t boxSizeZ = 0;
     std::uint8_t team = 0;         // bit mask of teams (hogs only)
     std::int16_t scriptType = 0;   // mission script role, 0 = none
     std::uint16_t flags = 0;

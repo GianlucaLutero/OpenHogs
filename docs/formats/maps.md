@@ -81,7 +81,8 @@ Record (94 bytes), main fields:
 | 38 | `int16` | id |
 | 40 | `int16` x 3 | rotation around X, Y, Z in 1/4096 of a turn |
 | 46 | `int16` | type id |
-| 48 | `int16` x 4 | bounding box size and type |
+| 48 | `int16` x 3 | collision box size along the model's Z, Y, X axes, in steps of 64 units (*verified*, see below) |
+| 54 | `int16` | unknown (1 for some bridge parts) |
 | 56 | `int16`, `uint8` | unknown |
 | 59 | `uint8` | team bit mask (01, 02, 04... one bit per team) |
 | 60 | `int16` | script type (mission objective role, e.g. 20 = tutorial target) |
@@ -96,6 +97,15 @@ ambiguous about the size of the field at offset 56; the game data settles
 it: in `ICE.POG` the 20 hogs have team masks 01, 02, 04 and 08 (five each)
 at offset 59, `CAMP.POG` has tutorial script types 20 and 23 at offset 60,
 and the hogs' flags at offset 88 are 01 ("player").
+
+**Collision boxes (verified).** Comparing the three sizes at offset 48
+with the models gives a box in steps of 64 world units, stored Z first:
+a crate of 190 × 191 × 253 units has (4, 3, 3), a wall 64 × 512 × 2176 has
+(32, 8, 1), a bridge deck 1024 × 64 × 511 has (8, 1, 16). The box is centred
+on the object's position and turns with its Y angle. For trees it covers
+only the trunk (192 units wide), so hogs can walk under the canopy. OpenHogs
+uses these boxes for collisions: hogs walk on top of low boxes (bridges,
+floors) and are stopped by tall ones (walls, trunks, crates).
 
 Objects whose model is not in the map's MAD are logical objects; the map
 viewer shows them as yellow markers.

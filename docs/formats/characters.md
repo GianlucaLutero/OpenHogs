@@ -186,6 +186,20 @@ based on the animation names, and lets content packs replace them
 On top of that the hogs blink: eyes closed for 0.15 s about every 5.5 s, at
 irregular moments that differ from hog to hog.
 
+## Movement animations
+
+All animations stay on the spot: the run cycle moves the legs but not the
+hips, so the game itself moves the hog. To keep the feet from sliding, the
+running speed comes from the stride: in the run cycle (animation 0, 17
+frames) each foot travels 326 model units (163 world units) per step, two
+steps per cycle, which at 25 frames per second is **480 world units per
+second**. The backward walk (animation 3, 20 frames) gives 180 units per
+second the same way.
+
+OpenHogs uses: 0 running, 3 walking back, 4 turning on the spot, 5
+swimming (its root is 140 units lower, so the body sinks into the water),
+8, 9 and 10 for the start, middle and end of a jump, 38 for falling.
+
 ## Placing a hog
 
 Model space is converted to world space like map objects: scale by 0.5 and

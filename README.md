@@ -23,8 +23,9 @@ The goal is to play the original game natively on modern systems
 ## Project status
 
 OpenHogs is in early development. The game starts, loads a map and puts
-the hogs on it, but they cannot be moved yet: for now you can look around
-a match that is waiting to begin. Besides that, the original data can be
+the hogs on it; teams take turns, and the active hog runs, turns, jumps,
+swims and falls, with footsteps that sound like the ground it walks on.
+Weapons come next. Besides that, the original data can be
 extracted, every map explored in 3D, an Italian (or French, German,
 Spanish) language pack built from your PlayStation disc, every sound,
 voice and music track played, and the hogs watched in all their
@@ -41,6 +42,7 @@ animations.
 | `characters`         | ✅ done | Hog skeleton, 93 animations, models of every class and team; `openhogs-characterviewer` |
 | `character-expressions` | ✅ done | Faces that follow what the hog is doing, blinking |
 | `game-framework`     | ✅ done | The `openhogs` game: fixed-rate game loop, hogs placed on the map, chase camera, ambient sound |
+| `hog-movement`       | ✅ done | Turns (time limit, movement allowance), running, jumping, falling, swimming, collisions with the scenery, footsteps |
 | gameplay blocks      | planned | Movement, weapons, turns, AI, campaign |
 
 ## Requirements
@@ -130,9 +132,13 @@ Directory = C:\Program Files (x86)\Steam\steamapps\common\HogsofWar
 ### Starting the game
 
 `openhogs` is the game itself. At this stage it loads a map, places the
-hogs where the map says, each in its team's uniform, and lets you look
-around while they wait (and fidget). Movement, weapons and turns come with
-the next blocks.
+hogs where the map says, each in its team's uniform, and the teams take
+turns moving one hog each. Weapons come with the next block, so for now a
+turn ends when its time runs out or when you press Enter.
+
+Every team is played from the same keyboard (hot seat) until the computer
+opponents exist. The state of the turn (team, hog, seconds and movement
+left) is shown in the window title until the in-game display exists.
 
 ```sh
 # Windows
@@ -147,12 +153,17 @@ build\bin\Release\openhogs.exe --map ESTU
 | `--map <name>` | map to load (default: the first one); `--list-maps` prints them |
 | `--hog <n>` | hog to start on (1 = the first hog of the map) |
 | `--no-sound` | play without sound |
-| `--screenshot <file>` | save the match as an image and exit; `--seconds <s>` lets it run for a while first |
+| `--screenshot <file>` | save the match as an image and exit; `--seconds <s>` lets it run for a while first, `--auto-walk` makes the active hog run meanwhile |
 | `--game <folder>` / `--config <file>` / `--size <W>x<H>` | as for the other programs |
 
 | Key | Action |
 |-----|--------|
-| `Tab` / `Shift+Tab` | next / previous hog (the camera glides to it) |
+| `W` / `↑` | run forward |
+| `S` / `↓` | walk backwards |
+| `A` / `←`, `D` / `→` | turn left / right |
+| `Space` | jump (hold `W` to jump forward) |
+| `Tab` / `Shift+Tab` | another hog of the same team (only before moving) |
+| `Enter` | end the turn |
 | left mouse button + drag | turn the camera around the hog |
 | mouse wheel | zoom |
 | `P` | pause |
@@ -161,6 +172,9 @@ build\bin\Release\openhogs.exe --map ESTU
 
 Teams wear the nations' uniforms in a fixed order for now (team 1 British,
 team 2 American, team 3 French...); choosing them comes with the menus.
+A turn lasts 60 seconds and allows about 7 seconds of running. These values,
+and the other choices still to be compared with the original game, are
+listed in [`docs/open-decisions.md`](docs/open-decisions.md).
 
 ### Extracting the game data
 

@@ -79,6 +79,8 @@ TEST_CASE("MapTerrain rejects files of the wrong size", "[formats][MapTerrain]")
 // end with extra bytes, which must not be read as an object. Team, script
 // type and flags are checked at the offsets confirmed on ICE.POG and
 // CAMP.POG (59, 60 and 88): they decide which hogs belong to which player.
+// The collision box is stored Z, Y, X: swapping two sizes would turn a
+// long wall sideways and let hogs walk through it.
 TEST_CASE("parseMapObjects reads fixed-size records", "[formats][MapObjects]") {
     ByteBuilder pog;
     pog.u16(2);
@@ -87,7 +89,7 @@ TEST_CASE("parseMapObjects reads fixed-size records", "[formats][MapObjects]") {
         pog.fixedString(name, 16).fixedString("NULL", 16);
         pog.u16(static_cast<std::uint16_t>(-100)).u16(928).u16(300);  // position
         pog.u16(1).u16(0).u16(1024).u16(0).u16(0);                     // id, angles, type
-        pog.u16(0).u16(0).u16(0).u16(0);                               // bounding box
+        pog.u16(32).u16(8).u16(1).u16(0);                              // box Z, Y, X
         pog.u16(0).u8(0x3F);                                           // unknown (offset 56)
         pog.u8(0x04).u16(20);                                          // team, script type
         while (pog.size() < start + 88) {
@@ -110,6 +112,9 @@ TEST_CASE("parseMapObjects reads fixed-size records", "[formats][MapObjects]") {
     CHECK(objects[0].team == 0x04);
     CHECK(objects[0].scriptType == 20);
     CHECK(objects[0].flags == 1);
+    CHECK(objects[0].boxSizeZ == 32);
+    CHECK(objects[0].boxSizeY == 8);
+    CHECK(objects[0].boxSizeX == 1);
     CHECK(objects[1].modelName == "TREEP");
 }
 

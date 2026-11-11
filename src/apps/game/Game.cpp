@@ -30,6 +30,28 @@ constexpr std::uint32_t kAudioOutputRate = 48000;
 // (Audio/AMB_1D.wav), played in a loop.
 const char* const kAmbientBank = "Audio/sfxday.srl";
 constexpr std::size_t kAmbientSound = 0;
+constexpr float kAmbientVolume = 0.6f;  // under the footsteps
+
+// Sounds of the same bank for landing and splashing, found by file name.
+constexpr std::string_view kLandingSoundName = "P_LAND1";
+constexpr std::string_view kSplashSoundName = "I_SPLASH";
+
+// How long the camera swings round behind a newly active hog.
+constexpr double kCameraSwingSeconds = 1.5;
+
+// File name without folder and extension: "AUDIO\\FT_GRASS.wav" -> "ft_grass".
+std::string soundStem(const std::string& path) {
+    const auto slash = path.find_last_of("\\/");
+    std::string stem = path.substr(slash == std::string::npos ? 0 : slash + 1);
+    const auto dot = stem.rfind('.');
+    if (dot != std::string::npos) {
+        stem.resize(dot);
+    }
+    for (char& c : stem) {
+        if (c >= 'A' && c <= 'Z') c = static_cast<char>(c - 'A' + 'a');
+    }
+    return stem;
+}
 
 } // namespace
 
@@ -44,19 +66,25 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options)
     mapRenderer_ = std::make_unique<render::MapRenderer>(scene);
     hogRenderer_ = std::make_unique<render::CharacterRenderer>();
 
+    autoWalk_ = options.autoWalk;
     if (options.startHog) {
         if (*options.startHog >= world_.hogs().size()) {
             throw std::runtime_error("Map " + mapName_ + " has only " + std::to_string(world_.hogs().size()) +
                                      " hogs");
         }
-        while (world_.selectedHog() != options.startHog) {
-            world_.selectNextHog(1);
+        // Only hogs of the team that starts can be picked.
+        for (std::size_t tries = 0; tries < world_.hogs().size() && world_.activeHog() != options.startHog; ++tries) {
+            world_.switchHog(1);
+        }
+        if (world_.activeHog() != options.startHog) {
+            std::cerr << "Warning: hog " << *options.startHog + 1 << " is not in the team that plays first\n";
         }
     }
 
-    // Start behind the selected hog, looking the way it faces.
-    if (const auto selected = world_.selectedHog()) {
-        camera_.lookAlong(game::hogFacing(world_.hogs()[*selected]));
+    // Start behind the active hog, looking the way it faces.
+    if (const auto active = world_.activeHog()) {
+        camera_.lookAlong(game::hogFacing(world_.hogs()[*active]));
+        cameraHog_ = active;
     }
     camera_.snapTo(cameraTarget());
 
@@ -78,9 +106,29 @@ void Game::startSound(const core::VirtualFileSystem& vfs, const audio::Volumes& 
         audio::SoundLibrary sounds(vfs);
         const auto ambience = sounds.loadFromBank(sounds.loadBank(kAmbientBank), kAmbientSound);
 
+        // Footsteps, landing and splash sounds, found by file name in the
+        // same bank. A missing one is simply not played.
+        const auto bank = sounds.loadBank(kAmbientBank);
+        const auto findSound = [&](std::string_view name) -> std::shared_ptr<const formats::PcmSound> {
+            const std::string wanted = soundStem(std::string(name));
+            for (std::size_t i = 0; i < bank.files.size(); ++i) {
+                if (soundStem(bank.files[i]) == wanted) {
+                    return sounds.loadFromBank(bank, i);
+                }
+            }
+            std::cerr << "Warning: sound " << name << " not found in " << kAmbientBank << "\n";
+            return nullptr;
+        };
+        for (int surface = 0; surface <= static_cast<int>(formats::SurfaceType::Lava); ++surface) {
+            const auto type = static_cast<formats::SurfaceType>(surface);
+            footstepSounds_[type] = findSound(game::footstepSoundName(type));
+        }
+        landingSound_ = findSound(kLandingSoundName);
+        splashSound_ = findSound(kSplashSoundName);
+
         mixer_ = std::make_unique<audio::Mixer>(kAudioOutputRate);
         mixer_->setVolumes(volumes);
-        mixer_->play(ambience, audio::SoundCategory::Effects, 1.0f, true);
+        mixer_->play(ambience, audio::SoundCategory::Effects, kAmbientVolume, true);
         audioDevice_ = std::make_unique<audio::AudioDevice>(*mixer_);
     } catch (const std::exception& error) {
         // No sound card, or a missing sound file: play without sound.
@@ -91,8 +139,8 @@ void Game::startSound(const core::VirtualFileSystem& vfs, const audio::Volumes& 
 }
 
 glm::vec3 Game::cameraTarget() const {
-    if (const auto selected = world_.selectedHog()) {
-        return world_.hogs()[*selected].position + glm::vec3(0.0f, kCameraTargetHeight, 0.0f);
+    if (const auto active = world_.activeHog()) {
+        return world_.hogs()[*active].position + glm::vec3(0.0f, kCameraTargetHeight, 0.0f);
     }
     // A map without hogs: look at its centre.
     const auto& terrain = world_.terrain();
@@ -125,17 +173,26 @@ const Game::TeamLook& Game::lookFor(int team) {
 
 void Game::updateTitle() {
     std::string title = "OpenHogs - " + mapName_;
-    if (const auto selected = world_.selectedHog()) {
-        const auto& hog = world_.hogs()[*selected];
-        char text[160];
-        std::snprintf(text, sizeof(text), " - hog %zu/%zu: %s, team %d (%s)%s", *selected + 1, world_.hogs().size(),
-                      std::string(hog.characterClass->name).c_str(), hog.team + 1,
-                      std::string(game::teamNation(hog.team)).c_str(), paused_ ? " - paused" : "");
+    const auto& turns = world_.turns();
+    if (turns) {
+        const auto& hog = world_.hogs()[turns->activeHog()];
+        const auto allowance = turns->rules().movementAllowance;
+        const int movementPercent =
+            allowance > 0.0f ? static_cast<int>(std::lround(100.0f * turns->movementLeft() / allowance)) : 0;
+        char text[200];
+        std::snprintf(text, sizeof(text), " - turn %d - team %d (%s), %s - %d s left - movement %d%%%s%s",
+                      turns->turnNumber(), turns->activeTeam() + 1, std::string(game::teamNation(hog.team)).c_str(),
+                      std::string(hog.characterClass->name).c_str(),
+                      static_cast<int>(std::ceil(std::max(0.0, turns->secondsLeft()))), movementPercent,
+                      turns->canSwitchHog() ? " - Tab: other hog" : "", paused_ ? " - paused" : "");
         title += text;
     } else {
         title += " - no hogs on this map";
     }
-    window_.setTitle(title);
+    if (title != lastTitle_) {  // changing the title every frame is wasteful
+        window_.setTitle(title);
+        lastTitle_ = title;
+    }
 }
 
 void Game::handleEvent(const SDL_Event& event, bool& running) {
@@ -160,12 +217,17 @@ void Game::handleEvent(const SDL_Event& event, bool& running) {
             running = false;
             break;
         case SDLK_TAB:
-            world_.selectNextHog((event.key.mod & SDL_KMOD_SHIFT) ? -1 : 1);
-            updateTitle();
+            world_.switchHog((event.key.mod & SDL_KMOD_SHIFT) ? -1 : 1);
+            break;
+        case SDLK_RETURN:
+        case SDLK_KP_ENTER:
+            if (!paused_) world_.endTurn();
+            break;
+        case SDLK_SPACE:
+            jumpPressed_ = true;
             break;
         case SDLK_P:
             paused_ = !paused_;
-            updateTitle();
             break;
         case SDLK_F12: {
             const std::string file = "openhogs-" + mapName_ + ".png";
@@ -183,11 +245,60 @@ void Game::handleEvent(const SDL_Event& event, bool& running) {
     }
 }
 
+game::MovementInput Game::readInput() {
+    game::MovementInput input;
+    // Keys held down are read directly; a jump is a key press, remembered
+    // by handleEvent until the next step.
+    const bool* keys = SDL_GetKeyboardState(nullptr);
+    input.forward = autoWalk_ || keys[SDL_SCANCODE_W] || keys[SDL_SCANCODE_UP];
+    input.backward = keys[SDL_SCANCODE_S] || keys[SDL_SCANCODE_DOWN];
+    input.turnLeft = keys[SDL_SCANCODE_A] || keys[SDL_SCANCODE_LEFT];
+    input.turnRight = keys[SDL_SCANCODE_D] || keys[SDL_SCANCODE_RIGHT];
+    input.jump = jumpPressed_;
+    jumpPressed_ = false;
+    return input;
+}
+
+void Game::playSounds(const game::MovementEvents& events) {
+    if (!mixer_) {
+        return;
+    }
+    const auto play = [&](const std::shared_ptr<const formats::PcmSound>& sound) {
+        if (sound) mixer_->play(sound, audio::SoundCategory::Effects);
+    };
+    for (int i = 0; i < events.footsteps; ++i) {
+        const auto found = footstepSounds_.find(events.surface);
+        if (found != footstepSounds_.end()) play(found->second);
+    }
+    if (events.landed) play(landingSound_);
+    if (events.enteredWater) play(splashSound_);
+}
+
 void Game::step(double seconds) {
     if (!paused_) {
-        world_.update(seconds, library_.animations());
+        const auto events = world_.update(seconds, readInput(), library_.animations());
+        playSounds(events);
     }
-    camera_.update(seconds, cameraTarget());  // the camera works while paused too
+
+    // The camera works while paused too. When the active hog changes, or
+    // while it moves, it swings round behind the hog.
+    const auto active = world_.activeHog();
+    if (active != cameraHog_) {
+        cameraHog_ = active;
+        cameraSwingSecondsLeft_ = kCameraSwingSeconds;
+    }
+    if (active) {
+        const auto& hog = world_.hogs()[*active];
+        const bool moving = hog.motion.state == game::MotionState::Running ||
+                            hog.motion.state == game::MotionState::Swimming ||
+                            hog.motion.state == game::MotionState::Airborne;
+        if (moving || cameraSwingSecondsLeft_ > 0.0) {
+            camera_.turnTowards(game::hogFacing(hog), seconds);
+        }
+    }
+    cameraSwingSecondsLeft_ = std::max(0.0, cameraSwingSecondsLeft_ - seconds);
+    camera_.update(seconds, cameraTarget());
+    updateTitle();
 }
 
 void Game::simulate(double seconds) {
@@ -201,10 +312,10 @@ void Game::drawHog(const render::Camera& camera, int width, int height, const ga
     const auto& model = modelFor(*hog.characterClass);
     const auto& look = lookFor(hog.team);
 
-    const auto pose = hog.animator.pose(library_.skeleton(), library_.animations());
+    const auto pose = hog.animation.pose(library_.skeleton(), library_.animations());
     auto mesh = scene::buildPosedModelMesh(model, look.textureSizes, pose);
 
-    const auto expression = library_.expressionRules().forAnimation(hog.animator.animation());
+    const auto expression = library_.expressionRules().forAnimation(hog.animation.animation());
     const bool blinking = scene::isBlinking(world_.timeSeconds(), static_cast<std::uint32_t>(index));
     scene::applyExpression(mesh, look.faces, expression, blinking, hog.characterClass->masked);
 

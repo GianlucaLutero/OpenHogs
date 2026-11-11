@@ -79,7 +79,8 @@ std::vector<Hog> spawnHogs(const std::vector<formats::MapObject>& objects, const
         hog.position = {x, placedFeet > ground + kStandsOnObjectMargin ? placedFeet : ground, z};
 
         // The seed only has to differ from hog to hog.
-        hog.animator = IdleAnimator(static_cast<std::uint32_t>(hogs.size()) + 1);
+        hog.idle = IdleAnimator(static_cast<std::uint32_t>(hogs.size()) + 1);
+        hog.idle.start(hog.animation);
         hogs.push_back(std::move(hog));
     }
     return hogs;

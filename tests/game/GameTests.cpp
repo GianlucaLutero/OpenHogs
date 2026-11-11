@@ -1,6 +1,6 @@
 // Tests for the game module: the fixed timestep, the terrain height
-// field, creating hogs from a map, idle animation, the world and the chase
-// camera.
+// field, creating hogs from a map and the chase camera. Movement, turns
+// and animation playback are in MovementTests.cpp.
 //
 // This module holds the rules of the game, so its behaviour has to be the
 // same on every computer and every run. The tests use small hand-made
@@ -9,10 +9,11 @@
 #include "openhogs/game/ChaseCamera.h"
 #include "openhogs/game/FixedTimestep.h"
 #include "openhogs/game/Hog.h"
-#include "openhogs/game/IdleAnimator.h"
 #include "openhogs/game/TerrainHeightField.h"
 #include "openhogs/game/World.h"
 #include "openhogs/scene/TerrainMesh.h"
+
+#include "GameTestSupport.h"
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -26,81 +27,8 @@
 using namespace openhogs;
 using namespace openhogs::game;
 using Catch::Approx;
+using namespace openhogs::tests;
 
-namespace {
-
-// A square terrain of 2 x 2 blocks (8 x 8 tiles) whose corner is at
-// (-2048, -2048); `height` gives the ground height at each sample.
-formats::MapTerrain makeTerrain(const std::function<int(int x, int z)>& height) {
-    formats::MapTerrain terrain;
-    for (int blockZ = 0; blockZ < 2; ++blockZ) {
-        for (int blockX = 0; blockX < 2; ++blockX) {
-            formats::TerrainBlock block;
-            block.xOffset = static_cast<std::int16_t>(-2048 + blockX * formats::kBlockSize);
-            block.zOffset = static_cast<std::int16_t>(-2048 + blockZ * formats::kBlockSize);
-            for (int row = 0; row < 5; ++row) {
-                for (int column = 0; column < 5; ++column) {
-                    const int x = block.xOffset + column * formats::kTileSize;
-                    const int z = block.zOffset + formats::kBlockSize - row * formats::kTileSize;
-                    block.heights[static_cast<std::size_t>(row * 5 + column)] = static_cast<std::int16_t>(height(x, z));
-                }
-            }
-            terrain.blocks.push_back(block);
-        }
-    }
-    return terrain;
-}
-
-TerrainHeightField flatGround(int height = 0) {
-    return TerrainHeightField(makeTerrain([height](int, int) { return height; }));
-}
-
-formats::MapObject makeObject(const std::string& name, int x, int y, int z) {
-    formats::MapObject object;
-    object.modelName = name;
-    object.x = static_cast<std::int16_t>(x);
-    object.y = static_cast<std::int16_t>(y);
-    object.z = static_cast<std::int16_t>(z);
-    return object;
-}
-
-// 37 animations of 12 frames (about half a second, longer than the
-// cross-fade) for a two-bone skeleton. All angles are zero,
-// except in the fidget animations where the root is turned by one radian,
-// so standing and fidgeting are clearly different poses.
-std::vector<formats::Animation> makeAnimations() {
-    std::vector<formats::Animation> animations(37);
-    for (std::size_t i = 0; i < animations.size(); ++i) {
-        formats::AnimationFrame frame;
-        frame.bones.resize(2);
-        if (i != kStandingAnimation) {
-            frame.bones[0].z = 1.0f;
-        }
-        animations[i].frames.assign(12, frame);
-    }
-    return animations;
-}
-
-formats::Skeleton makeSkeleton() {
-    formats::Skeleton skeleton;
-    skeleton.bones.push_back({0, 0, 0, 0});
-    skeleton.bones.push_back({0, 10, 0, 0});
-    return skeleton;
-}
-
-glm::vec3 lookDirection(const CameraPose& pose) {
-    const float yaw = glm::radians(pose.yawDegrees);
-    const float pitch = glm::radians(pose.pitchDegrees);
-    return {std::sin(yaw) * std::cos(pitch), std::sin(pitch), -std::cos(yaw) * std::cos(pitch)};
-}
-
-void checkClose(glm::vec3 actual, glm::vec3 expected, double margin = 1e-3) {
-    CHECK(actual.x == Approx(expected.x).margin(margin));
-    CHECK(actual.y == Approx(expected.y).margin(margin));
-    CHECK(actual.z == Approx(expected.z).margin(margin));
-}
-
-} // namespace
 
 // The simulation must run the same number of steps for the same amount of
 // time however that time is cut into frames; the remainder is kept, not
@@ -248,100 +176,6 @@ TEST_CASE("Hogs: the model stands on its position and faces its heading", "[game
     CHECK(glm::length(nose - feet) == Approx(50.0f));  // models are twice the world scale
 }
 
-// Idle behaviour must be reproducible (same seed, same sequence), differ
-// between hogs, consist mostly of standing, and every fidget must be
-// followed by standing again.
-TEST_CASE("IdleAnimator: reproducible, mostly standing, fidgets return to standing", "[game][idle]") {
-    const auto animations = makeAnimations();
-    IdleAnimator first(7);
-    IdleAnimator same(7);
-    IdleAnimator other(8);
-
-    int standingSteps = 0;
-    int differences = 0;
-    std::set<std::size_t> played;
-    std::size_t previous = first.animation();
-    const int steps = 50 * 120;  // two minutes
-    for (int i = 0; i < steps; ++i) {
-        first.update(0.02, animations);
-        same.update(0.02, animations);
-        other.update(0.02, animations);
-
-        REQUIRE(first.animation() == same.animation());
-        REQUIRE(first.frame() == same.frame());
-        differences += first.animation() != other.animation() ? 1 : 0;
-        standingSteps += first.animation() == kStandingAnimation ? 1 : 0;
-
-        if (first.animation() != previous && previous != kStandingAnimation) {
-            REQUIRE(first.animation() == kStandingAnimation);
-        }
-        previous = first.animation();
-        played.insert(first.animation());
-    }
-    CHECK(standingSteps > steps / 2);
-    CHECK(played.size() > 1);  // some fidgets happened
-    CHECK(differences > 0);
-}
-
-// Changing animation must not snap the body from one stance to the other:
-// the cross-fade spreads the change over several steps.
-TEST_CASE("IdleAnimator: animation changes are cross-faded", "[game][idle]") {
-    const auto animations = makeAnimations();
-    const auto skeleton = makeSkeleton();
-    IdleAnimator animator(3);
-
-    const auto handPosition = [&] { return glm::vec3(animator.pose(skeleton, animations)[1][3]); };
-    // Standing and fidgeting place the hand 9.6 units apart (a one radian
-    // turn of a 10 unit arm).
-    float largestMove = 0.0f;
-    bool fidgeted = false;
-    glm::vec3 before = handPosition();
-    for (int i = 0; i < 50 * 120; ++i) {
-        animator.update(0.02, animations);
-        const glm::vec3 now = handPosition();
-        largestMove = std::max(largestMove, glm::length(now - before));
-        before = now;
-        fidgeted = fidgeted || animator.animation() != kStandingAnimation;
-    }
-    REQUIRE(fidgeted);
-    CHECK(largestMove < 2.0f);
-}
-
-// The camera follows the selected hog: the selection starts on the hog the
-// map marks for the player and wraps around in both directions.
-TEST_CASE("World: hog selection starts on the player's hog and wraps", "[game][world]") {
-    const auto terrain = flatGround();
-    auto player = makeObject("GR_ME", 0, 168, 0);
-    player.flags = 0x0001;
-    World world(terrain, spawnHogs({makeObject("GR_ME", 0, 168, 0), player, makeObject("GR_ME", 0, 168, 0)}, terrain));
-
-    CHECK(world.selectedHog() == 1u);
-    world.selectNextHog(1);
-    CHECK(world.selectedHog() == 2u);
-    world.selectNextHog(1);
-    CHECK(world.selectedHog() == 0u);
-    world.selectNextHog(-1);
-    CHECK(world.selectedHog() == 2u);
-
-    World empty(terrain, {});
-    CHECK_FALSE(empty.selectedHog().has_value());
-    empty.selectNextHog(1);  // must not crash
-}
-
-// update() is the only thing that moves the match forward: time advances
-// and the hogs' animations with it.
-TEST_CASE("World: update advances time and the hogs' animations", "[game][world]") {
-    const auto terrain = flatGround();
-    World world(terrain, spawnHogs({makeObject("GR_ME", 0, 168, 0)}, terrain));
-    const auto animations = makeAnimations();
-    const float frameBefore = world.hogs()[0].animator.frame();
-
-    world.update(0.02, animations);
-
-    CHECK(world.timeSeconds() == Approx(0.02));
-    CHECK(world.hogs()[0].animator.frame() != frameBefore);
-}
-
 // The camera looks at its focus from the chosen distance and direction;
 // this is what puts the selected hog in the middle of the screen.
 TEST_CASE("ChaseCamera: looks at the target from its distance", "[game][camera]") {
@@ -410,4 +244,21 @@ TEST_CASE("ChaseCamera: zoom and pitch stay within limits", "[game][camera]") {
     CHECK(camera.pose(terrain).pitchDegrees < 45.0f);
     camera.orbit(0.0f, -1000.0f);
     CHECK(camera.pose(terrain).pitchDegrees > -89.0f);
+}
+
+// While the hog runs, the camera swings round behind it: gradually (no
+// jerk) and the short way round (never a full spin past 180 degrees).
+TEST_CASE("ChaseCamera: swings round behind a direction, the short way", "[game][camera]") {
+    const auto terrain = flatGround(-10000);
+    ChaseCamera camera;
+    camera.lookAlong({0, 0, -1});  // yaw 0
+    camera.turnTowards({-1, 0, -0.01f}, 0.1);  // almost yaw -90: turn left
+    const float yaw = camera.pose(terrain).yawDegrees;
+    CHECK(yaw < 0.0f);
+    CHECK(yaw > -45.0f);  // only part of the way after 0.1 s
+
+    for (int i = 0; i < 200; ++i) {
+        camera.turnTowards({-1, 0, 0}, 0.02);
+    }
+    CHECK(std::remainder(camera.pose(terrain).yawDegrees + 90.0f, 360.0f) == Approx(0.0f).margin(0.5));
 }

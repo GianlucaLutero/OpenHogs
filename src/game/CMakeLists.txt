@@ -4,17 +4,25 @@
 #   FixedTimestep      - runs the simulation at a fixed rate whatever the
 #                        display's frame rate
 #   TerrainHeightField - height and surface of the ground at any point
+#   MapCollision       - terrain plus the objects' collision boxes
 #   Hog                - one hog of a match; creation from the map's objects
+#   AnimationPlayer    - plays and cross-fades a hog's animations
 #   IdleAnimator       - what a hog does while standing around
-#   World              - the terrain and the hogs of the match being played
-#   ChaseCamera        - the camera that follows the selected hog
+#   HogMovement        - walking, turning, jumping, falling, swimming
+#   TurnSystem         - whose turn it is, time and movement left
+#   World              - the map, the hogs and the turns of the match
+#   ChaseCamera        - the camera that follows the active hog
 
 add_library(openhogs_game STATIC
+    src/AnimationPlayer.cpp
     src/ChaseCamera.cpp
     src/FixedTimestep.cpp
     src/Hog.cpp
+    src/HogMovement.cpp
     src/IdleAnimator.cpp
+    src/MapCollision.cpp
     src/TerrainHeightField.cpp
+    src/TurnSystem.cpp
     src/World.cpp)
 add_library(OpenHogs::game ALIAS openhogs_game)
 
