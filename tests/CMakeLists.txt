@@ -43,6 +43,7 @@ add_executable(openhogs_tests
     scene/CharacterExpressionsTests.cpp
     game/GameTests.cpp
     game/MovementTests.cpp
+    game/WeaponTests.cpp
     langpack/LangpackTests.cpp)
 
 target_include_directories(openhogs_tests PRIVATE support)

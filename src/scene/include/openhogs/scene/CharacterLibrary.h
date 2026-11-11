@@ -10,6 +10,8 @@
 //     Chars/<team>.mtd     the textures of one team (british, american...),
 //                          all teams using the same models
 //     Chars/FACES.MTD      extra eyes and mouths for facial expressions
+//     Chars/WEAPONS.MAD    weapon models (grenades, guns, TNT...), with
+//     Chars/WEAPONS.MTD    their textures
 //     Chars/expressions.ini  optional: replaces the expression rules
 //                          (only in content packs; the game has no such file)
 //
@@ -99,6 +101,13 @@ public:
     // if the team file is missing; without FACES.MTD or without the
     // default eyes and mouth, hogs simply keep their default face.
     CharacterTextures loadTeamTextures(std::string_view team) const;
+
+    // Loads a weapon model of Chars/WEAPONS.MAD by name (e.g. "WE_GREN").
+    // Throws if it is missing.
+    formats::Model loadWeaponModel(std::string_view name) const;
+
+    // Decodes the weapon textures, in archive order. Throws if missing.
+    std::vector<formats::RgbaImage> loadWeaponTextures() const;
 
     // Which expression goes with which animation: the built-in rules, with
     // Chars/expressions.ini applied when a content pack provides one.

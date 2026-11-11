@@ -13,6 +13,8 @@
 //   --no-sound           play without sound
 //   --seconds <s>        with --screenshot: let the match run this long first
 //   --auto-walk          with --screenshot: the active hog runs forward meanwhile
+//   --weapon <n>         with --screenshot: the active hog selects its n-th weapon (1 = first)
+//   --fire-at <s>        with --screenshot: the active hog fires at s seconds
 //   --screenshot <file>  render the match to a PNG file and exit
 //   --size <W>x<H>       window size in pixels (default 1280x720)
 //
@@ -50,6 +52,8 @@ struct Options {
     bool listMaps = false;
     bool sound = true;
     bool autoWalk = false;
+    std::optional<std::size_t> weaponSlot;  // 1-based, as typed
+    std::optional<double> fireAt;
     int width = 1280;
     int height = 720;
 };
@@ -65,9 +69,12 @@ void printUsage() {
                  "  --no-sound           play without sound\n"
                  "  --seconds <s>        with --screenshot: let the match run this long first\n"
                  "  --auto-walk          with --screenshot: the active hog runs forward meanwhile\n"
+                 "  --weapon <n>         with --screenshot: the active hog selects its n-th weapon\n"
+                 "  --fire-at <s>        with --screenshot: the active hog fires at s seconds\n"
                  "  --screenshot <file>  save the match as a PNG image and exit\n"
                  "  --size <W>x<H>       window size (default 1280x720)\n\n"
                  "Controls: W/S or Up/Down run / walk back, A/D or Left/Right turn, Space jump,\n"
+                 "Q/E weapon, R/F aim, Ctrl or X fire (hold to throw further),\n"
                  "Tab other hog (before moving), Enter end turn, left mouse turns the camera,\n"
                  "wheel zooms, P pause, F12 screenshot, Esc quit\n";
 }
@@ -113,6 +120,11 @@ std::optional<Options> parseArguments(const std::vector<std::string>& args) {
             } else if (arg == "--hog") {
                 options.hog = static_cast<std::size_t>(std::stoul(value));
                 if (*options.hog == 0) return std::nullopt;
+            } else if (arg == "--weapon") {
+                options.weaponSlot = static_cast<std::size_t>(std::stoul(value));
+                if (*options.weaponSlot == 0) return std::nullopt;
+            } else if (arg == "--fire-at") {
+                options.fireAt = std::stod(value);
             } else if (arg == "--seconds") {
                 options.seconds = std::stod(value);
             } else if (arg == "--screenshot") {
@@ -157,6 +169,10 @@ int runGame(const Options& options) {
     gameOptions.hiddenWindow = screenshotOnly;
     gameOptions.sound = options.sound && !screenshotOnly;
     gameOptions.autoWalk = options.autoWalk && screenshotOnly;
+    if (screenshotOnly) {
+        gameOptions.autoFireAt = options.fireAt;
+        if (options.weaponSlot) gameOptions.autoWeaponSlot = *options.weaponSlot - 1;
+    }
 
     gameapp::Game game(vfs, gameOptions);
     if (screenshotOnly) {

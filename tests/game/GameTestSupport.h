@@ -11,6 +11,8 @@
 #include "openhogs/formats/MotionCapture.h"
 #include "openhogs/formats/Skeleton.h"
 #include "openhogs/game/ChaseCamera.h"
+#include "openhogs/game/Hog.h"
+#include "openhogs/game/MapCollision.h"
 #include "openhogs/game/IdleAnimator.h"
 #include "openhogs/game/TerrainHeightField.h"
 
@@ -99,6 +101,30 @@ inline void checkClose(glm::vec3 actual, glm::vec3 expected, double margin = 1e-
     CHECK(actual.x == Approx(expected.x).margin(margin));
     CHECK(actual.y == Approx(expected.y).margin(margin));
     CHECK(actual.z == Approx(expected.z).margin(margin));
+}
+
+inline constexpr double kStep = 1.0 / 50.0;  // the game's simulation step
+
+// A hog standing at (x, ground, z), facing +X, in `team`.
+inline Hog makeHog(const MapCollision& map, float x, float z, int team = 0) {
+    Hog hog;
+    hog.characterClass = hogClassForObject("GR_ME");
+    hog.team = team;
+    hog.position = {x, map.terrain().heightAt(x, z), z};
+    hog.idle.start(hog.animation);
+    return hog;
+}
+
+inline MapCollision flatMap(std::vector<CollisionBox> boxes = {}, int height = 0) {
+    return MapCollision(flatGround(height), std::move(boxes));
+}
+
+inline CollisionBox makeBox(glm::vec3 centre, glm::vec3 halfSize, float yaw = 0.0f) {
+    CollisionBox box;
+    box.centre = centre;
+    box.halfSize = halfSize;
+    box.yawRadians = yaw;
+    return box;
 }
 
 } // namespace openhogs::tests

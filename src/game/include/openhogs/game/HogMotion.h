@@ -18,6 +18,7 @@ enum class MotionState {
     Swimming,     // in water, moving or not
     Airborne,     // jumping or falling
     Landing,      // the short recovery after a jump or a fall
+    Dead,         // killed: plays its dying animation, then lies still
 };
 
 struct HogMotion {

@@ -1,7 +1,8 @@
 // Game.h
 //
-// The game application: a map with its hogs taking turns, a camera that
-// follows the active hog, sound, and the main loop that ties them together.
+// The game application: a map with its hogs taking turns and fighting, a
+// camera that follows the action, sound, and the main loop that ties them
+// together.
 //
 // Each frame the loop:
 //   1. reads the input (movement, camera, turn commands),
@@ -9,13 +10,18 @@
 //      the sounds of what happened,
 //   3. draws the map and the hogs.
 //
-// The state of the turn (team, hog, time and movement left) is shown in the
-// window title until the HUD exists (menus-and-hud block).
+// The state of the turn (team, hog, health, weapon, time and movement left)
+// is shown in the window title until the HUD exists (menus-and-hud block).
+// Weapon names come from the game's text table, so a language pack
+// translates them.
 //
 // Controls:
 //   W / Up, S / Down    run forward / walk back
 //   A / Left, D / Right turn
 //   Space               jump (with W: jump forward)
+//   Q / E               previous / next weapon
+//   R / F               aim up / down
+//   Ctrl or X           fire (hold to throw further, release to throw)
 //   Tab / Shift+Tab     another hog of the team (before moving)
 //   Enter               end the turn
 //   Left mouse drag     turn the camera around the hog     Mouse wheel: zoom
@@ -34,6 +40,7 @@
 #include "openhogs/game/FixedTimestep.h"
 #include "openhogs/game/World.h"
 #include "openhogs/render/CharacterRenderer.h"
+#include "openhogs/render/EffectsRenderer.h"
 #include "openhogs/render/MapRenderer.h"
 #include "openhogs/scene/CharacterLibrary.h"
 
@@ -56,6 +63,10 @@ struct GameOptions {
     audio::Volumes volumes;
     std::optional<std::size_t> startHog;  // hog to start with (0-based), if of the first team
     bool autoWalk = false;                // hold "forward" (for screenshots of a walking hog)
+    // For screenshots of a shot: select this weapon slot of the first hog
+    // and hold "fire" from this time (seconds) for kAutoFireHoldSeconds.
+    std::optional<std::size_t> autoWeaponSlot;
+    std::optional<double> autoFireAt;
 };
 
 class Game {
@@ -86,9 +97,16 @@ private:
 
     void startSound(const core::VirtualFileSystem& vfs, const audio::Volumes& volumes);
     void handleEvent(const SDL_Event& event, bool& running);
-    game::MovementInput readInput();
+    game::PlayerInput readInput();
     void step(double seconds);
-    void playSounds(const game::MovementEvents& events);
+    void playSounds(const std::vector<game::GameEvent>& events);
+    void playSound(std::string_view name);
+    void drawWeapons(const render::Camera& camera, int width, int height);
+    void drawEffects(const render::Camera& camera, int width, int height);
+    void drawModel(const render::Camera& camera, int width, int height, const formats::Model& model,
+                   const glm::mat4& modelToWorld);
+    const formats::Model* weaponModel(std::string_view name);
+    std::string weaponName(game::WeaponId weapon) const;
     void draw(int width, int height);
     void drawHog(const render::Camera& camera, int width, int height, const game::Hog& hog, std::size_t index);
     const formats::Model& modelFor(const scene::CharacterClass& characterClass);
@@ -103,7 +121,10 @@ private:
     game::FixedTimestep timestep_;
     bool paused_ = false;
     bool autoWalk_ = false;
+    std::optional<double> autoFireAt_;
     bool jumpPressed_ = false;  // Space was pressed since the last step
+    int weaponStep_ = 0;        // Q / E pressed since the last step
+    std::vector<std::string> gameText_;  // Language/Text/gtext: weapon names...
 
     // After a change of hog the camera swings round behind the new hog
     // for this long, even if it does not move.
@@ -118,15 +139,21 @@ private:
     int height_;
     std::unique_ptr<render::MapRenderer> mapRenderer_;
     std::unique_ptr<render::CharacterRenderer> hogRenderer_;
+    std::unique_ptr<render::EffectsRenderer> effects_;
+    std::unique_ptr<render::CharacterTextureSet> weaponTextures_;
+    std::vector<glm::uvec2> weaponTextureSizes_;
+    std::map<std::string, std::optional<formats::Model>, std::less<>> weaponModels_;  // empty: missing
     std::map<std::string, formats::Model, std::less<>> models_;  // by class id
     std::map<int, TeamLook> teamLooks_;
 
     // Sound is optional: the game still runs on a computer without it.
     std::unique_ptr<audio::Mixer> mixer_;
     std::unique_ptr<audio::AudioDevice> audioDevice_;
-    std::map<formats::SurfaceType, std::shared_ptr<const formats::PcmSound>> footstepSounds_;
-    std::shared_ptr<const formats::PcmSound> landingSound_;
-    std::shared_ptr<const formats::PcmSound> splashSound_;
+    // Sounds of the bank Audio/sfxday.srl, by file name ("ft_grass"),
+    // loaded the first time they are played.
+    std::unique_ptr<audio::SoundLibrary> sounds_;
+    std::optional<formats::SoundBank> soundBank_;
+    std::map<std::string, std::shared_ptr<const formats::PcmSound>, std::less<>> loadedSounds_;
 };
 
 } // namespace openhogs::gameapp

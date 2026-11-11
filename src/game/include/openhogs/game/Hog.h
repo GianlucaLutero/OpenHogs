@@ -15,14 +15,32 @@
 #include "openhogs/game/HogMotion.h"
 #include "openhogs/game/IdleAnimator.h"
 #include "openhogs/game/TerrainHeightField.h"
+#include "openhogs/game/Weapons.h"
 #include "openhogs/scene/CharacterLibrary.h"
 
 #include <glm/glm.hpp>
 
+#include <optional>
 #include <string_view>
 #include <vector>
 
 namespace openhogs::game {
+
+// Health of an unhurt hog. The original shows health as a number up to
+// 100; whether every class starts with 100 is still open
+// (docs/open-decisions.md).
+inline constexpr float kMaxHealth = 100.0f;
+
+// Aim limits, in degrees above (+) or below (-) the horizon.
+inline constexpr float kLowestAimDegrees = -30.0f;
+inline constexpr float kHighestAimDegrees = 80.0f;
+
+// An animation the hog holds while it stands still instead of its idle
+// behaviour: the aiming pose of its weapon, or the firing animation.
+struct HeldAnimation {
+    std::size_t animation = 0;
+    AnimationPlayer::Repeat repeat = AnimationPlayer::Repeat::Loop;
+};
 
 struct Hog {
     const scene::CharacterClass* characterClass = nullptr;  // never null for spawned hogs
@@ -33,6 +51,20 @@ struct Hog {
     AnimationPlayer animation;      // what its body is doing
     IdleAnimator idle;              // chooses the animation while it waits
     HogMotion motion;               // walking, jumping, swimming...
+    std::optional<HeldAnimation> held;  // overrides the idle behaviour when set
+
+    float health = kMaxHealth;
+    bool alive = true;
+
+    std::vector<WeaponId> weapons;  // what it carries (from its class)
+    std::size_t weaponSlot = 0;     // the selected one
+    float aimDegrees = 15.0f;       // above the horizon
+    float power = 0.0f;             // 0 to 1, while charging a throw
+    bool charging = false;          // the fire key is held for a powered weapon
+
+    WeaponId selectedWeapon() const {
+        return weapons.empty() ? WeaponId::Trotter : weapons[weaponSlot % weapons.size()];
+    }
 };
 
 // The class a map object stands for ("GR_ME" -> grunt), or nullptr if the
@@ -51,6 +83,10 @@ std::string_view teamNation(int team);
 
 // Unit vector of the direction the hog faces, parallel to the ground.
 glm::vec3 hogFacing(const Hog& hog);
+
+// The centre of the hog's body (half way up), the point explosions and
+// bullets aim at.
+glm::vec3 hogCentre(const Hog& hog);
 
 // Matrix that takes the hog's posed model (model units, Y down, origin at
 // the hips) to its place in the world.

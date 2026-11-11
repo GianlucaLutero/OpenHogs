@@ -17,7 +17,7 @@ how each convention was found is explained so it can be checked again.
 | `Chars/<team>.mtd` | textures of one team: `british`, `american`, `french`, `german`, `japanese`, `russian`, `teamlard` (120 TIMs each, same names in every team) |
 | `Chars/FACES.MTD` | 7 eye and 7 mouth textures (`eyes001`–`007`, `gobs001`–`007`) for facial expressions (see below) |
 | `Chars/BRITHATS.MAD`, `FHATS.MAD` + `.MTD` | separate hats, skinned to the head bone like the body (not used yet) |
-| `Chars/WEAPONS.MAD` + `.MTD` | weapon models (next blocks) |
+| `Chars/WEAPONS.MAD` + `.MTD` | weapon models, attached to the skeleton's bones (see [weapons.md](weapons.md)) |
 
 All teams use the models of `british.mad`; only the textures change.
 

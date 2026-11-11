@@ -103,6 +103,20 @@ const char* const kSkeletonPath = "Chars/pig.HIR";
 const char* const kAnimationsPath = "Chars/mcap.mad";
 const char* const kModelsPath = "Chars/british.mad";
 const char* const kFacesPath = "Chars/FACES.MTD";
+const char* const kWeaponModelsPath = "Chars/WEAPONS.MAD";
+const char* const kWeaponTexturesPath = "Chars/WEAPONS.MTD";
+
+// Reads the model `name` (.vtx, .fac and, if present, .no2) of an archive.
+formats::Model readModel(const formats::PackageArchive& archive, const std::string& name, const char* path) {
+    const auto* vtx = archive.find(name + ".vtx");
+    const auto* fac = archive.find(name + ".fac");
+    if (vtx == nullptr || fac == nullptr) {
+        throw std::runtime_error(std::string(path) + " has no model " + name);
+    }
+    const auto* no2 = archive.find(name + ".no2");
+    const auto normals = no2 ? std::optional(archive.entryData(*no2)) : std::nullopt;
+    return formats::Model::parse(archive.entryData(*vtx), archive.entryData(*fac), normals);
+}
 const char* const kExpressionRulesPath = "Chars/expressions.ini";
 
 } // namespace
@@ -160,16 +174,21 @@ CharacterLibrary::CharacterLibrary(const core::VirtualFileSystem& vfs)
 
 formats::Model CharacterLibrary::loadModel(const CharacterClass& characterClass, CharacterDetail detail) const {
     const auto archive = formats::PackageArchive::parse(vfs_.readFile(kModelsPath));
-    const std::string name = characterModelName(characterClass, detail);
+    return readModel(archive, characterModelName(characterClass, detail), kModelsPath);
+}
 
-    const auto* vtx = archive.find(name + ".vtx");
-    const auto* fac = archive.find(name + ".fac");
-    if (vtx == nullptr || fac == nullptr) {
-        throw std::runtime_error(std::string(kModelsPath) + " has no model " + name);
+formats::Model CharacterLibrary::loadWeaponModel(std::string_view name) const {
+    const auto archive = formats::PackageArchive::parse(vfs_.readFile(kWeaponModelsPath));
+    return readModel(archive, std::string(name), kWeaponModelsPath);
+}
+
+std::vector<formats::RgbaImage> CharacterLibrary::loadWeaponTextures() const {
+    const auto archive = formats::PackageArchive::parse(vfs_.readFile(kWeaponTexturesPath));
+    std::vector<formats::RgbaImage> textures;
+    for (const auto& entry : archive.entries()) {
+        textures.push_back(formats::decodeTim(archive.entryData(entry)));
     }
-    const auto* no2 = archive.find(name + ".no2");
-    const auto normals = no2 ? std::optional(archive.entryData(*no2)) : std::nullopt;
-    return formats::Model::parse(archive.entryData(*vtx), archive.entryData(*fac), normals);
+    return textures;
 }
 
 CharacterTextures CharacterLibrary::loadTeamTextures(std::string_view team) const {
