@@ -41,10 +41,12 @@ audio::Volumes toVolumes(const ui::VolumeLevels& levels) {
 
 Application::Application(const core::VirtualFileSystem& vfs, ApplicationOptions options)
     : vfs_(vfs), maps_(std::move(options.maps)), width_(options.width), height_(options.height),
-      window_("OpenHogs", options.width, options.height, options.hiddenWindow) {
+      window_("OpenHogs", options.width, options.height, options.hiddenWindow), savePath_(options.savePath) {
     sounds_ = options.sound ? std::make_unique<SoundPlayer>(vfs, options.volumes) : std::make_unique<SoundPlayer>();
     interface_ = std::make_unique<Interface>(vfs);
     frontEnd_ = std::make_unique<ui::FrontEnd>(interface_->strings(), maps_, toVolumeLevels(options.volumes));
+    frontEnd_->setSavedCampaign(CampaignSession::hasSave(savePath_));
+    campaign_ = std::make_unique<CampaignSession>(vfs, *interface_, savePath_);
 
     // The first map circles behind the menus (docs/open-decisions.md).
     if (!maps_.empty()) {
@@ -61,6 +63,7 @@ Application::~Application() {
     // window's OpenGL context (members are destroyed in reverse order, this
     // only makes it obvious).
     game_.reset();
+    campaign_.reset();
     frontEnd_.reset();
     background_.reset();
     interface_.reset();
@@ -87,8 +90,44 @@ void Application::startMatch(const GameOptions& options) {
 }
 
 void Application::leaveMatch() {
+    if (campaignMatch_) {
+        // Back to the campaign's results page.
+        campaign_->missionEnded(*game_);
+        campaignMatch_ = false;
+        game_.reset();
+        return;
+    }
     game_.reset();
     frontEnd_->showMainMenu();
+}
+
+void Application::startCampaignMission() {
+    try {
+        startMatch(campaign_->missionOptions());
+        campaignMatch_ = true;
+    } catch (const std::exception& error) {
+        // A missing map must not end the game: stay on the campaign pages.
+        std::cerr << "Error: cannot start the mission: " << error.what() << "\n";
+        game_.reset();
+    }
+}
+
+bool Application::handleMenuInput(ui::MenuInput input) {
+    if (!inCampaign_) {
+        return handleFrontEndResult(frontEnd_->handle(input));
+    }
+    switch (campaign_->handleInput(input, *sounds_)) {
+    case CampaignSession::Action::StartMission:
+        startCampaignMission();
+        break;
+    case CampaignSession::Action::Leave:
+        inCampaign_ = false;
+        frontEnd_->setSavedCampaign(CampaignSession::hasSave(savePath_));
+        break;
+    case CampaignSession::Action::None:
+        break;
+    }
+    return true;
 }
 
 bool Application::handleFrontEndResult(const ui::FrontEndResult& result) {
@@ -116,6 +155,13 @@ bool Application::handleFrontEndResult(const ui::FrontEndResult& result) {
         }
         break;
     }
+    case ui::FrontEndResult::Request::NewCampaign:
+        campaign_->startNew(result.nation);
+        inCampaign_ = true;
+        break;
+    case ui::FrontEndResult::Request::LoadCampaign:
+        inCampaign_ = campaign_->loadSaved();
+        break;
     case ui::FrontEndResult::Request::VolumesChanged:
         sounds_->setVolumes(toVolumes(frontEnd_->volumes()));
         break;
@@ -132,7 +178,7 @@ bool Application::sendMenuInputs(const std::vector<ui::MenuInput>& inputs) {
         if (game_) {
             break;  // a match started: the remaining inputs are not for the menus
         }
-        if (!handleFrontEndResult(frontEnd_->handle(input))) {
+        if (!handleMenuInput(input)) {
             return false;
         }
     }
@@ -162,7 +208,7 @@ void Application::handleEvent(const SDL_Event& event, bool& running) {
     }
     if (event.type == SDL_EVENT_KEY_DOWN) {
         if (const auto input = menuInputForKey(event.key.key)) {
-            running = handleFrontEndResult(frontEnd_->handle(*input));
+            running = handleMenuInput(*input);
         }
     }
 }
@@ -176,7 +222,8 @@ void Application::update(double seconds) {
 }
 
 void Application::drawMenus(int width, int height) {
-    if (background_) {
+    const bool briefing = inCampaign_ && campaign_->showingBriefing();
+    if (background_ && !briefing) {
         background_->draw(width, height);
     } else {
         glViewport(0, 0, width, height);
@@ -185,8 +232,13 @@ void Application::drawMenus(int width, int height) {
     }
     auto& ui = interface_->renderer();
     ui.begin(width, height);
-    ui.drawRect(0.0f, 0.0f, ui.canvasWidth(), render::kCanvasHeight, kMenuShade);
-    interface_->drawMenu(frontEnd_->menu(), kMapListRows);
+    if (inCampaign_) {
+        if (!briefing) ui.drawRect(0.0f, 0.0f, ui.canvasWidth(), render::kCanvasHeight, kMenuShade);
+        campaign_->draw();
+    } else {
+        ui.drawRect(0.0f, 0.0f, ui.canvasWidth(), render::kCanvasHeight, kMenuShade);
+        interface_->drawMenu(frontEnd_->menu(), kMapListRows);
+    }
     ui.end();
 }
 

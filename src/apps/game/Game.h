@@ -52,6 +52,7 @@
 
 #include <map>
 #include <memory>
+#include <functional>
 #include <optional>
 #include <set>
 #include <string>
@@ -69,6 +70,12 @@ struct GameOptions {
     std::optional<std::size_t> autoWeaponSlot;
     std::optional<double> autoFireAt;
     std::vector<int> computerTeams;  // teams played by the computer (game::ComputerPlayer)
+
+    // Campaign missions: the turn time, a change to the map's hogs (the
+    // player's squad takes their place) and the nation each team fights for.
+    std::optional<double> turnSeconds;
+    std::function<void(std::vector<game::Hog>&)> prepareHogs;
+    std::map<int, int> teamNations;
 };
 
 // What the match asks of the application after an input event.
@@ -103,6 +110,10 @@ public:
     void pause();
 
     const std::string& mapName() const { return mapName_; }
+    const game::World& world() const { return world_; }
+
+    // The campaign squad's hogs (Hog::squadIndex) in the order they died.
+    const std::vector<std::size_t>& squadDeaths() const { return squadDeaths_; }
 
 private:
     // What a team's hogs are drawn with.
@@ -142,6 +153,7 @@ private:
     ui::PauseMenu pauseMenu_;
     ui::MessageBanner banner_;
     std::set<int> computerTeams_;
+    std::vector<std::size_t> squadDeaths_;
     game::ComputerPlayer computer_;
     bool autoWalk_ = false;
     std::optional<double> autoFireAt_;

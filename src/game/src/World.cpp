@@ -514,7 +514,8 @@ void World::endTurn() {
     }
 }
 
-World loadWorld(const core::VirtualFileSystem& vfs, std::string_view mapName, TurnRules rules) {
+World loadWorld(const core::VirtualFileSystem& vfs, std::string_view mapName, TurnRules rules,
+                const std::function<void(std::vector<Hog>&)>& prepareHogs) {
     const std::string base = "maps/" + core::toLower(mapName);
     if (!vfs.exists(base + ".pmg")) {
         throw std::runtime_error("Map '" + std::string(mapName) + "' not found (no " + base + ".pmg)");
@@ -536,7 +537,23 @@ World loadWorld(const core::VirtualFileSystem& vfs, std::string_view mapName, Tu
             return models && models->find(name + ".vtx") != nullptr;
         });
     }
+    if (prepareHogs) {
+        prepareHogs(hogs);
+    }
     return World(MapCollision(std::move(terrain), std::move(boxes)), std::move(hogs), rules);
+}
+
+int World::nationOf(int team) const {
+    const auto found = nations_.find(team);
+    if (found != nations_.end()) {
+        return found->second;
+    }
+    const auto count = static_cast<int>(scene::characterTeams().size());
+    return ((team % count) + count) % count;
+}
+
+void World::setTeamNation(int team, int nation) {
+    nations_[team] = nation;
 }
 
 std::vector<int> mapTeams(const core::VirtualFileSystem& vfs, std::string_view mapName) {

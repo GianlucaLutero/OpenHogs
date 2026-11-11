@@ -26,7 +26,9 @@ constexpr float kMenuMinWidth = 300.0f;
 constexpr float kSliderWidth = 150.0f;
 constexpr float kSliderHeight = 12.0f;
 constexpr float kBannerScale = 1.25f;
-constexpr float kChoiceGap = 40.0f;  // between a choice's label and its word
+constexpr float kChoiceGap = 40.0f;
+constexpr float kLineScale = 1.25f;  // information lines under a menu title (small font)
+constexpr float kLineGap = 4.0f;  // between a choice's label and its word
 
 // The weapon icons are stored in MENUTIMS.MAD in the order of the weapon
 // entries of the game text table, right after "menu.bmp": entry 1 is the
@@ -58,18 +60,17 @@ std::vector<std::string> loadTextTable(const core::VirtualFileSystem& vfs, const
 } // namespace
 
 glm::vec4 teamColour(int team) {
-    // In scene::characterTeams() order: british, american, french, german,
-    // japanese, russian, team lard. OpenHogs' own choice
-    // (docs/open-decisions.md).
+    // The colours of the uniforms, in scene::characterTeams() order:
+    // british, american, french, german, japanese, russian, team lard.
     constexpr std::array<glm::vec4, 7> kColours{{
-        {0.90f, 0.25f, 0.20f, 1.0f},  // red
-        {0.35f, 0.55f, 1.00f, 1.0f},  // blue
-        {0.40f, 0.85f, 0.95f, 1.0f},  // light blue
-        {0.65f, 0.65f, 0.60f, 1.0f},  // grey
-        {0.95f, 0.95f, 0.95f, 1.0f},  // white
-        {0.95f, 0.75f, 0.20f, 1.0f},  // gold
-        {0.90f, 0.50f, 0.80f, 1.0f},  // pink
-    }};
+        {0.70f, 0.70f, 0.35f, 1.0f},  // khaki (British)
+        {0.45f, 0.75f, 1.00f, 1.0f},  // light blue (American)
+        {0.35f, 0.50f, 1.00f, 1.0f},  // blue (French)
+        {0.65f, 0.68f, 0.65f, 1.0f},  // grey (German)
+        {1.00f, 0.85f, 0.20f, 1.0f},  // yellow (Japanese)
+        {0.95f, 0.30f, 0.20f, 1.0f},  // red (Russian)
+        {0.75f, 0.45f, 0.90f, 1.0f},  // purple (Team Lard)
+    }};;
     const auto count = static_cast<int>(kColours.size());
     return kColours[static_cast<std::size_t>(((team % count) + count) % count)];
 }
@@ -102,6 +103,13 @@ const render::UiImage* Interface::weaponIcon(game::WeaponId weapon) const {
     return found == weaponIcons_.end() ? nullptr : &found->second;
 }
 
+void Interface::drawPicture(const render::UiImage& image) {
+    // Keep the picture's proportions: as tall as the screen, centred.
+    const float height = render::kCanvasHeight;
+    const float width = image.height() > 0.0f ? image.width() * height / image.height() : 0.0f;
+    renderer_.drawImage(image, (renderer_.canvasWidth() - width) / 2.0f, 0.0f, width, height);
+}
+
 void Interface::drawBar(float x, float y, float width, float height, float fraction, const glm::vec4& colour) {
     renderer_.drawRect(x, y, width, height, colours::kBarBack);
     const float inset = 2.0f;
@@ -124,16 +132,23 @@ void Interface::drawBanner(std::string_view text, float y, float alpha) {
     renderer_.drawText(*bigFont_, text, renderer_.canvasWidth() / 2.0f, y, style);
 }
 
-void Interface::drawMenu(const ui::Menu& menu, std::size_t rows) {
+void Interface::drawMenu(const ui::Menu& menu, std::size_t rows, const std::vector<std::string>& lines) {
     const auto& items = menu.items();
     const std::size_t first = menu.firstVisible(rows);
     const std::size_t shown = std::min(rows, items.size() - first);
 
-    // Wide enough for the title and the longest entry (and its slider).
+    // Wide enough for the title, the lines and the longest entry (and its
+    // slider, choice or detail).
     float width = render::UiRenderer::textWidth(*bigFont_, menu.title(), kMenuTitleScale);
+    for (const auto& line : lines) {
+        width = std::max(width, render::UiRenderer::textWidth(*smallFont_, line, kLineScale));
+    }
     for (const auto& item : items) {
         float itemWidth = render::UiRenderer::textWidth(*bigFont_, item.label, kMenuItemScale);
         if (item.kind == ui::MenuItem::Kind::Slider) itemWidth += kSliderWidth + kMenuPadding;
+        if (!item.detail.empty()) {
+            itemWidth += kChoiceGap + render::UiRenderer::textWidth(*bigFont_, item.detail, kMenuItemScale);
+        }
         for (const auto& choice : item.choices) {
             itemWidth = std::max(itemWidth, render::UiRenderer::textWidth(*bigFont_, item.label, kMenuItemScale) +
                                                 kChoiceGap +
@@ -142,7 +157,9 @@ void Interface::drawMenu(const ui::Menu& menu, std::size_t rows) {
         width = std::max(width, itemWidth);
     }
     width = std::max(kMenuMinWidth, width + 2.0f * kMenuPadding);
-    const float titleHeight = static_cast<float>(bigFont_->font().lineHeight) * kMenuTitleScale;
+    const float lineHeight = static_cast<float>(smallFont_->font().lineHeight) * kLineScale + kLineGap;
+    const float titleHeight = static_cast<float>(bigFont_->font().lineHeight) * kMenuTitleScale +
+                              lineHeight * static_cast<float>(lines.size());
     const float height = kMenuPadding * 3.0f + titleHeight + kMenuRowHeight * static_cast<float>(shown);
 
     const float left = (renderer_.canvasWidth() - width) / 2.0f;
@@ -154,6 +171,15 @@ void Interface::drawMenu(const ui::Menu& menu, std::size_t rows) {
     titleStyle.colour = colours::kTitle;
     titleStyle.align = render::TextAlign::Centre;
     renderer_.drawText(*bigFont_, menu.title(), left + width / 2.0f, top + kMenuPadding, titleStyle);
+    render::TextStyle lineStyle;
+    lineStyle.scale = kLineScale;
+    lineStyle.colour = colours::kText;
+    lineStyle.align = render::TextAlign::Centre;
+    float lineY = top + kMenuPadding + static_cast<float>(bigFont_->font().lineHeight) * kMenuTitleScale + kLineGap;
+    for (const auto& line : lines) {
+        renderer_.drawText(*smallFont_, line, left + width / 2.0f, lineY, lineStyle);
+        lineY += lineHeight;
+    }
 
     const float itemHeight = static_cast<float>(bigFont_->font().lineHeight) * kMenuItemScale;
     float y = top + kMenuPadding * 2.0f + titleHeight;
@@ -181,6 +207,12 @@ void Interface::drawMenu(const ui::Menu& menu, std::size_t rows) {
             choiceStyle.align = render::TextAlign::Right;
             if (item.enabled && !selected) choiceStyle.colour = colours::kTitle;
             renderer_.drawText(*bigFont_, item.choiceText(), left + width - kMenuPadding, textY, choiceStyle);
+        } else if (!item.detail.empty()) {
+            renderer_.drawText(*bigFont_, item.label, left + kMenuPadding, textY, style);
+            render::TextStyle detailStyle = style;
+            detailStyle.align = render::TextAlign::Right;
+            if (item.enabled && !selected) detailStyle.colour = colours::kTitle;
+            renderer_.drawText(*bigFont_, item.detail, left + width - kMenuPadding, textY, detailStyle);
         } else {
             style.align = render::TextAlign::Centre;
             renderer_.drawText(*bigFont_, item.label, left + width / 2.0f, textY, style);

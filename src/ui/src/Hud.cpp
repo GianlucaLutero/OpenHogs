@@ -27,11 +27,13 @@ std::optional<HudInfo> describeTurn(const game::World& world, const UiStrings& s
 
     HudInfo info;
     info.team = hog.team;
-    info.teamName = strings.teamName(hog.team);
-    info.className = strings.className(hog.characterClass->id);
+    info.nation = world.nationOf(hog.team);
+    info.teamName = strings.teamName(info.nation);
+    info.className = hog.rank ? strings.rankName(*hog.rank) : strings.className(hog.characterClass->id);
+    info.hogName = hog.name;
     // Rounded up, so a hog with a sliver of health left never shows 0.
     info.health = hog.alive ? std::max(1, static_cast<int>(std::ceil(hog.health))) : 0;
-    info.healthFraction = std::clamp(hog.health / game::kMaxHealth, 0.0f, 1.0f);
+    info.healthFraction = hog.maxHealth > 0.0f ? std::clamp(hog.health / hog.maxHealth, 0.0f, 1.0f) : 0.0f;
     info.weapon = hog.selectedWeapon();
     info.weaponName = weaponDisplayName(info.weapon, gameText);
     info.secondsLeft = static_cast<int>(std::ceil(std::max(0.0, turns->secondsLeft())));
@@ -52,7 +54,7 @@ std::optional<std::string> turnMessage(const game::World& world, const UiStrings
     if (computerTurn) {
         return strings.enemyTurn;
     }
-    return fillPlaceholders(strings.getReady, {strings.teamName(turns->activeTeam())});
+    return fillPlaceholders(strings.getReady, {strings.teamName(world.nationOf(turns->activeTeam()))});
 }
 
 std::optional<std::string> messageForEvent(const game::GameEvent& event, const game::World& world,
@@ -64,7 +66,7 @@ std::optional<std::string> messageForEvent(const game::GameEvent& event, const g
         if (event.team < 0) {
             return strings.draw;
         }
-        return fillPlaceholders(strings.victory, {strings.teamName(event.team)});
+        return fillPlaceholders(strings.victory, {strings.teamName(world.nationOf(event.team))});
     default:
         return std::nullopt;
     }

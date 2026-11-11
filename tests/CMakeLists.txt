@@ -46,9 +46,11 @@ add_executable(openhogs_tests
     game/MovementTests.cpp
     game/WeaponTests.cpp
     game/ComputerPlayerTests.cpp
+    game/CampaignTests.cpp
     ui/TextLayoutTests.cpp
     ui/MenuTests.cpp
     ui/HudTests.cpp
+    ui/CampaignMenuTests.cpp
     langpack/LangpackTests.cpp)
 
 target_include_directories(openhogs_tests PRIVATE support)

@@ -90,12 +90,14 @@ TEST_CASE("Long menus scroll so the selected item stays visible", "[ui][menu]") 
     CHECK(menu.firstVisible(9) == 11);                         // the list ends at the bottom
 }
 
-TEST_CASE("ONE PLAYER: picking a level starts a match against the computer", "[ui][frontend]") {
-    // Until the campaign exists, ONE PLAYER is a skirmish: the player has
-    // the team that plays first, the computer all the others.
+TEST_CASE("DEATH MATCH: picking a level starts a match against the computer", "[ui][frontend]") {
+    // ONE PLAYER -> DEATH MATCH is a skirmish: the player has the team that
+    // plays first, the computer all the others.
     auto frontEnd = makeFrontEnd();
     CHECK(frontEnd.screen() == FrontEndScreen::Main);
     press(frontEnd, {MenuInput::Confirm});  // ONE PLAYER
+    CHECK(frontEnd.screen() == FrontEndScreen::OnePlayer);
+    press(frontEnd, {MenuInput::Down, MenuInput::Confirm});  // DEATH MATCH (LOAD GAME is greyed out: no save)
     CHECK(frontEnd.screen() == FrontEndScreen::SelectLevel);
 
     const auto chosen = press(frontEnd, {MenuInput::Down, MenuInput::Confirm});
@@ -133,9 +135,27 @@ TEST_CASE("MULTI-PLAYER: each team can be given to a person or the computer", "[
 TEST_CASE("A level without teams cannot be started", "[ui][frontend]") {
     // Some maps are scenery only; picking one must not start an empty match.
     auto frontEnd = makeFrontEnd();
-    press(frontEnd, {MenuInput::Confirm, MenuInput::Confirm});
+    press(frontEnd, {MenuInput::Down, MenuInput::Confirm, MenuInput::Confirm});  // MULTI-PLAYER, BOOM
     CHECK(frontEnd.setLevelTeams({}).request == FrontEndResult::Request::None);
     CHECK(frontEnd.screen() == FrontEndScreen::SelectLevel);
+}
+
+TEST_CASE("ONE PLAYER: NEW GAME asks for a nation, LOAD GAME needs a saved campaign", "[ui][frontend]") {
+    // A campaign is fought for one of the six nations; LOAD GAME must not be
+    // offered when there is nothing to load.
+    auto frontEnd = makeFrontEnd();
+    press(frontEnd, {MenuInput::Confirm});
+    CHECK_FALSE(frontEnd.menu().item(1).enabled);  // LOAD GAME
+    press(frontEnd, {MenuInput::Confirm});  // NEW GAME
+    REQUIRE(frontEnd.screen() == FrontEndScreen::SelectTeam);
+    CHECK(frontEnd.menu().items().size() == 7);  // six nations and BACK
+    const auto chosen = press(frontEnd, {MenuInput::Down, MenuInput::Confirm});
+    CHECK(chosen.request == FrontEndResult::Request::NewCampaign);
+    CHECK(chosen.nation == 1);
+
+    frontEnd.setSavedCampaign(true);
+    CHECK(frontEnd.menu().selectedItem().id == 1);  // LOAD GAME first when there is a save
+    CHECK(press(frontEnd, {MenuInput::Confirm}).request == FrontEndResult::Request::LoadCampaign);
 }
 
 TEST_CASE("Choices go round with left and right", "[ui][menu]") {

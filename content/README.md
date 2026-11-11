@@ -112,6 +112,10 @@ like any other file:
   `SMALL.BMP` (a font for another alphabet, for instance);
 - weapon icons: `Language/Tims/MENUTIMS.MAD`.
 
+- campaign briefings: `Language/Tims/Briefing/level<N>.bmp` (and the
+  mission 1 photos `level1n<K>.bmp`), mission and rank names in `gtext`,
+  hog names in `fetext` (see `docs/formats/campaign.md`).
+
 Words that a pack leaves out (or leaves empty) fall back to English.
 
 ## Copyright

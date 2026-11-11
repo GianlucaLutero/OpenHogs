@@ -2,14 +2,16 @@
 //
 // The menus shown before a match, as a small state machine:
 //
-//     MAIN MENU ── ONE PLAYER ───> SELECT LEVEL ── a map ──> (match against the computer)
+//     MAIN MENU ── ONE PLAYER ───> NEW GAME ── SELECT TEAM ──> (new campaign)
+//        │                         LOAD GAME ────────────────> (saved campaign)
+//        │                         DEATH MATCH ── SELECT LEVEL ── a map ──> (match against the computer)
 //        │    ── MULTI-PLAYER ─> SELECT LEVEL ── a map ──> PLAYERS ── START GAME ──> (match)
 //        │    ── OPTIONS ──────> VOLUME CONTROL (sliders)
 //        │    ── QUIT ─────────> ARE YOU SURE? ── YES ──> (quit)
 //
-// ONE PLAYER is a skirmish against the computer until the campaign
-// exists: the team that plays first is the player's, the others the
-// computer's. MULTI-PLAYER lets each team of the map be played by a person
+// The campaign itself is run by CampaignMenu. DEATH MATCH is a skirmish
+// against the computer: the team that plays first is the player's, the
+// others the computer's. MULTI-PLAYER lets each team of the map be played by a person
 // (PLAYER) or the computer (CPU).
 //
 // The teams of a map are only known once its files are read, so picking a
@@ -30,7 +32,7 @@
 
 namespace openhogs::ui {
 
-enum class FrontEndScreen { Main, SelectLevel, Players, Options, ConfirmQuit };
+enum class FrontEndScreen { Main, OnePlayer, SelectTeam, SelectLevel, Players, Options, ConfirmQuit };
 
 // Volume levels as shown by the sliders: 0 (silent) .. kMaxVolumeLevel.
 inline constexpr int kMaxVolumeLevel = 10;
@@ -50,18 +52,24 @@ struct FrontEndResult {
         None,
         LevelChosen,  // read the teams of `map` and call setLevelTeams()
         StartMatch,   // play `map`; `computerTeams` are played by the computer
+        NewCampaign,  // start a campaign for `nation`
+        LoadCampaign, // continue the saved campaign
         Quit,
         VolumesChanged,
     };
     Request request = Request::None;
     std::string map;
     std::vector<int> computerTeams;
+    int nation = 0;
     MenuSound sound = MenuSound::None;
 };
 
 class FrontEnd {
 public:
     FrontEnd(UiStrings strings, std::vector<std::string> maps, VolumeLevels volumes);
+
+    // Whether LOAD GAME is offered (a saved campaign exists).
+    void setSavedCampaign(bool exists);
 
     FrontEndResult handle(MenuInput input);
 
@@ -80,6 +88,8 @@ public:
 
 private:
     FrontEndResult handleMain(const MenuResponse& response);
+    FrontEndResult handleOnePlayer(const MenuResponse& response);
+    FrontEndResult handleSelectTeam(const MenuResponse& response);
     FrontEndResult handleSelectLevel(const MenuResponse& response);
     FrontEndResult handlePlayers(const MenuResponse& response);
     FrontEndResult handleOptions(const MenuResponse& response);
@@ -94,6 +104,8 @@ private:
     std::string chosenMap_;
     std::vector<int> levelTeams_;
     Menu main_;
+    Menu onePlayerMenu_;
+    Menu selectTeam_;
     Menu selectLevel_;
     Menu players_;
     Menu options_;

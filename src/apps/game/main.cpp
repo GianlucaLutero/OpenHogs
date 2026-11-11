@@ -209,6 +209,8 @@ int runGame(const Options& options) {
     appOptions.hiddenWindow = screenshotOnly;
     appOptions.sound = options.sound && !screenshotOnly;
     appOptions.maps = maps;
+    // The campaign is saved next to the configuration folder: saves/campaign.ini.
+    appOptions.savePath = options.configPath.parent_path().parent_path() / "saves" / "campaign.ini";
     if (!options.gameFolder) {
         appOptions.volumes = audio::volumesFromIni(core::IniFile::load(options.configPath));
     }

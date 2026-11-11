@@ -2,6 +2,7 @@
 # then hot-seat matches with a HUD and a pause menu.
 #
 #   Application    - window, sound, interface; switches menus <-> match
+#   CampaignSession - a campaign: squad pages, briefings, missions, saving
 #   Game           - one match: world, camera, drawing, HUD, pause menu
 #   Interface      - fonts, icons, texts and shared drawing of the 2D interface
 #   MenuBackground - the map circling behind the menus
@@ -15,6 +16,7 @@
 add_executable(openhogs
     main.cpp
     Application.cpp
+    CampaignSession.cpp
     Game.cpp
     Interface.cpp
     MenuBackground.cpp

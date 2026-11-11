@@ -13,6 +13,8 @@ using Request = FrontEndResult::Request;
 
 // Item ids.
 enum MainItem { kOnePlayer, kMultiPlayer, kOptions, kQuit };
+enum OnePlayerItem { kNewGame, kLoadGame, kSkirmish, kOnePlayerBack };
+constexpr int kTeamBack = -1;  // nation items use the nation index as id
 enum OptionsItem { kMaster, kEffects, kVoices, kMusic, kOptionsBack };
 enum ConfirmItem { kYes, kNo };
 constexpr int kLevelBack = -1;  // map items use their index as id
@@ -60,6 +62,17 @@ FrontEnd::FrontEnd(UiStrings strings, std::vector<std::string> maps, VolumeLevel
                                      action(kMultiPlayer, strings_.multiPlayer), action(kOptions, strings_.options),
                                      action(kQuit, strings_.quit)});
 
+    onePlayerMenu_ = Menu(strings_.onePlayer, {action(kNewGame, strings_.newGame), action(kLoadGame, strings_.loadGame, false),
+                                               action(kSkirmish, strings_.skirmish),
+                                               action(kOnePlayerBack, strings_.back)});
+
+    std::vector<MenuItem> nations;
+    for (int nation = 0; nation < game::kPlayableNations; ++nation) {
+        nations.push_back(action(nation, strings_.teamName(nation)));
+    }
+    nations.push_back(action(kTeamBack, strings_.back));
+    selectTeam_ = Menu(strings_.selectTeam, std::move(nations));
+
     std::vector<MenuItem> levels;
     for (std::size_t i = 0; i < maps_.size(); ++i) {
         levels.push_back(action(static_cast<int>(i), maps_[i]));
@@ -76,9 +89,19 @@ FrontEnd::FrontEnd(UiStrings strings, std::vector<std::string> maps, VolumeLevel
     confirmQuit_ = Menu(strings_.areYouSure, {action(kYes, strings_.yes), action(kNo, strings_.no)});
 }
 
+void FrontEnd::setSavedCampaign(bool exists) {
+    // Rebuilt rather than edited: Menu items are read-only from outside.
+    onePlayerMenu_ = Menu(strings_.onePlayer, {action(kNewGame, strings_.newGame), action(kLoadGame, strings_.loadGame, exists),
+                                               action(kSkirmish, strings_.skirmish),
+                                               action(kOnePlayerBack, strings_.back)});
+    if (exists) onePlayerMenu_.select(kLoadGame);
+}
+
 const Menu& FrontEnd::menu() const {
     switch (screen_) {
     case FrontEndScreen::Main: return main_;
+    case FrontEndScreen::OnePlayer: return onePlayerMenu_;
+    case FrontEndScreen::SelectTeam: return selectTeam_;
     case FrontEndScreen::SelectLevel: return selectLevel_;
     case FrontEndScreen::Players: return players_;
     case FrontEndScreen::Options: return options_;
@@ -101,6 +124,8 @@ void FrontEnd::showMainMenu() {
 FrontEndResult FrontEnd::handle(MenuInput input) {
     switch (screen_) {
     case FrontEndScreen::Main: return handleMain(main_.handle(input));
+    case FrontEndScreen::OnePlayer: return handleOnePlayer(onePlayerMenu_.handle(input));
+    case FrontEndScreen::SelectTeam: return handleSelectTeam(selectTeam_.handle(input));
     case FrontEndScreen::SelectLevel: return handleSelectLevel(selectLevel_.handle(input));
     case FrontEndScreen::Players: return handlePlayers(players_.handle(input));
     case FrontEndScreen::Options: return handleOptions(options_.handle(input));
@@ -117,10 +142,11 @@ FrontEndResult FrontEnd::handleMain(const MenuResponse& response) {
     } else if (response.type == Type::Activated) {
         switch (response.itemId) {
         case kOnePlayer:
+            open(FrontEndScreen::OnePlayer);
+            break;
         case kMultiPlayer:
-            // The same level list, titled after the mode.
-            onePlayer_ = response.itemId == kOnePlayer;
-            selectLevel_.setTitle(onePlayer_ ? strings_.onePlayer : strings_.selectLevel);
+            onePlayer_ = false;
+            selectLevel_.setTitle(strings_.selectLevel);
             open(FrontEndScreen::SelectLevel);
             break;
         case kOptions: open(FrontEndScreen::Options); break;
@@ -131,11 +157,47 @@ FrontEndResult FrontEnd::handleMain(const MenuResponse& response) {
     return result;
 }
 
+FrontEndResult FrontEnd::handleOnePlayer(const MenuResponse& response) {
+    FrontEndResult result;
+    result.sound = soundFor(response);
+    if (response.type == Type::Back || (response.type == Type::Activated && response.itemId == kOnePlayerBack)) {
+        open(FrontEndScreen::Main);
+        result.sound = MenuSound::Back;
+    } else if (response.type == Type::Activated) {
+        switch (response.itemId) {
+        case kNewGame: open(FrontEndScreen::SelectTeam); break;
+        case kLoadGame: result.request = Request::LoadCampaign; break;
+        case kSkirmish:
+            // The level list, titled after the mode.
+            onePlayer_ = true;
+            selectLevel_.setTitle(strings_.skirmish);
+            open(FrontEndScreen::SelectLevel);
+            break;
+        default: break;
+        }
+    }
+    return result;
+}
+
+FrontEndResult FrontEnd::handleSelectTeam(const MenuResponse& response) {
+    FrontEndResult result;
+    result.sound = soundFor(response);
+    if (response.type == Type::Back || (response.type == Type::Activated && response.itemId == kTeamBack)) {
+        open(FrontEndScreen::OnePlayer);
+        result.sound = MenuSound::Back;
+    } else if (response.type == Type::Activated) {
+        result.request = Request::NewCampaign;
+        result.nation = response.itemId;
+        open(FrontEndScreen::OnePlayer);  // where Back from the campaign will lead
+    }
+    return result;
+}
+
 FrontEndResult FrontEnd::handleSelectLevel(const MenuResponse& response) {
     FrontEndResult result;
     result.sound = soundFor(response);
     if (response.type == Type::Back || (response.type == Type::Activated && response.itemId == kLevelBack)) {
-        open(FrontEndScreen::Main);
+        open(onePlayer_ ? FrontEndScreen::OnePlayer : FrontEndScreen::Main);
         result.sound = MenuSound::Back;
     } else if (response.type == Type::Activated) {
         chosenMap_ = maps_.at(static_cast<std::size_t>(response.itemId));

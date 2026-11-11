@@ -25,6 +25,8 @@
 #include "openhogs/game/Projectiles.h"
 #include "openhogs/game/TurnSystem.h"
 
+#include <functional>
+#include <map>
 #include <optional>
 #include <random>
 #include <string_view>
@@ -103,6 +105,13 @@ public:
     // Ends the active team's turn now (only while Playing).
     void endTurn();
 
+    // Which nation (index into scene::characterTeams) a team fights for:
+    // its uniform and its name. By default team n is nation n (wrapping
+    // round); the campaign sets the player's chosen nation and the enemy
+    // of each mission.
+    int nationOf(int team) const;
+    void setTeamNation(int team, int nation);
+
 private:
     void handleAiming(std::size_t hogIndex, const PlayerInput& input, double seconds, std::vector<GameEvent>& events);
     void fire(std::size_t hogIndex, float power, std::vector<GameEvent>& events);
@@ -118,6 +127,7 @@ private:
 
     MapCollision map_;
     std::vector<Hog> hogs_;
+    std::map<int, int> nations_;  // team -> nation, where not the default
     std::optional<TurnSystem> turns_;
     MatchPhase phase_ = MatchPhase::Playing;
     std::optional<int> winner_;
@@ -147,8 +157,11 @@ private:
 // Loads the terrain (Maps/<NAME>.PMG), the objects' collision boxes and
 // the hogs (Maps/<NAME>.POG, with the models in Maps/<NAME>.MAD) of a map.
 // Throws std::runtime_error if the terrain is missing; a map without a .POG
-// file simply has no hogs and no obstacles.
-World loadWorld(const core::VirtualFileSystem& vfs, std::string_view mapName, TurnRules rules = {});
+// file simply has no hogs and no obstacles. `prepareHogs`, if given, can
+// change the map's hogs before the match is set up (the campaign puts the
+// player's squad in place of the map's hogs).
+World loadWorld(const core::VirtualFileSystem& vfs, std::string_view mapName, TurnRules rules = {},
+                const std::function<void(std::vector<Hog>&)>& prepareHogs = {});
 
 // The teams of a map, the one that plays first first (the map marks the
 // player's hog). Empty for a map without hogs. Used by the menus to offer
