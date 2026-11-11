@@ -20,7 +20,8 @@ listed before it below.
 | `apps/characterviewer` | done | `openhogs-characterviewer`: one animated hog, class/team/detail/animation switching, orbit camera. |
 | `audio`   | done | Sound effects, speech and music: `SoundLibrary` loads and caches WAV/Ogg files and `.srl` banks through the VFS, `Mixer` mixes any number of sounds at any rate with per-category volumes, `AudioDevice` (SDL3, built with the applications) feeds the mixer to the sound card. |
 | `apps/soundtest` | done | `openhogs-soundtest`: plays or renders any sound of the game. |
-| `game`    | planned | Game rules: turns, hogs, weapons, AI, campaign. |
+| `game`    | in progress | Match state and rules, with no drawing, sound or window code. Done: `FixedTimestep` (simulation at 50 steps per second whatever the display rate), `TerrainHeightField` (ground height and surface at any point, matching the drawn triangles), `Hog` and `spawnHogs` (hogs from the map's objects), `IdleAnimator`, `World`, `ChaseCamera`. Planned: movement, turns, weapons, AI, campaign. |
+| `apps/game` | in progress | `openhogs`, the game: connects the `game` module to the window, the input, the renderers and the sound. |
 
 ## How files are found
 
@@ -40,6 +41,21 @@ This gives three guarantees:
    off from the config.
 3. File names are case-insensitive and accept `\` or `/`, as in the original
    Windows game.
+
+## The game loop
+
+`openhogs` runs three things each frame, in this order:
+
+1. **Input**: window events change the camera or the selection.
+2. **Simulation**: `game::FixedTimestep` turns the real time since the
+   last frame into a whole number of steps of 1/50 s; `World::update` runs
+   once per step. The match therefore behaves the same at any frame rate,
+   and a stall never makes it jump ahead.
+3. **Drawing**: the map, then each hog posed by its animator. Drawing only
+   reads the world.
+
+The `game` module does not know about OpenGL, SDL or the sound card, which
+is what makes its rules unit-testable.
 
 ## Original game layout (Steam / GOG release, v1.2b)
 

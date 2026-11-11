@@ -168,3 +168,24 @@ TEST_CASE("Posed mesh: rejects vertices of bones the pose does not have", "[scen
     const auto pose = computePose(makeArm(), makeFrame({}, {}));
     CHECK_THROWS_AS(buildPosedModelMesh(model, {}, pose), std::invalid_argument);
 }
+
+// Cross-fading between animations blends whole poses: halfway between two
+// poses every bone must be halfway in rotation and position, and bones
+// must stay rigid (a plain average of the matrices would shrink them).
+TEST_CASE("Pose: blending two poses keeps bones rigid", "[scene][pose]") {
+    const auto straight = computePose(makeArm(), makeFrame({}, {}, {0, 0, 0}));
+    const auto turned = computePose(makeArm(), makeFrame({0, 0, kHalfPi}, {}, {0, -20, 0}));
+
+    const auto halfway = blendPoses(straight, turned, 0.5f);
+
+    checkClose(transformPoint(halfway[0], {0, 0, 0}), {0, -10, 0});
+    // The root is turned 45 degrees: a point one unit along its X axis
+    // stays one unit away from its origin.
+    const glm::vec3 tip = transformPoint(halfway[0], {1, 0, 0}) - transformPoint(halfway[0], {0, 0, 0});
+    CHECK(glm::length(tip) == Approx(1.0f).margin(1e-4));
+    CHECK(tip.x == Approx(std::sqrt(0.5f)).margin(1e-4));
+
+    checkClose(transformPoint(blendPoses(straight, turned, 0.0f)[1], {0, 0, 0}), {10, 0, 0});
+    checkClose(transformPoint(blendPoses(straight, turned, 1.0f)[1], {0, 0, 0}), {0, -30, 0});
+    CHECK_THROWS_AS(blendPoses(straight, Pose(1), 0.5f), std::invalid_argument);
+}

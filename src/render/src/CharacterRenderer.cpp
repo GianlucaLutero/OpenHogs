@@ -42,6 +42,16 @@ std::vector<scene::Vertex> makeGridVertices() {
 
 } // namespace
 
+CharacterTextureSet::CharacterTextureSet(const std::vector<formats::RgbaImage>& images) {
+    for (const auto& image : images) {
+        textures_.emplace_back(image);
+    }
+}
+
+const GlTexture* CharacterTextureSet::find(std::uint32_t index) const {
+    return index < textures_.size() ? &textures_[index] : nullptr;
+}
+
 CharacterRenderer::CharacterRenderer() {
     shader_ = std::make_unique<GlShaderProgram>(kBasicVertexShader, kBasicFragmentShader);
     whiteTexture_ = std::make_unique<GlTexture>(formats::RgbaImage{1, 1, {255, 255, 255, 255}});
@@ -49,10 +59,7 @@ CharacterRenderer::CharacterRenderer() {
 }
 
 void CharacterRenderer::setTextures(const std::vector<formats::RgbaImage>& textures) {
-    textures_.clear();
-    for (const auto& image : textures) {
-        textures_.emplace_back(image);
-    }
+    textures_ = std::make_unique<CharacterTextureSet>(textures);
 }
 
 void CharacterRenderer::draw(const Camera& camera, int width, int height, const scene::Mesh& posedMesh,
@@ -79,11 +86,27 @@ void CharacterRenderer::draw(const Camera& camera, int width, int height, const 
     const float scale = formats::kModelToWorldScale;
     const glm::mat4 modelToWorld = glm::translate(glm::mat4(1.0f), {0.0f, feetDepth * scale, 0.0f}) *
                                    glm::scale(glm::mat4(1.0f), {scale, -scale, scale});
+    if (textures_) {
+        drawHog(camera, width, height, posedMesh, *textures_, modelToWorld);
+    }
+}
+
+void CharacterRenderer::drawHog(const Camera& camera, int width, int height, const scene::Mesh& posedMesh,
+                                const CharacterTextureSet& textures, const glm::mat4& modelToWorld) const {
+    glEnable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+
+    const float aspect = height > 0 ? static_cast<float>(width) / static_cast<float>(height) : 1.0f;
+    shader_->use();
+    shader_->setMatrix("uViewProjection", camera.projectionMatrix(aspect) * camera.viewMatrix());
+    shader_->setInt("uTexture", 0);
     shader_->setMatrix("uModel", modelToWorld);
     shader_->setVector("uTint", kNoTint);
+    glActiveTexture(GL_TEXTURE0);
+
     for (const auto& part : posedMesh) {
-        const GlTexture& texture = part.textureIndex < textures_.size() ? textures_[part.textureIndex] : *whiteTexture_;
-        texture.bind();
+        const GlTexture* texture = textures.find(part.textureIndex);
+        (texture != nullptr ? *texture : *whiteTexture_).bind();
         GlMesh(part.vertices).draw();
     }
 }

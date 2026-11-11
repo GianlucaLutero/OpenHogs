@@ -67,6 +67,9 @@ std::string characterModelName(const CharacterClass& characterClass, CharacterDe
 // 5 swimming, 30 hands on hips, 44 a salute...).
 std::string_view animationName(std::size_t animation);
 
+// Speed of the animations in mcap.mad, checked against the original game.
+inline constexpr float kAnimationFramesPerSecond = 25.0f;
+
 // How far below the model origin a standing hog's feet are, in model units
 // (Y points down in model space). Measured on the idle animations: the
 // lowest point of the body stays about 133-150 units below the origin.

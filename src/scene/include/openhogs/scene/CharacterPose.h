@@ -51,4 +51,10 @@ Pose computePose(const formats::Skeleton& skeleton, const formats::AnimationFram
 // play continuously. Throws std::invalid_argument if the animation is empty.
 Pose samplePose(const formats::Skeleton& skeleton, const formats::Animation& animation, float frame);
 
+// Blends two poses bone by bone: `amount` 0 gives `from`, 1 gives `to`.
+// Used to cross-fade from one animation into the next over a few frames,
+// so a hog does not snap from one stance to another. Throws
+// std::invalid_argument if the poses have different bone counts.
+Pose blendPoses(const Pose& from, const Pose& to, float amount);
+
 } // namespace openhogs::scene

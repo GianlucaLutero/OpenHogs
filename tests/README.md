@@ -38,6 +38,7 @@ tests/
 ├── core/       tests for src/core
 ├── content/    tests for src/content
 ├── formats/    tests for src/formats
+├── game/       tests for src/game
 ├── audio/      tests for src/audio
 ├── extractor/  tests for src/tools/extractor
 ├── langpack/   tests for src/tools/langpack
@@ -79,6 +80,13 @@ Each new module gets its own folder, mirroring `src/`.
 | `buildPosedModelMesh` | each vertex moved by its own bone, unknown bones rejected |
 | `CharacterLibrary` | class catalogue and model names, animation names, loading through the VFS in any letter case, team textures in archive order followed by the face textures found by name, expressions.ini from a pack, wrong skeleton rejected |
 | `CharacterExpressions` | only eye and mouth textures swapped, blinking, the saboteur's balaclava faces, fallback to the default face, rules per animation and their overrides, blinking brief, regular and different per hog |
+| `blendPoses` | halfway pose, bones kept rigid, mismatched poses rejected |
+| `FixedTimestep` | same steps for the same time however it is cut into frames, stalls capped and their backlog dropped |
+| `TerrainHeightField` | samples at their world position, heights equal to every drawn terrain triangle, edge height outside the map, tile lookup |
+| `spawnHogs` / `Hog` | class from the object name (commando included), team, player flag, facing, feet on the ground, hogs on towers keep their height, model matrix agrees with the facing |
+| `IdleAnimator` | reproducible per seed, mostly standing, fidgets followed by standing, cross-faded changes |
+| `World` | selection starts on the player's hog and wraps, update advances time and animations |
+| `ChaseCamera` | looks at the target from its distance, glides independently of the step length, stays above the terrain, zoom and pitch limits |
 | `TextureTable` | equal-size image slices, uneven files rejected |
 | `scene` | terrain rows go towards -Z, tile texture flip/rotation, two triangles per tile grouped by texture, model UV normalisation and quad split, object scale/yaw/Y-flip, objects without a model become markers |
 | `langpack` | translations follow the English text to the PC indices, differently worded and missing strings keep the English, overrides apply and reject foreign indices, the shipped Italian overrides encode, bottom-up BMPs, the OS/2 BMP header, bilinear scaling, a complete pack built from a miniature disc, clear errors for unusable discs |

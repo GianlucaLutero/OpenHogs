@@ -97,6 +97,39 @@ it: in `ICE.POG` the 20 hogs have team masks 01, 02, 04 and 08 (five each)
 at offset 59, `CAMP.POG` has tutorial script types 20 and 23 at offset 60,
 and the hogs' flags at offset 88 are 01 ("player").
 
-Objects whose model is not in the map's MAD are logical objects. The
-most common are `GR_ME` and `CO_ME`, which appear to be the start
-positions of the hogs; the map viewer shows them as yellow markers.
+Objects whose model is not in the map's MAD are logical objects; the map
+viewer shows them as yellow markers.
+
+### Hogs
+
+The hogs of a map are objects named `<class>_ME`, where the two letters are
+the prefix of the class's low-detail model in `Chars/british.mad`
+(see [characters.md](characters.md)). Counted over the 61 maps:
+
+| Object | Class | Count |
+|--------|-------|-------|
+| `GR_ME` | grunt | 631 |
+| `HV_ME` | heavy weapons | 62 |
+| `SB_ME` | saboteur | 17 |
+| `ME_ME` | medic | 17 |
+| `CO_ME` | commando | 13 |
+| `SN_ME` | sniper | 10 |
+| `LE_ME` | legend | 8 |
+| `SP_ME` | spy | 8 |
+| `AC_ME` | ace | 5 |
+| `SA_ME` | sapper | 1 |
+
+- **Team**: the bit mask at offset 59 (01, 02, 04, 08, 10, 20: up to six teams).
+- **Facing**: the Y angle, as for every object.
+- **Height**: the position is the centre of the model, not the feet. Of
+  the 772 hogs, 668 are 160–179 units above the terrain; OpenHogs puts the
+  feet on the ground. Hogs placed much higher stand on something (a tower
+  in `BOOM`, 2272 units up): those keep their height, minus 168.
+- **Commando**: the PC files have no commando model (only `COLO` textures
+  that no model uses). OpenHogs draws commandos with the saboteur's model
+  until it is known what the original does.
+- **Open question**: multiplayer maps such as `BOOM` place several hogs of
+  different classes on the same spot (five `SN_ME` and five `GR_ME` of team
+  2). They are probably alternatives chosen by the game mode, perhaps through
+  the type id (offset 46) or the flags (offset 88); OpenHogs currently
+  creates all of them.
