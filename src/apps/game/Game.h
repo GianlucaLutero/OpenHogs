@@ -37,6 +37,7 @@
 
 #include "Gamepads.h"
 #include "Interface.h"
+#include "OriginalHud.h"
 #include "SoundPlayer.h"
 
 #include "openhogs/core/VirtualFileSystem.h"
@@ -141,10 +142,10 @@ private:
     void drawModel(const render::Camera& camera, int width, int height, const formats::Model& model,
                    const glm::mat4& modelToWorld);
     const formats::Model* weaponModel(std::string_view name);
+    render::Camera sceneCamera() const;
     void drawScene(int width, int height);
-    void drawHud();
-    void drawTurnPanel(const ui::HudInfo& info);
-    void drawWeaponPanel(const ui::HudInfo& info);
+    void drawHud(int width, int height);
+    void showMessage(const std::string& message, double seconds, bool turnMessage);
     void drawHog(const render::Camera& camera, int width, int height, const game::Hog& hog, std::size_t index);
     const formats::Model& modelFor(const scene::CharacterClass& characterClass);
     const TeamLook& lookFor(int team);
@@ -160,6 +161,8 @@ private:
     bool paused_ = false;
     ui::PauseMenu pauseMenu_;
     ui::MessageBanner banner_;
+    glm::vec4 bannerColour_{1.0f};  // turn messages in the team's colour, others white
+    OriginalHud hud_;
     std::set<int> computerTeams_;
     std::vector<std::size_t> squadDeaths_;
     game::ComputerPlayer computer_;

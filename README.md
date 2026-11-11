@@ -28,7 +28,7 @@ picks one of its weapons, aims and fires: fists and blades, pistols,
 rifles and machine guns, grenades, mortars and bazookas, TNT and mines.
 Hogs get hurt, thrown about and killed, and the last team standing wins.
 A main menu leads to the level choice and the volume options, and the
-match has its HUD and pause menu, all in the game's own fonts and words
+match has the original's HUD and a pause menu, all in the game's own fonts and words
 (so in Italian with the Italian pack). Any team can be played by the
 computer, which picks its target and weapon, gets closer when it has to,
 aims and fires like a player would. The one-player campaign takes a
@@ -57,8 +57,9 @@ animations.
 | `ai`                 | ✅ done | Computer opponents: shot planning with the real flight rules, approach, aiming errors; ONE PLAYER skirmish against the computer, PLAYER/CPU choice per team in multiplayer |
 | `campaign`           | ✅ done | The 25 missions in the original order with their maps, names and turn times; squad of eight, ranks and careers, promotion points, losses; briefings; mission results; saving |
 | `local-multiplayer`  | ✅ done | Nation and PLAYER/CPU/OFF for every team, field conditions (hogs per team, turn time, health, sudden death), gamepads in menus and matches |
-| `exe-analysis`       | 🔍 in review | The original executable studied with Ghidra: the exact level table (KEEP was missing, mission 1 is ESTU), skies and night sounds, the video schedule; `tools/ghidra` |
-| fidelity blocks      | planned | `original-hud`, `original-audio`, `cutscenes`, `mgl-pictures`, `original-menus`, `mission-scripts`, `weapons-complete`, `version-variants`: HUD, sound, videos, menus and missions exactly as in the original |
+| `exe-analysis`       | ✅ done | The original executable studied with Ghidra: the exact level table (KEEP was missing, mission 1 is ESTU), skies and night sounds, the video schedule; `tools/ghidra` |
+| `original-hud`       | 🔍 in review | The original's brass instruments: angle gauge with the weapon icon and aim arrow, power gauge sliding up when charging, clock with rolling digits and warning lamp; turn messages in team colours; damage numbers above hurt hogs |
+| fidelity blocks      | planned | `original-audio`, `cutscenes`, `mgl-pictures`, `original-menus`, `mission-scripts`, `weapons-complete`, `version-variants`: HUD, sound, videos, menus and missions exactly as in the original |
 | `release`            | planned | Packaged builds for Windows and Linux |
 
 ## Requirements
@@ -189,12 +190,14 @@ campaign is saved automatically in `saves/campaign.ini`.
 
 Teams played by people share the keyboard (hot seat). During a computer
 team's turn ("THE ENEMY RETALIATES...") the hog keys do nothing; watch it
-think, turn, pick a weapon, aim and fire. The HUD shows the team and class of the active hog and
-its health (top left), the seconds left in the turn (top right), the
-selected weapon with its icon and the movement left (bottom left; the
-team name says *CPU* for a computer team) and,
-while charging a throw, its power. "GET READY ..." announces each turn
-and "VICTORY TO ...!!" the winner. Health bars float above the hogs. All
+think, turn, pick a weapon, aim and fire. The HUD is the original's: the
+angle gauge (top right) shows the selected weapon and, with its arrow, how
+high the hog aims; the power gauge rises at the bottom while a grenade,
+shell or rocket is charged; the clock (bottom right) counts the seconds
+left and its lamp turns amber, then red, as time runs out. "GET READY
+..." announces each turn in the team's colour and "VICTORY TO ...!!" the
+winner. Damage numbers rise above hurt hogs and health bars float above
+them. All
 texts come from the game's own tables, so with the Italian pack they are
 in Italian.
 
