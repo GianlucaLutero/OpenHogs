@@ -37,6 +37,7 @@
 
 #include "Gamepads.h"
 #include "Interface.h"
+#include "MatchAudio.h"
 #include "OriginalHud.h"
 #include "SoundPlayer.h"
 
@@ -179,6 +180,7 @@ private:
     Interface& interface_;
     SoundPlayer& sounds_;
     const Gamepads& gamepads_;
+    MatchAudio audio_;  // voices, music and background of the match
 
     // GPU resources (the application keeps the OpenGL context alive).
     std::unique_ptr<render::MapRenderer> mapRenderer_;

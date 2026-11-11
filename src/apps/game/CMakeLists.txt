@@ -6,6 +6,7 @@
 #   Game           - one match: world, camera, drawing, HUD, pause menu
 #   Gamepads       - game controllers for the menus and the matches
 #   Interface      - fonts, icons, texts and shared drawing of the 2D interface
+#   MatchAudio     - voices, music and background sounds of a match
 #   MenuBackground - the map circling behind the menus
 #   OriginalHud    - the original's HUD instruments: angle and power gauges, clock
 #   SoundPlayer    - mixer, sound device, sounds by name from the banks
@@ -22,6 +23,7 @@ add_executable(openhogs
     Game.cpp
     Gamepads.cpp
     Interface.cpp
+    MatchAudio.cpp
     MenuBackground.cpp
     OriginalHud.cpp
     SoundPlayer.cpp)

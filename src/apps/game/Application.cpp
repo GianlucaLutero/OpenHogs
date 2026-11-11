@@ -5,6 +5,7 @@
 #include "MenuControls.h"
 
 #include "openhogs/game/FieldConditions.h"
+#include "openhogs/game/MatchSounds.h"
 
 #include "openhogs/render/GlObjects.h"
 
@@ -232,7 +233,11 @@ void Application::handleEvent(const SDL_Event& event, bool& running) {
 void Application::update(double seconds) {
     if (game_) {
         game_->advance(seconds);
-    } else if (background_) {
+        return;
+    }
+    // The menus play the long theme in a loop, as the original's front end.
+    sounds_->keepMusic(game::kThemeTrack, 1.0f, true);
+    if (background_) {
         background_->update(seconds);
     }
 }
