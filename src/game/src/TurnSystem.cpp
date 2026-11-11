@@ -32,11 +32,21 @@ TurnSystem::TurnSystem(const std::vector<Hog>& hogs, TurnRules rules) : rules_(r
 std::vector<std::size_t> TurnSystem::hogsOfTeam(int team, const std::vector<Hog>& hogs) const {
     std::vector<std::size_t> result;
     for (std::size_t i = 0; i < hogs.size(); ++i) {
-        if (hogs[i].team == team) {
+        if (hogs[i].team == team && hogs[i].alive) {
             result.push_back(i);
         }
     }
     return result;
+}
+
+std::vector<int> TurnSystem::livingTeams(const std::vector<Hog>& hogs) const {
+    std::vector<int> living;
+    for (const int team : teams_) {
+        if (!hogsOfTeam(team, hogs).empty()) {
+            living.push_back(team);
+        }
+    }
+    return living;
 }
 
 void TurnSystem::startTurn(const std::vector<Hog>& hogs) {
@@ -48,6 +58,9 @@ void TurnSystem::startTurn(const std::vector<Hog>& hogs) {
     // The hog after the one this team used last time (the first hog the
     // first time).
     const auto members = hogsOfTeam(activeTeam(), hogs);
+    if (members.empty()) {
+        return;  // nobody left to play (the match is over)
+    }
     const std::size_t last = lastHogOfTeam_[activeTeamIndex_];
     const auto next = std::upper_bound(members.begin(), members.end(), last);
     activeHog_ = (last == hogs.size() || next == members.end()) ? members.front() : *next;
@@ -84,7 +97,12 @@ bool TurnSystem::update(double seconds, float distanceMoved, const std::vector<H
 }
 
 void TurnSystem::endTurn(const std::vector<Hog>& hogs) {
-    activeTeamIndex_ = (activeTeamIndex_ + 1) % teams_.size();
+    for (std::size_t tries = 0; tries < teams_.size(); ++tries) {
+        activeTeamIndex_ = (activeTeamIndex_ + 1) % teams_.size();
+        if (!hogsOfTeam(activeTeam(), hogs).empty()) {
+            break;
+        }
+    }
     startTurn(hogs);
 }
 

@@ -32,30 +32,6 @@ using Catch::Approx;
 
 namespace {
 
-constexpr double kStep = 1.0 / 50.0;  // the game's simulation step
-
-// A hog standing at (x, ground, z), facing +X, in `team`.
-Hog makeHog(const MapCollision& map, float x, float z, int team = 0) {
-    Hog hog;
-    hog.characterClass = hogClassForObject("GR_ME");
-    hog.team = team;
-    hog.position = {x, map.terrain().heightAt(x, z), z};
-    hog.idle.start(hog.animation);
-    return hog;
-}
-
-MapCollision flatMap(std::vector<CollisionBox> boxes = {}, int height = 0) {
-    return MapCollision(flatGround(height), std::move(boxes));
-}
-
-CollisionBox makeBox(glm::vec3 centre, glm::vec3 halfSize, float yaw = 0.0f) {
-    CollisionBox box;
-    box.centre = centre;
-    box.halfSize = halfSize;
-    box.yawRadians = yaw;
-    return box;
-}
-
 // Runs `steps` simulation steps of hog 0 with the same input.
 MovementEvents runSteps(std::vector<Hog>& hogs, const MapCollision& map, const MovementInput& input, int steps,
                         bool canMove = true) {
@@ -528,7 +504,7 @@ TEST_CASE("World: only the active hog follows the input", "[game][world]") {
     const auto animations = makeAnimations();
 
     for (int i = 0; i < 25; ++i) {
-        world.update(kStep, forward(), animations);
+        world.update(kStep, PlayerInput{forward()}, animations);
     }
     CHECK(world.hogs()[0].position.x == Approx(kRunSpeed / 2.0f).margin(1.0));
     CHECK(world.hogs()[1].position.x == 0.0f);
@@ -537,7 +513,7 @@ TEST_CASE("World: only the active hog follows the input", "[game][world]") {
 
     world.endTurn();
     CHECK(world.activeHog() == 1u);
-    world.update(kStep, forward(), animations);
+    world.update(kStep, PlayerInput{forward()}, animations);
     CHECK(world.hogs()[1].position.x > 0.0f);
 }
 
@@ -547,7 +523,7 @@ TEST_CASE("World: a map without hogs has no turns", "[game][world]") {
     World world(flatMap(), {});
     CHECK_FALSE(world.turns().has_value());
     CHECK_FALSE(world.activeHog().has_value());
-    world.update(kStep, forward(), makeAnimations());
+    world.update(kStep, PlayerInput{forward()}, makeAnimations());
     CHECK_FALSE(world.switchHog(1));
     world.endTurn();
 }

@@ -38,7 +38,7 @@ tests/
 ├── core/       tests for src/core
 ├── content/    tests for src/content
 ├── formats/    tests for src/formats
-├── game/       tests for src/game
+├── game/       tests for src/game (GameTests, MovementTests, WeaponTests)
 ├── audio/      tests for src/audio
 ├── extractor/  tests for src/tools/extractor
 ├── langpack/   tests for src/tools/langpack
@@ -89,6 +89,10 @@ Each new module gets its own folder, mirroring `src/`.
 | `MapCollision` | boxes from the map's objects (hogs and invisible objects left out), boxes turn with their object, low boxes are floors, tall ones obstacles, high ones overhead |
 | `HogMovement` | running speed and direction, footsteps per cycle, turning without movement left, gentle slopes followed and cliffs stopping, wall tiles not climbable, obstacles stopping with sliding, hogs blocking but able to step apart, jump height and length, falls with their height, swimming, map edge, footstep sound names |
 | `TurnSystem` | teams in order starting with the player's, hogs in rotation, time limit, movement allowance, changing hog only before moving |
+| `Weapons` | every weapon has the data its kind needs, unique text ids, class loadouts made of real weapons |
+| `Combat` | fall damage by height, health never below zero, one death only, explosions falling off with distance and throwing hogs away, bullets stopping at the first hog, wall or ground |
+| `Projectiles` | shells exploding on contact but not on their owner, grenades bouncing, settling and exploding on their fuse, water and map edge, mines arming and triggering, TNT fuse, the aiming arc landing where physics says |
+| `World` (weapons) | charge, throw, no control while the shot resolves, next turn; bullets and bursts; melee only in front and within reach; victory when the last enemy dies; no instant victory with one team; cluster bomblets; chain reactions; weapon changes and moving while charging; fall damage |
 | `World` | only the active hog follows the input, ending the turn hands control over, a map without hogs has no turns |
 | `ChaseCamera` | looks at the target from its distance, glides independently of the step length, swings round the short way, stays above the terrain, zoom and pitch limits |
 | `TextureTable` | equal-size image slices, uneven files rejected |

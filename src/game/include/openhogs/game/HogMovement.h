@@ -36,6 +36,7 @@ inline constexpr std::size_t kJumpStartAnimation = 8;     // "Jumping - Start"
 inline constexpr std::size_t kJumpMiddleAnimation = 9;    // "Jumping - Middle"
 inline constexpr std::size_t kJumpEndAnimation = 10;      // "Jumping - End"
 inline constexpr std::size_t kFallAnimation = 38;         // "Flying through air/falling"
+inline constexpr std::size_t kFirstDyingAnimation = 47;   // "Dying #1", #2 and #3 follow
 
 // Speeds in world units per second.
 // The run cycle's feet travel 326 model units (163 world units) per step,

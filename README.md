@@ -23,9 +23,11 @@ The goal is to play the original game natively on modern systems
 ## Project status
 
 OpenHogs is in early development. The game starts, loads a map and puts
-the hogs on it; teams take turns, and the active hog runs, turns, jumps,
-swims and falls, with footsteps that sound like the ground it walks on.
-Weapons come next. Besides that, the original data can be
+the hogs on it; teams take turns, and the active hog runs, jumps, swims,
+picks one of its weapons, aims and fires: fists and blades, pistols,
+rifles and machine guns, grenades, mortars and bazookas, TNT and mines.
+Hogs get hurt, thrown about and killed, and the last team standing wins.
+Menus and the computer opponents come next. Besides that, the original data can be
 extracted, every map explored in 3D, an Italian (or French, German,
 Spanish) language pack built from your PlayStation disc, every sound,
 voice and music track played, and the hogs watched in all their
@@ -43,6 +45,7 @@ animations.
 | `character-expressions` | ✅ done | Faces that follow what the hog is doing, blinking |
 | `game-framework`     | ✅ done | The `openhogs` game: fixed-rate game loop, hogs placed on the map, chase camera, ambient sound |
 | `hog-movement`       | ✅ done | Turns (time limit, movement allowance), running, jumping, falling, swimming, collisions with the scenery, footsteps |
+| `weapons`            | ✅ done | 20 weapons (melee, bullets, grenades, shells, TNT, mines), health, explosions, knockback, fall damage, death, victory |
 | gameplay blocks      | planned | Movement, weapons, turns, AI, campaign |
 
 ## Requirements
@@ -133,12 +136,15 @@ Directory = C:\Program Files (x86)\Steam\steamapps\common\HogsofWar
 
 `openhogs` is the game itself. At this stage it loads a map, places the
 hogs where the map says, each in its team's uniform, and the teams take
-turns moving one hog each. Weapons come with the next block, so for now a
-turn ends when its time runs out or when you press Enter.
+turns: each turn one hog moves, then fires one of its weapons. The turn
+ends when the shot is over (or when time runs out, or when you press
+Enter); the match ends when only one team has hogs left.
 
 Every team is played from the same keyboard (hot seat) until the computer
-opponents exist. The state of the turn (team, hog, seconds and movement
-left) is shown in the window title until the in-game display exists.
+opponents exist. The state of the turn (team, hog, health, weapon, seconds
+and movement left) is shown in the window title until the in-game display
+exists; health bars float above the hogs. Weapon names come from the
+game's own text, so with the Italian pack they are in Italian.
 
 ```sh
 # Windows
@@ -153,7 +159,7 @@ build\bin\Release\openhogs.exe --map ESTU
 | `--map <name>` | map to load (default: the first one); `--list-maps` prints them |
 | `--hog <n>` | hog to start on (1 = the first hog of the map) |
 | `--no-sound` | play without sound |
-| `--screenshot <file>` | save the match as an image and exit; `--seconds <s>` lets it run for a while first, `--auto-walk` makes the active hog run meanwhile |
+| `--screenshot <file>` | save the match as an image and exit; `--seconds <s>` lets it run for a while first, `--auto-walk` makes the active hog run meanwhile, `--weapon <n>` and `--fire-at <s>` make it pick its n-th weapon and fire |
 | `--game <folder>` / `--config <file>` / `--size <W>x<H>` | as for the other programs |
 
 | Key | Action |
@@ -162,6 +168,9 @@ build\bin\Release\openhogs.exe --map ESTU
 | `S` / `↓` | walk backwards |
 | `A` / `←`, `D` / `→` | turn left / right |
 | `Space` | jump (hold `W` to jump forward) |
+| `Q` / `E` | previous / next weapon |
+| `R` / `F` | aim up / down (the white dots show where the shot goes) |
+| `Ctrl` or `X` | fire; for grenades, mortars and bazookas hold it to throw further and release to fire |
 | `Tab` / `Shift+Tab` | another hog of the same team (only before moving) |
 | `Enter` | end the turn |
 | left mouse button + drag | turn the camera around the hog |
@@ -175,6 +184,8 @@ team 2 American, team 3 French...); choosing them comes with the menus.
 A turn lasts 60 seconds and allows about 7 seconds of running. These values,
 and the other choices still to be compared with the original game, are
 listed in [`docs/open-decisions.md`](docs/open-decisions.md).
+The weapons, their names, models and sounds are described in
+[`docs/formats/weapons.md`](docs/formats/weapons.md).
 
 ### Extracting the game data
 

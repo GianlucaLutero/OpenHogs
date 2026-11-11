@@ -8,8 +8,10 @@
 //   last time. Before the hog has moved, the player may pick another hog
 //   of the same team.
 // - A turn has a time limit and a movement allowance (the distance the
-//   hog may walk, jumps included). It ends when the time runs out or the
-//   player ends it. (In the next blocks, firing a weapon will end it too.)
+//   hog may walk, jumps included). It ends when the time runs out, when
+//   the player ends it, or once the shot of the turn is over (the world
+//   decides that, see World).
+// - Dead hogs are skipped, and so are teams with no hog left.
 //
 // The values of TurnRules are OpenHogs' own until the original's are known
 // (see docs/open-decisions.md).
@@ -58,8 +60,11 @@ public:
     // passed to the next team).
     bool update(double seconds, float distanceMoved, const std::vector<Hog>& hogs);
 
-    // Ends the turn now: the next team plays.
+    // Ends the turn now: the next team with a living hog plays.
     void endTurn(const std::vector<Hog>& hogs);
+
+    // The teams that still have a living hog.
+    std::vector<int> livingTeams(const std::vector<Hog>& hogs) const;
 
 private:
     std::vector<std::size_t> hogsOfTeam(int team, const std::vector<Hog>& hogs) const;

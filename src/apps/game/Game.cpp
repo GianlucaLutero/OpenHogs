@@ -2,11 +2,14 @@
 
 #include "Game.h"
 
+#include "openhogs/formats/TextTable.h"
+#include "openhogs/game/Weapons.h"
 #include "openhogs/scene/CharacterExpressions.h"
 #include "openhogs/scene/MapScene.h"
 #include "openhogs/scene/ModelMesh.h"
 
 #include <SDL3/SDL.h>
+#include <glm/gtc/matrix_transform.hpp>
 #include <glad/gl.h>
 
 #include <cmath>
@@ -32,9 +35,25 @@ const char* const kAmbientBank = "Audio/sfxday.srl";
 constexpr std::size_t kAmbientSound = 0;
 constexpr float kAmbientVolume = 0.6f;  // under the footsteps
 
-// Sounds of the same bank for landing and splashing, found by file name.
-constexpr std::string_view kLandingSoundName = "P_LAND1";
-constexpr std::string_view kSplashSoundName = "I_SPLASH";
+// Sounds of the same bank, by file name, for what happens in a match. The
+// choice is OpenHogs' own (docs/open-decisions.md).
+constexpr std::string_view kLandingSound = "P_LAND1";
+constexpr std::string_view kSplashSound = "I_SPLASH";
+constexpr std::string_view kExplosionSound = "E_1";
+constexpr std::string_view kBulletHitSound = "I_BULIT1";
+constexpr std::string_view kBounceSound = "P_BOUNCE";
+constexpr std::string_view kHurtSound = "P_OWW";
+constexpr std::string_view kDeathSound = "P_MOAN";
+constexpr std::string_view kTurnSound = "S_SELECT";
+constexpr std::string_view kVictorySound = "P_WHOHO";
+
+// Effect colours.
+constexpr glm::vec4 kAimColour{1.0f, 1.0f, 1.0f, 1.0f};
+constexpr glm::vec4 kTracerColour{1.0f, 0.95f, 0.5f, 1.0f};
+constexpr glm::vec4 kShellColour{0.25f, 0.25f, 0.2f, 1.0f};
+constexpr glm::vec4 kHealthColour{0.2f, 0.85f, 0.2f, 1.0f};
+constexpr glm::vec4 kActiveHealthColour{1.0f, 0.85f, 0.1f, 1.0f};
+constexpr float kHealthBarHeight = 380.0f;  // above the feet
 
 // How long the camera swings round behind a newly active hog.
 constexpr double kCameraSwingSeconds = 1.5;
@@ -65,8 +84,24 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options)
     }
     mapRenderer_ = std::make_unique<render::MapRenderer>(scene);
     hogRenderer_ = std::make_unique<render::CharacterRenderer>();
+    effects_ = std::make_unique<render::EffectsRenderer>();
+    try {
+        const auto textures = library_.loadWeaponTextures();
+        weaponTextures_ = std::make_unique<render::CharacterTextureSet>(textures);
+        weaponTextureSizes_ = scene::textureSizes(textures);
+    } catch (const std::exception& error) {
+        std::cerr << "Warning: no weapon models (" << error.what() << ")\n";
+    }
+    try {
+        const auto table = formats::TextTable::parse(vfs.readFile("Language/Text/gtext.ofs"),
+                                                     vfs.readFile("Language/Text/gtext.bin"));
+        gameText_ = table.entries;
+    } catch (const std::exception& error) {
+        std::cerr << "Warning: no game text, weapon names in English (" << error.what() << ")\n";
+    }
 
     autoWalk_ = options.autoWalk;
+    autoFireAt_ = options.autoFireAt;
     if (options.startHog) {
         if (*options.startHog >= world_.hogs().size()) {
             throw std::runtime_error("Map " + mapName_ + " has only " + std::to_string(world_.hogs().size()) +
@@ -88,6 +123,15 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options)
     }
     camera_.snapTo(cameraTarget());
 
+    if (options.autoWeaponSlot) {
+        // Cycle to the requested weapon through the normal controls.
+        for (std::size_t i = 0; i < *options.autoWeaponSlot; ++i) {
+            game::PlayerInput select;
+            select.weaponStep = 1;
+            world_.update(0.0, select, library_.animations());
+        }
+    }
+
     if (options.sound) {
         startSound(vfs, options.volumes);
     }
@@ -97,34 +141,17 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options)
 Game::~Game() {
     audioDevice_.reset();  // stops the sound thread before the mixer goes
     teamLooks_.clear();    // GPU resources must go before the window's context
+    weaponTextures_.reset();
+    effects_.reset();
     hogRenderer_.reset();
     mapRenderer_.reset();
 }
 
 void Game::startSound(const core::VirtualFileSystem& vfs, const audio::Volumes& volumes) {
     try {
-        audio::SoundLibrary sounds(vfs);
-        const auto ambience = sounds.loadFromBank(sounds.loadBank(kAmbientBank), kAmbientSound);
-
-        // Footsteps, landing and splash sounds, found by file name in the
-        // same bank. A missing one is simply not played.
-        const auto bank = sounds.loadBank(kAmbientBank);
-        const auto findSound = [&](std::string_view name) -> std::shared_ptr<const formats::PcmSound> {
-            const std::string wanted = soundStem(std::string(name));
-            for (std::size_t i = 0; i < bank.files.size(); ++i) {
-                if (soundStem(bank.files[i]) == wanted) {
-                    return sounds.loadFromBank(bank, i);
-                }
-            }
-            std::cerr << "Warning: sound " << name << " not found in " << kAmbientBank << "\n";
-            return nullptr;
-        };
-        for (int surface = 0; surface <= static_cast<int>(formats::SurfaceType::Lava); ++surface) {
-            const auto type = static_cast<formats::SurfaceType>(surface);
-            footstepSounds_[type] = findSound(game::footstepSoundName(type));
-        }
-        landingSound_ = findSound(kLandingSoundName);
-        splashSound_ = findSound(kSplashSoundName);
+        sounds_ = std::make_unique<audio::SoundLibrary>(vfs);
+        soundBank_ = sounds_->loadBank(kAmbientBank);
+        const auto ambience = sounds_->loadFromBank(*soundBank_, kAmbientSound);
 
         mixer_ = std::make_unique<audio::Mixer>(kAudioOutputRate);
         mixer_->setVolumes(volumes);
@@ -138,7 +165,69 @@ void Game::startSound(const core::VirtualFileSystem& vfs, const audio::Volumes& 
     }
 }
 
+void Game::playSound(std::string_view name) {
+    if (!mixer_ || !soundBank_ || name.empty()) {
+        return;
+    }
+    const std::string wanted = soundStem(std::string(name));
+    auto found = loadedSounds_.find(wanted);
+    if (found == loadedSounds_.end()) {
+        std::shared_ptr<const formats::PcmSound> sound;
+        for (std::size_t i = 0; i < soundBank_->files.size(); ++i) {
+            if (soundStem(soundBank_->files[i]) == wanted) {
+                try {
+                    sound = sounds_->loadFromBank(*soundBank_, i);
+                } catch (const std::exception& error) {
+                    std::cerr << "Warning: " << error.what() << "\n";
+                }
+                break;
+            }
+        }
+        if (!sound) {
+            std::cerr << "Warning: sound " << name << " not found in " << kAmbientBank << "\n";
+        }
+        found = loadedSounds_.emplace(wanted, sound).first;  // remembered even if missing
+    }
+    if (found->second) {
+        mixer_->play(found->second, audio::SoundCategory::Effects);
+    }
+}
+
+std::string Game::weaponName(game::WeaponId weapon) const {
+    const auto index = static_cast<std::size_t>(weapon);
+    if (index < gameText_.size() && !gameText_[index].empty()) {
+        return gameText_[index];
+    }
+    return std::string(game::weaponSpec(weapon).fallbackName);
+}
+
+const formats::Model* Game::weaponModel(std::string_view name) {
+    if (name.empty() || !weaponTextures_) {
+        return nullptr;
+    }
+    auto found = weaponModels_.find(name);
+    if (found == weaponModels_.end()) {
+        std::optional<formats::Model> model;
+        try {
+            model = library_.loadWeaponModel(name);
+        } catch (const std::exception& error) {
+            std::cerr << "Warning: " << error.what() << "\n";
+        }
+        found = weaponModels_.emplace(std::string(name), std::move(model)).first;
+    }
+    return found->second ? &*found->second : nullptr;
+}
+
 glm::vec3 Game::cameraTarget() const {
+    // While a shot is in the air, follow it.
+    if (world_.phase() == game::MatchPhase::Resolving) {
+        for (const auto& projectile : world_.projectiles()) {
+            const auto kind = game::weaponSpec(projectile.weapon).kind;
+            if (kind != game::WeaponKind::Placed && !projectile.resting) {
+                return projectile.position;
+            }
+        }
+    }
     if (const auto active = world_.activeHog()) {
         return world_.hogs()[*active].position + glm::vec3(0.0f, kCameraTargetHeight, 0.0f);
     }
@@ -174,17 +263,25 @@ const Game::TeamLook& Game::lookFor(int team) {
 void Game::updateTitle() {
     std::string title = "OpenHogs - " + mapName_;
     const auto& turns = world_.turns();
-    if (turns) {
+    if (world_.phase() == game::MatchPhase::Over) {
+        const auto winner = world_.winner();
+        title += winner ? " - VICTORY TO TEAM " + std::to_string(*winner + 1) + " (" +
+                              std::string(game::teamNation(*winner)) + ")!"
+                        : " - IT'S A DRAW!";
+    } else if (turns) {
         const auto& hog = world_.hogs()[turns->activeHog()];
         const auto allowance = turns->rules().movementAllowance;
         const int movementPercent =
             allowance > 0.0f ? static_cast<int>(std::lround(100.0f * turns->movementLeft() / allowance)) : 0;
-        char text[200];
-        std::snprintf(text, sizeof(text), " - turn %d - team %d (%s), %s - %d s left - movement %d%%%s%s",
+        char text[320];
+        std::snprintf(text, sizeof(text), " - turn %d - team %d (%s), %s, health %d - %s%s - %d s - movement %d%%%s%s",
                       turns->turnNumber(), turns->activeTeam() + 1, std::string(game::teamNation(hog.team)).c_str(),
-                      std::string(hog.characterClass->name).c_str(),
+                      std::string(hog.characterClass->name).c_str(), static_cast<int>(std::ceil(hog.health)),
+                      weaponName(hog.selectedWeapon()).c_str(),
+                      hog.charging ? (" " + std::to_string(static_cast<int>(hog.power * 100.0f)) + "%").c_str() : "",
                       static_cast<int>(std::ceil(std::max(0.0, turns->secondsLeft()))), movementPercent,
-                      turns->canSwitchHog() ? " - Tab: other hog" : "", paused_ ? " - paused" : "");
+                      turns->canSwitchHog() && world_.phase() == game::MatchPhase::Playing ? " - Tab: other hog" : "",
+                      paused_ ? " - paused" : "");
         title += text;
     } else {
         title += " - no hogs on this map";
@@ -226,6 +323,12 @@ void Game::handleEvent(const SDL_Event& event, bool& running) {
         case SDLK_SPACE:
             jumpPressed_ = true;
             break;
+        case SDLK_Q:
+            weaponStep_ = -1;
+            break;
+        case SDLK_E:
+            weaponStep_ = 1;
+            break;
         case SDLK_P:
             paused_ = !paused_;
             break;
@@ -245,39 +348,53 @@ void Game::handleEvent(const SDL_Event& event, bool& running) {
     }
 }
 
-game::MovementInput Game::readInput() {
-    game::MovementInput input;
-    // Keys held down are read directly; a jump is a key press, remembered
-    // by handleEvent until the next step.
+game::PlayerInput Game::readInput() {
+    game::PlayerInput input;
+    // Keys held down are read directly; key presses (jump, weapon change)
+    // are remembered by handleEvent until the next step.
     const bool* keys = SDL_GetKeyboardState(nullptr);
-    input.forward = autoWalk_ || keys[SDL_SCANCODE_W] || keys[SDL_SCANCODE_UP];
-    input.backward = keys[SDL_SCANCODE_S] || keys[SDL_SCANCODE_DOWN];
-    input.turnLeft = keys[SDL_SCANCODE_A] || keys[SDL_SCANCODE_LEFT];
-    input.turnRight = keys[SDL_SCANCODE_D] || keys[SDL_SCANCODE_RIGHT];
-    input.jump = jumpPressed_;
+    input.movement.forward = autoWalk_ || keys[SDL_SCANCODE_W] || keys[SDL_SCANCODE_UP];
+    input.movement.backward = keys[SDL_SCANCODE_S] || keys[SDL_SCANCODE_DOWN];
+    input.movement.turnLeft = keys[SDL_SCANCODE_A] || keys[SDL_SCANCODE_LEFT];
+    input.movement.turnRight = keys[SDL_SCANCODE_D] || keys[SDL_SCANCODE_RIGHT];
+    input.movement.jump = jumpPressed_;
+    input.aimUp = keys[SDL_SCANCODE_R];
+    input.aimDown = keys[SDL_SCANCODE_F];
+    input.fire = keys[SDL_SCANCODE_LCTRL] || keys[SDL_SCANCODE_RCTRL] || keys[SDL_SCANCODE_X];
+    if (autoFireAt_) {
+        // Screenshot aid: hold fire for a while (half power for throws).
+        constexpr double kAutoFireHoldSeconds = 0.75;
+        const double t = world_.timeSeconds();
+        input.fire = t >= *autoFireAt_ && t < *autoFireAt_ + kAutoFireHoldSeconds;
+    }
+    input.weaponStep = weaponStep_;
     jumpPressed_ = false;
+    weaponStep_ = 0;
     return input;
 }
 
-void Game::playSounds(const game::MovementEvents& events) {
-    if (!mixer_) {
-        return;
+void Game::playSounds(const std::vector<game::GameEvent>& events) {
+    using game::GameEventType;
+    for (const auto& event : events) {
+        switch (event.type) {
+        case GameEventType::Footstep: playSound(game::footstepSoundName(event.surface)); break;
+        case GameEventType::Landed: playSound(kLandingSound); break;
+        case GameEventType::Splash: playSound(kSplashSound); break;
+        case GameEventType::Fired: playSound(game::weaponSpec(event.weapon).launchSound); break;
+        case GameEventType::Bounce: playSound(kBounceSound); break;
+        case GameEventType::BulletHit: playSound(kBulletHitSound); break;
+        case GameEventType::Explosion: playSound(kExplosionSound); break;
+        case GameEventType::Hurt: playSound(kHurtSound); break;
+        case GameEventType::Died: playSound(kDeathSound); break;
+        case GameEventType::TurnStarted: playSound(kTurnSound); break;
+        case GameEventType::MatchOver: playSound(kVictorySound); break;
+        }
     }
-    const auto play = [&](const std::shared_ptr<const formats::PcmSound>& sound) {
-        if (sound) mixer_->play(sound, audio::SoundCategory::Effects);
-    };
-    for (int i = 0; i < events.footsteps; ++i) {
-        const auto found = footstepSounds_.find(events.surface);
-        if (found != footstepSounds_.end()) play(found->second);
-    }
-    if (events.landed) play(landingSound_);
-    if (events.enteredWater) play(splashSound_);
 }
 
 void Game::step(double seconds) {
     if (!paused_) {
-        const auto events = world_.update(seconds, readInput(), library_.animations());
-        playSounds(events);
+        playSounds(world_.update(seconds, readInput(), library_.animations()));
     }
 
     // The camera works while paused too. When the active hog changes, or
@@ -289,9 +406,10 @@ void Game::step(double seconds) {
     }
     if (active) {
         const auto& hog = world_.hogs()[*active];
-        const bool moving = hog.motion.state == game::MotionState::Running ||
-                            hog.motion.state == game::MotionState::Swimming ||
-                            hog.motion.state == game::MotionState::Airborne;
+        const bool moving = world_.phase() == game::MatchPhase::Playing &&
+                            (hog.motion.state == game::MotionState::Running ||
+                             hog.motion.state == game::MotionState::Swimming ||
+                             hog.motion.state == game::MotionState::Airborne);
         if (moving || cameraSwingSecondsLeft_ > 0.0) {
             camera_.turnTowards(game::hogFacing(hog), seconds);
         }
@@ -320,6 +438,70 @@ void Game::drawHog(const render::Camera& camera, int width, int height, const ga
     scene::applyExpression(mesh, look.faces, expression, blinking, hog.characterClass->masked);
 
     hogRenderer_->drawHog(camera, width, height, mesh, *look.textures, game::hogModelToWorld(hog));
+
+    // The active hog shows its selected weapon. Like the body, weapon
+    // models say which bone each vertex follows: pistols the right hand,
+    // rifles the right forearm, grenades and launchers the hips (worn at
+    // the belt or on the back). See docs/formats/characters.md.
+    if (world_.activeHog() == index && hog.alive && world_.phase() != game::MatchPhase::Over && weaponTextures_) {
+        if (const auto* weapon = weaponModel(game::weaponSpec(hog.selectedWeapon()).model)) {
+            const auto weaponMesh = scene::buildPosedModelMesh(*weapon, weaponTextureSizes_, pose);
+            hogRenderer_->drawHog(camera, width, height, weaponMesh, *weaponTextures_, game::hogModelToWorld(hog));
+        }
+    }
+}
+
+void Game::drawModel(const render::Camera& camera, int width, int height, const formats::Model& model,
+                     const glm::mat4& modelToWorld) {
+    const auto mesh = scene::buildModelMesh(model, weaponTextureSizes_);
+    hogRenderer_->drawHog(camera, width, height, mesh, *weaponTextures_, modelToWorld);
+}
+
+void Game::drawWeapons(const render::Camera& camera, int width, int height) {
+    // Grenades, TNT and mines are drawn with their models; shells (whose
+    // own models are not known) as dark dots.
+    std::vector<glm::vec3> shells;
+    const float scale = formats::kModelToWorldScale;
+    for (const auto& projectile : world_.projectiles()) {
+        const auto& spec = game::weaponSpec(projectile.weapon);
+        const formats::Model* model =
+            spec.kind == game::WeaponKind::Shell ? nullptr : weaponModel(spec.model);
+        if (model == nullptr) {
+            shells.push_back(projectile.position);
+            continue;
+        }
+        const glm::mat4 toWorld = glm::scale(glm::translate(glm::mat4(1.0f), projectile.position),
+                                             glm::vec3(scale, -scale, scale));
+        drawModel(camera, width, height, *model, toWorld);
+    }
+    effects_->begin(camera, width, height);
+    effects_->drawDots(shells, 30.0f, kShellColour);
+}
+
+void Game::drawEffects(const render::Camera& camera, int width, int height) {
+    effects_->begin(camera, width, height);
+
+    effects_->drawDots(world_.aimPreview(), 14.0f, kAimColour, true);
+
+    for (const auto& tracer : world_.tracers()) {
+        std::vector<glm::vec3> dots;
+        const float length = glm::length(tracer.to - tracer.from);
+        for (float along = 0.0f; along < length; along += 60.0f) {
+            dots.push_back(tracer.from + (tracer.to - tracer.from) * (along / length));
+        }
+        effects_->drawDots(dots, 8.0f, kTracerColour);
+    }
+    for (const auto& explosion : world_.explosions()) {
+        effects_->drawExplosion(explosion.position, explosion.radius,
+                                explosion.ageSeconds / game::kExplosionEffectSeconds);
+    }
+    const auto active = world_.activeHog();
+    for (std::size_t i = 0; i < world_.hogs().size(); ++i) {
+        const auto& hog = world_.hogs()[i];
+        if (!hog.alive) continue;
+        effects_->drawHealthBar(hog.position + glm::vec3(0.0f, kHealthBarHeight, 0.0f), hog.health / game::kMaxHealth,
+                                active == i ? kActiveHealthColour : kHealthColour);
+    }
 }
 
 void Game::draw(int width, int height) {
@@ -336,6 +518,8 @@ void Game::draw(int width, int height) {
     for (std::size_t i = 0; i < world_.hogs().size(); ++i) {
         drawHog(camera, width, height, world_.hogs()[i], i);
     }
+    drawWeapons(camera, width, height);
+    drawEffects(camera, width, height);
 }
 
 void Game::run() {

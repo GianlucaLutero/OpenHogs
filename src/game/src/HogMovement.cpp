@@ -33,7 +33,7 @@ float horizontalDistance(const glm::vec3& a, const glm::vec3& b) {
 bool hitsOtherHog(const std::vector<Hog>& hogs, std::size_t self, const glm::vec3& feet) {
     const glm::vec3& from = hogs[self].position;
     for (std::size_t i = 0; i < hogs.size(); ++i) {
-        if (i == self) continue;
+        if (i == self || !hogs[i].alive) continue;  // the dead are no obstacle
         const glm::vec3& other = hogs[i].position;
         const bool sameLevel = std::abs(other.y - feet.y) < kHogHeight;
         const float after = horizontalDistance(other, feet);
@@ -117,9 +117,15 @@ void moveInAir(std::vector<Hog>& hogs, std::size_t self, double seconds, const M
         next.y = ground;
         events.landed = true;
         events.fallHeight = hog.motion.highestPoint - ground;
-        hog.motion.state = MotionState::Landing;
         hog.motion.velocity = glm::vec3(0.0f);
-        hog.animation.play(kJumpEndAnimation, Repeat::Once);
+        if (hog.alive) {
+            hog.motion.state = MotionState::Landing;
+            hog.animation.play(kJumpEndAnimation, Repeat::Once);
+        } else {
+            // Killed in the air: it dies where it lands.
+            hog.motion.state = MotionState::Dead;
+            hog.animation.play(kFirstDyingAnimation + self % 3, Repeat::Once);
+        }
     }
     hog.position = next;
 }
@@ -158,7 +164,9 @@ MovementEvents moveHog(std::vector<Hog>& hogs, std::size_t hogIndex, const Movem
 
     hog.animation.update(seconds, animations);
 
-    if (hog.motion.state == MotionState::Airborne) {
+    if (hog.motion.state == MotionState::Dead) {
+        // Lies still once its dying animation has played.
+    } else if (hog.motion.state == MotionState::Airborne) {
         moveInAir(hogs, hogIndex, seconds, map, events);
     } else if (hog.motion.state == MotionState::Landing) {
         if (hog.animation.finished()) {
@@ -219,9 +227,14 @@ MovementEvents moveHog(std::vector<Hog>& hogs, std::size_t hogIndex, const Movem
         }
     }
 
-    // Standing still: the idle behaviour chooses the animation.
+    // Standing still: the held animation (aiming, firing) if there is one,
+    // otherwise the idle behaviour chooses.
     if (hog.motion.state == MotionState::Standing) {
-        hog.idle.update(hog.animation, animations);
+        if (hog.held) {
+            hog.animation.play(hog.held->animation, hog.held->repeat);
+        } else {
+            hog.idle.update(hog.animation, animations);
+        }
     }
 
     const bool inWaterNow = isInWater(hog, map);

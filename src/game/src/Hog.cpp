@@ -34,6 +34,10 @@ constexpr float kStandsOnObjectMargin = 150.0f;
 
 constexpr std::uint16_t kPlayerFlag = 0x0001;
 
+// Height of a standing hog's body in world units (MapCollision uses the
+// same value for its collision cylinder).
+constexpr float kHogBodyHeight = 300.0f;
+
 float angleToRadians(std::int16_t angle) {
     return static_cast<float>(angle) * glm::two_pi<float>() / formats::kAngleUnitsPerTurn;
 }
@@ -81,6 +85,8 @@ std::vector<Hog> spawnHogs(const std::vector<formats::MapObject>& objects, const
         // The seed only has to differ from hog to hog.
         hog.idle = IdleAnimator(static_cast<std::uint32_t>(hogs.size()) + 1);
         hog.idle.start(hog.animation);
+        const auto loadout = classLoadout(characterClass->id);
+        hog.weapons.assign(loadout.begin(), loadout.end());
         hogs.push_back(std::move(hog));
     }
     return hogs;
@@ -94,6 +100,10 @@ std::string_view teamNation(int team) {
 glm::vec3 hogFacing(const Hog& hog) {
     // The model faces +X; this is where the yaw rotation takes that axis.
     return {std::cos(hog.yawRadians), 0.0f, -std::sin(hog.yawRadians)};
+}
+
+glm::vec3 hogCentre(const Hog& hog) {
+    return hog.position + glm::vec3(0.0f, kHogBodyHeight / 2.0f, 0.0f);
 }
 
 glm::mat4 hogModelToWorld(const Hog& hog) {
