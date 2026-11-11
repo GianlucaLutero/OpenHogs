@@ -27,6 +27,7 @@ enum class GameEventType {
     Hurt,       // hog: who; amount: how much health it lost
     Died,       // hog: who
     TurnStarted,
+    SuddenDeath,  // every hog is down to one point of health
     MatchOver,  // team: the winner, or -1 for a draw
 };
 

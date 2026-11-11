@@ -122,6 +122,7 @@ private:
     void updateEffects(double seconds);
     bool shotSettled() const;
     void startNextTurn(std::vector<GameEvent>& events);
+    void turnBegan(std::vector<GameEvent>& events);
     bool matchIsDecided() const;
     void finishMatch(std::vector<GameEvent>& events);
 
@@ -148,6 +149,8 @@ private:
     std::optional<Burst> burst_;
 
     float settleSecondsLeft_ = 0.0f;
+    bool suddenDeathDone_ = false;
+    std::vector<GameEvent> pendingEvents_;  // from endTurn(), reported by the next update()
     bool fireWasHeld_ = false;
     // Bullet spread: seeded with a fixed value, so a match replays the same
     // way (and tests are reproducible).

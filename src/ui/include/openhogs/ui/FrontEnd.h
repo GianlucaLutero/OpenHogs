@@ -6,6 +6,8 @@
 //        │                         LOAD GAME ────────────────> (saved campaign)
 //        │                         DEATH MATCH ── SELECT LEVEL ── a map ──> (match against the computer)
 //        │    ── MULTI-PLAYER ─> SELECT LEVEL ── a map ──> PLAYERS ── START GAME ──> (match)
+//        │                                                     └─ FIELD CONDITIONS (hogs per team,
+//        │                                                        turn time, health, sudden death)
 //        │    ── OPTIONS ──────> VOLUME CONTROL (sliders)
 //        │    ── QUIT ─────────> ARE YOU SURE? ── YES ──> (quit)
 //
@@ -24,15 +26,17 @@
 
 #pragma once
 
+#include "openhogs/game/FieldConditions.h"
 #include "openhogs/ui/Menu.h"
 #include "openhogs/ui/UiStrings.h"
 
+#include <map>
 #include <string>
 #include <vector>
 
 namespace openhogs::ui {
 
-enum class FrontEndScreen { Main, OnePlayer, SelectTeam, SelectLevel, Players, Options, ConfirmQuit };
+enum class FrontEndScreen { Main, OnePlayer, SelectTeam, SelectLevel, Players, FieldConditions, Options, ConfirmQuit };
 
 // Volume levels as shown by the sliders: 0 (silent) .. kMaxVolumeLevel.
 inline constexpr int kMaxVolumeLevel = 10;
@@ -47,11 +51,20 @@ struct VolumeLevels {
 // What a menu input led to, for sound and for the application.
 enum class MenuSound { None, Move, Select, Back };
 
+// How a match is set up from the menus.
+struct MatchSettings {
+    std::vector<int> computerTeams;      // played by the computer
+    std::map<int, int> teamNations;      // team -> nation (empty: the usual ones)
+    game::FieldConditions conditions;    // teams switched off, hogs per team, health
+    double turnSeconds = 60.0;
+    int suddenDeathRound = 0;            // 0 = no sudden death
+};
+
 struct FrontEndResult {
     enum class Request {
         None,
         LevelChosen,  // read the teams of `map` and call setLevelTeams()
-        StartMatch,   // play `map`; `computerTeams` are played by the computer
+        StartMatch,   // play `map` with `settings`
         NewCampaign,  // start a campaign for `nation`
         LoadCampaign, // continue the saved campaign
         Quit,
@@ -59,7 +72,7 @@ struct FrontEndResult {
     };
     Request request = Request::None;
     std::string map;
-    std::vector<int> computerTeams;
+    MatchSettings settings;
     int nation = 0;
     MenuSound sound = MenuSound::None;
 };
@@ -92,6 +105,8 @@ private:
     FrontEndResult handleSelectTeam(const MenuResponse& response);
     FrontEndResult handleSelectLevel(const MenuResponse& response);
     FrontEndResult handlePlayers(const MenuResponse& response);
+    FrontEndResult handleFieldConditions(const MenuResponse& response);
+    MatchSettings fieldSettings() const;
     FrontEndResult handleOptions(const MenuResponse& response);
     FrontEndResult handleConfirmQuit(const MenuResponse& response);
     void open(FrontEndScreen screen);
@@ -108,6 +123,7 @@ private:
     Menu selectTeam_;
     Menu selectLevel_;
     Menu players_;
+    Menu fieldConditions_;
     Menu options_;
     Menu confirmQuit_;
 };

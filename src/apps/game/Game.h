@@ -27,6 +27,7 @@
 //   Enter               end the turn (after the match: back to the menu)
 //   Left mouse drag     turn the camera around the hog     Mouse wheel: zoom
 //   Esc or P            pause menu (continue / abort the match)
+//   (gamepads: see Gamepads.h)
 //
 // During the turns of the computer's teams (GameOptions::computerTeams)
 // the keys that control the hog do nothing; the camera keys still work.
@@ -34,6 +35,7 @@
 
 #pragma once
 
+#include "Gamepads.h"
 #include "Interface.h"
 #include "SoundPlayer.h"
 
@@ -74,6 +76,7 @@ struct GameOptions {
     // Campaign missions: the turn time, a change to the map's hogs (the
     // player's squad takes their place) and the nation each team fights for.
     std::optional<double> turnSeconds;
+    int suddenDeathRound = 0;  // 0 = none (multiplayer field conditions)
     std::function<void(std::vector<game::Hog>&)> prepareHogs;
     std::map<int, int> teamNations;
 };
@@ -87,9 +90,10 @@ enum class GameRequest {
 
 class Game {
 public:
-    // Needs a current OpenGL context. `userInterface` and `sounds` must outlive
+    // Needs a current OpenGL context. `userInterface`, `sounds` and `gamepads` must outlive
     // the game.
-    Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Interface& userInterface, SoundPlayer& sounds);
+    Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Interface& userInterface, SoundPlayer& sounds,
+         const Gamepads& gamepads);
     ~Game();
 
     Game(const Game&) = delete;
@@ -123,8 +127,12 @@ private:
         scene::FaceTextureSlots faces;
     };
 
-    GameRequest handleKey(const SDL_Event& event);
-    GameRequest handlePauseKey(const SDL_Event& event);
+    // What a key or pad button asks the match to do.
+    enum class Command { None, Pause, NextHog, PreviousHog, EndTurn, Jump, PreviousWeapon, NextWeapon };
+    static Command commandForKey(const SDL_Event& event);
+    static Command commandForPad(Uint8 button);
+    GameRequest handleCommand(Command command);
+    GameRequest handlePauseInput(std::optional<ui::MenuInput> input);
     game::PlayerInput readInput();
     void step(double seconds);
     void handleEvents(const std::vector<game::GameEvent>& events);
@@ -167,6 +175,7 @@ private:
 
     Interface& interface_;
     SoundPlayer& sounds_;
+    const Gamepads& gamepads_;
 
     // GPU resources (the application keeps the OpenGL context alive).
     std::unique_ptr<render::MapRenderer> mapRenderer_;

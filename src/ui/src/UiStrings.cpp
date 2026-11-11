@@ -31,6 +31,16 @@ constexpr std::size_t kFePromote = 71;
 constexpr std::size_t kFeSwapPosition = 72;
 constexpr std::size_t kFeCareerPath = 90;
 constexpr std::size_t kFeDeathMatch = 109;
+constexpr std::size_t kFeSuddenDeath = 301;
+constexpr std::size_t kFeOff = 332;
+constexpr std::array<std::size_t, 4> kFeTeamLetters{60, 61, 62, 63};
+constexpr std::size_t kFeFieldConditions = 66;
+constexpr std::size_t kFePigs = 297;
+constexpr std::size_t kFeTurnTime = 298;
+constexpr std::size_t kFeHealth = 300;
+constexpr std::size_t kFeNormal = 303;
+constexpr std::size_t kFeHalf = 304;
+constexpr std::size_t kFeDouble = 305;
 // HEAVY WEAPONS 91, ENGINEER 92, ESPIONAGE 93, MEDIC 94, in UiStrings::careers order.
 constexpr std::array<std::size_t, 4> kFeCareers{91, 94, 93, 92};
 // Each nation's block: the team name, then its nine hog names.
@@ -98,6 +108,11 @@ std::string UiStrings::className(std::string_view classId) const {
     return upper;
 }
 
+std::string UiStrings::teamLabel(std::size_t index) const {
+    if (index < teamLetters.size()) return teamLetters[index];
+    return "TEAM " + std::to_string(index + 1);
+}
+
 std::string UiStrings::missionName(const game::Mission& mission) const {
     const auto found = missionNames.find(mission.nameEntry);
     return found != missionNames.end() ? found->second : "MISSION " + std::to_string(mission.number);
@@ -142,6 +157,18 @@ UiStrings loadUiStrings(const std::vector<std::string>& frontEndText, const std:
     take(strings.swapPosition, fe, kFeSwapPosition);
     take(strings.careerPath, fe, kFeCareerPath);
     take(strings.skirmish, fe, kFeDeathMatch);
+    take(strings.suddenDeath, fe, kFeSuddenDeath);
+    take(strings.off, fe, kFeOff);
+    for (std::size_t i = 0; i < kFeTeamLetters.size(); ++i) {
+        take(strings.teamLetters[i], fe, kFeTeamLetters[i]);
+    }
+    take(strings.fieldConditions, fe, kFeFieldConditions);
+    take(strings.pigs, fe, kFePigs);
+    take(strings.turnTime, fe, kFeTurnTime);
+    take(strings.health, fe, kFeHealth);
+    take(strings.normal, fe, kFeNormal);
+    take(strings.half, fe, kFeHalf);
+    take(strings.doubled, fe, kFeDouble);
     for (std::size_t i = 0; i < kFeCareers.size(); ++i) {
         take(strings.careers[i], fe, kFeCareers[i]);
     }

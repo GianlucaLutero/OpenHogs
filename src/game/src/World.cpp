@@ -24,6 +24,7 @@ namespace {
 // Once everything is still after a shot, the next turn starts this much
 // later, so the player sees the result.
 constexpr float kSettleSeconds = 1.5f;
+constexpr float kSuddenDeathHealth = 1.0f;
 
 // Thrown weapons fly at least at this share of their full power.
 constexpr float kMinimumPower = 0.1f;
@@ -377,17 +378,36 @@ void World::startNextTurn(std::vector<GameEvent>& events) {
     turns_->endTurn(hogs_);
     phase_ = MatchPhase::Playing;
     fireWasHeld_ = true;  // a key still held from the last turn must not fire at once
+    turnBegan(events);
+}
+
+void World::turnBegan(std::vector<GameEvent>& events) {
     GameEvent started;
     started.type = GameEventType::TurnStarted;
     started.team = turns_->activeTeam();
     started.hog = turns_->activeHog();
     events.push_back(started);
+
+    // Sudden death: when the chosen round begins, every hog is down to one
+    // point of health, so the next hit decides.
+    const int round = turns_->round();
+    if (turns_->rules().suddenDeathRound > 0 && round == turns_->rules().suddenDeathRound && !suddenDeathDone_) {
+        suddenDeathDone_ = true;
+        for (auto& hog : hogs_) {
+            if (hog.alive) hog.health = std::min(hog.health, kSuddenDeathHealth);
+        }
+        GameEvent suddenDeath;
+        suddenDeath.type = GameEventType::SuddenDeath;
+        events.push_back(suddenDeath);
+    }
 }
 
 std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
                                      const std::vector<formats::Animation>& animations) {
     timeSeconds_ += seconds;
-    std::vector<GameEvent> events;
+    // Events of a turn ended from outside (endTurn) come first.
+    std::vector<GameEvent> events = std::move(pendingEvents_);
+    pendingEvents_.clear();
     const auto active = activeHog();
     const bool playing = phase_ == MatchPhase::Playing && active.has_value();
 
@@ -452,11 +472,7 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
             hogs_[*active].charging = false;
             fireWasHeld_ = true;
             if (turns_->turnNumber() != before) {
-                GameEvent started;
-                started.type = GameEventType::TurnStarted;
-                started.team = turns_->activeTeam();
-                started.hog = turns_->activeHog();
-                events.push_back(started);
+                turnBegan(events);
             }
         }
     }
@@ -509,8 +525,8 @@ bool World::switchHog(int step) {
 
 void World::endTurn() {
     if (turns_ && phase_ == MatchPhase::Playing) {
-        std::vector<GameEvent> ignored;
-        startNextTurn(ignored);
+        // Reported by the next update(), like everything else that happens.
+        startNextTurn(pendingEvents_);
     }
 }
 

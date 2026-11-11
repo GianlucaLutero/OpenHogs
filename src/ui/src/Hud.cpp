@@ -62,6 +62,8 @@ std::optional<std::string> messageForEvent(const game::GameEvent& event, const g
     switch (event.type) {
     case game::GameEventType::TurnStarted:
         return turnMessage(world, strings, computerTurn);
+    case game::GameEventType::SuddenDeath:
+        return strings.suddenDeath;
     case game::GameEventType::MatchOver:
         if (event.team < 0) {
             return strings.draw;
