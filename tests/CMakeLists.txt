@@ -40,6 +40,7 @@ add_executable(openhogs_tests
     scene/SceneTests.cpp
     scene/CharacterPoseTests.cpp
     scene/CharacterLibraryTests.cpp
+    scene/CharacterExpressionsTests.cpp
     langpack/LangpackTests.cpp)
 
 target_include_directories(openhogs_tests PRIVATE support)

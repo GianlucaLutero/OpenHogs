@@ -90,13 +90,17 @@ ByteBuilder makeTinyTim() {
 }
 
 // A Chars/ folder with the skeleton, the animations, the grunt's high
-// detail model and a two-texture "british" team.
+// detail model, a "british" team (one uniform texture plus the default
+// eyes and mouth) and a FACES.MTD with one eye and one mouth texture.
 void writeCharsFolder(const TempDirectory& game, std::size_t skeletonBones = 15) {
     writeBinary(game.path() / "Chars" / "pig.HIR", makeSkeleton(skeletonBones).bytes());
     writeBinary(game.path() / "Chars" / "mcap.mad", makeAnimations(skeletonBones).bytes());
     writeBinary(game.path() / "Chars" / "british.mad", makeArchive(makeModelFiles("pcgru_hi")));
     writeBinary(game.path() / "Chars" / "BRITISH.MTD", makeArchive({{"GRUN_000.TIM", makeTinyTim()},
-                                                                    {"eyes000.tim", makeTinyTim()}}));
+                                                                    {"eyes000.tim", makeTinyTim()},
+                                                                    {"gobs000.tim", makeTinyTim()}}));
+    writeBinary(game.path() / "Chars" / "FACES.MTD",
+                makeArchive({{"eyes002.tim", makeTinyTim()}, {"gobs004.tim", makeTinyTim()}}));
 }
 
 } // namespace
@@ -126,7 +130,8 @@ TEST_CASE("Character catalogue: animation names", "[scene][characters]") {
 
 // The library reads the hog files through the VFS (so packs can replace
 // them), with file names in any letter case, and keeps team textures in
-// archive order because FAC texture indices count archive entries.
+// archive order because FAC texture indices count archive entries. The
+// expression textures come after them, and their places are found by name.
 TEST_CASE("CharacterLibrary loads skeleton, animations, models and team textures", "[scene][characters]") {
     TempDirectory game;
     writeCharsFolder(game);
@@ -144,8 +149,13 @@ TEST_CASE("CharacterLibrary loads skeleton, animations, models and team textures
     CHECK(model.faces[0].textureIndex == 1);
 
     const auto textures = library.loadTeamTextures("british");
-    REQUIRE(textures.size() == 2);
-    CHECK(scene::textureSizes(textures)[1] == glm::uvec2(4, 1));
+    REQUIRE(textures.images.size() == 5);
+    CHECK(scene::textureSizes(textures.images)[1] == glm::uvec2(4, 1));
+    CHECK(textures.faces.defaultEyes == 1u);
+    CHECK(textures.faces.defaultMouth == 2u);
+    CHECK(textures.faces.eyes[2] == 3u);
+    CHECK(textures.faces.mouths[4] == 4u);
+    CHECK_FALSE(textures.faces.eyes[1].has_value());
 
     CHECK_THROWS(library.loadModel(*scene::findCharacterClass("spy"), scene::CharacterDetail::High));
     CHECK_THROWS(library.loadTeamTextures("martian"));
@@ -161,4 +171,19 @@ TEST_CASE("CharacterLibrary rejects a skeleton with the wrong number of bones", 
     vfs.mount("game", game.path());
 
     CHECK_THROWS_AS(scene::CharacterLibrary(vfs), std::runtime_error);
+}
+
+// A content pack can change which face goes with which animation by
+// shipping Chars/expressions.ini; without it the built-in rules apply.
+TEST_CASE("CharacterLibrary applies expressions.ini from a content pack", "[scene][characters]") {
+    TempDirectory game;
+    writeCharsFolder(game);
+    core::VirtualFileSystem vfs;
+    vfs.mount("game", game.path());
+    CHECK(scene::CharacterLibrary(vfs).expressionRules().forAnimation(44) == scene::Expression::Happy);
+
+    TempDirectory pack;
+    pack.writeFile("Chars/expressions.ini", "[Animations]\n44 = gormless\n");
+    vfs.mount("pack", pack.path());
+    CHECK(scene::CharacterLibrary(vfs).expressionRules().forAnimation(44) == scene::Expression::Gormless);
 }

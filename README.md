@@ -77,6 +77,19 @@ cmake -S . -B build
 cmake --build build --config Release
 ```
 
+If CMake answers *"CMake 3.24 or higher is required"*, an older CMake
+installed by some other program comes first in your `PATH`. Visual Studio
+ships a recent CMake: open the **Developer PowerShell for VS 2022** from the
+Start menu and run the commands there, or call Visual Studio's CMake
+directly from any PowerShell:
+
+```powershell
+$vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath
+$cmake = "$vs\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
+& $cmake -S . -B build
+& $cmake --build build --config Release
+```
+
 **Linux**
 
 ```sh
@@ -257,7 +270,9 @@ map pack enabled in `config/openhogs.ini` shows up in the viewer too.
 ### Watching the hogs
 
 `openhogs-characterviewer` shows one hog, animated, on a ground grid: any
-class, team uniform, level of detail and any of the 93 animations.
+class, team uniform, level of detail and any of the 93 animations. The
+hog's face changes with what it is doing (happy when celebrating, angry
+when aiming, shocked when falling...) and it blinks.
 
 ```sh
 # Windows
@@ -275,7 +290,10 @@ build\bin\Release\openhogs-characterviewer.exe --class ace --team american
 | `--detail <level>` | `high`, `medium` or `low` |
 | `--animation <n>` / `--frame <n>` | animation and frame to start from |
 | `--fps <n>` | playback speed (default 25 frames per second) |
+| `--expression <name>` | force a face: `neutral`, `happy`, `sad`, `shocked`, `angry`, `eyes-closed`, `dying`, `gormless` (default `auto`: follows the animation) |
+| `--no-blink` | do not blink |
 | `--view <yaw,pitch>` | camera angles around the hog (-90 = from the front) |
+| `--distance <units>` | camera distance (default 650) |
 | `--screenshot <file>` | save the chosen frame as an image and exit |
 | `--game <folder>` / `--config <file>` / `--size <W>x<H>` | as for the map viewer |
 
@@ -287,6 +305,8 @@ Controls:
 | `↑` / `↓` | previous / next class |
 | `T` | next team |
 | `L` | next level of detail |
+| `E` | next face (automatic, then each expression by hand) |
+| `B` | blinking on / off |
 | `Space` | pause / play |
 | `,` / `.` | one frame back / forward |
 | `-` / `+` | slower / faster |
@@ -295,8 +315,10 @@ Controls:
 | `F12` | save a screenshot |
 | `Esc` | quit |
 
-How the skeleton and animations work is described in
-[`docs/formats/characters.md`](docs/formats/characters.md).
+How the skeleton, animations and expressions work is described in
+[`docs/formats/characters.md`](docs/formats/characters.md); content packs
+can change which face goes with which animation (see
+[`content/README.md`](content/README.md)).
 
 ### Listening to the game's sounds
 

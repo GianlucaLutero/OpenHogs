@@ -9,6 +9,9 @@
 //                          of detail (pcace_hi, pcace_me, ac_hi...)
 //     Chars/<team>.mtd     the textures of one team (british, american...),
 //                          all teams using the same models
+//     Chars/FACES.MTD      extra eyes and mouths for facial expressions
+//     Chars/expressions.ini  optional: replaces the expression rules
+//                          (only in content packs; the game has no such file)
 //
 // Files are read through the virtual file system, so a content pack can
 // replace any of them (a new team skin is just another .mtd).
@@ -20,6 +23,7 @@
 #include "openhogs/formats/MotionCapture.h"
 #include "openhogs/formats/Skeleton.h"
 #include "openhogs/formats/TimImage.h"
+#include "openhogs/scene/CharacterExpressions.h"
 
 #include <glm/glm.hpp>
 
@@ -36,6 +40,7 @@ struct CharacterClass {
     std::string_view name;      // display name
     std::string_view pcModel;   // PC models: <pcModel>_hi and <pcModel>_me
     std::string_view lowModel;  // simplest model: <lowModel>_hi
+    bool masked = false;        // face covered by a black balaclava (saboteur)
 };
 
 // Level of detail of a body model. The PC release has two detailed models
@@ -67,6 +72,13 @@ std::string_view animationName(std::size_t animation);
 // lowest point of the body stays about 133-150 units below the origin.
 inline constexpr float kStandingFeetDepth = 145.0f;
 
+// The textures a hog is drawn with: the team archive followed by the
+// expression textures of FACES.MTD.
+struct CharacterTextures {
+    std::vector<formats::RgbaImage> images;  // index = texture index in meshes
+    FaceTextureSlots faces;
+};
+
 class CharacterLibrary {
 public:
     // Reads the skeleton and the animations. Throws if they are missing or
@@ -80,13 +92,20 @@ public:
     formats::Model loadModel(const CharacterClass& characterClass, CharacterDetail detail) const;
 
     // Decodes the textures of a team, in archive order (the order FAC
-    // texture indices count). Throws if the team file is missing.
-    std::vector<formats::RgbaImage> loadTeamTextures(std::string_view team) const;
+    // texture indices count), followed by the expression textures. Throws
+    // if the team file is missing; without FACES.MTD or without the
+    // default eyes and mouth, hogs simply keep their default face.
+    CharacterTextures loadTeamTextures(std::string_view team) const;
+
+    // Which expression goes with which animation: the built-in rules, with
+    // Chars/expressions.ini applied when a content pack provides one.
+    const ExpressionRules& expressionRules() const { return expressionRules_; }
 
 private:
     const core::VirtualFileSystem& vfs_;
     formats::Skeleton skeleton_;
     formats::MotionCapture motion_;
+    ExpressionRules expressionRules_;
 };
 
 // Width and height of each texture, as buildModelMesh() expects them.

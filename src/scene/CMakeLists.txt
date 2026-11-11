@@ -10,12 +10,15 @@
 #                    posed by a skeleton, for characters)
 #   CharacterLibrary - loads the hogs' skeleton, animations, models and
 #                    team textures from the virtual file system
+#   CharacterExpressions - facial expressions (eye and mouth textures),
+#                    blinking, rules per animation
 #   CharacterPose  - bone transforms of a hog from its skeleton and an
 #                    animation frame
 #   MapScene       - loads a whole map (terrain, textures, objects) from the
 #                    virtual file system
 
 add_library(openhogs_scene STATIC
+    src/CharacterExpressions.cpp
     src/CharacterLibrary.cpp
     src/CharacterPose.cpp
     src/MapScene.cpp

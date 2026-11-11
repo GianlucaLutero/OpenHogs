@@ -15,7 +15,12 @@
 //   --animation <n>        animation number (default: 0)
 //   --frame <n>            start frame (default: 0)
 //   --fps <n>              playback speed in frames per second (default: 25)
+//   --expression <name>    face: auto (follows the animation, the default),
+//                          neutral, happy, sad, shocked, angry, eyes-closed,
+//                          dying, gormless
+//   --no-blink             do not blink
 //   --view <yaw,pitch>     camera angles around the hog, in degrees
+//   --distance <units>     camera distance from the hog (default 650)
 //   --screenshot <file>    render the chosen frame to a PNG file and exit
 //   --size <W>x<H>         window size in pixels (default 1024x768)
 //
@@ -52,7 +57,10 @@ struct Options {
     std::size_t animation = 0;
     float frame = 0.0f;
     float framesPerSecond = 25.0f;
+    std::string expression = "auto";
+    bool blink = true;
     std::optional<std::pair<float, float>> view;  // yaw, pitch
+    std::optional<float> distance;
     bool list = false;
     int width = 1024;
     int height = 768;
@@ -70,10 +78,13 @@ void printUsage() {
                  "  --animation <n>      animation number (see --list)\n"
                  "  --frame <n>          start frame\n"
                  "  --fps <n>            playback speed (default 25 frames per second)\n"
+                 "  --expression <name>  auto, neutral, happy, sad, shocked, angry, eyes-closed, dying, gormless\n"
+                 "  --no-blink           do not blink\n"
                  "  --view <yaw,pitch>   camera angles around the hog, in degrees\n"
+                 "  --distance <units>   camera distance from the hog (default 650)\n"
                  "  --screenshot <file>  save the chosen frame as a PNG image and exit\n"
                  "  --size <W>x<H>       window size (default 1024x768)\n\n"
-                 "Controls: Left/Right animation, Up/Down class, T team, L detail, Space pause,\n"
+                 "Controls: Left/Right animation, Up/Down class, T team, L detail, E face, B blink, Space pause,\n"
                  ", and . step frames, - and + speed, left mouse orbit, wheel zoom, F12 screenshot, Esc quit\n";
 }
 
@@ -100,6 +111,10 @@ std::optional<Options> parseArguments(const std::vector<std::string>& args) {
                 options.list = true;
                 continue;
             }
+            if (arg == "--no-blink") {
+                options.blink = false;
+                continue;
+            }
             if (i + 1 >= args.size()) {
                 return std::nullopt;
             }
@@ -120,11 +135,15 @@ std::optional<Options> parseArguments(const std::vector<std::string>& args) {
                 options.animation = static_cast<std::size_t>(std::stoul(value));
             } else if (arg == "--frame") {
                 options.frame = std::stof(value);
+            } else if (arg == "--expression") {
+                options.expression = core::toLower(value);
             } else if (arg == "--fps") {
                 options.framesPerSecond = std::stof(value);
             } else if (arg == "--view") {
                 options.view = parsePair(value, ',');
                 if (!options.view) return std::nullopt;
+            } else if (arg == "--distance") {
+                options.distance = std::stof(value);
             } else if (arg == "--size") {
                 const auto size = parsePair(value, 'x');
                 if (!size) return std::nullopt;
@@ -190,6 +209,16 @@ characterviewer::ViewerState makeStartState(const Options& options, const scene:
     state.animation = options.animation;
     state.frame = options.frame;
     state.framesPerSecond = options.framesPerSecond;
+    state.blinking = options.blink;
+    if (options.expression != "auto") {
+        state.expression = scene::parseExpression(options.expression);
+        if (!state.expression) {
+            throw std::runtime_error("Unknown expression '" + options.expression + "' (see --help)");
+        }
+    }
+    if (options.distance) {
+        state.orbitDistance = *options.distance;
+    }
     if (options.view) {
         state.orbitYawDegrees = options.view->first;
         state.orbitPitchDegrees = options.view->second;
