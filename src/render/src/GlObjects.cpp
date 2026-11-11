@@ -41,6 +41,20 @@ GlTexture& GlTexture::operator=(GlTexture&& other) noexcept {
     return *this;
 }
 
+void GlTexture::update(const formats::RgbaImage& image) {
+    glBindTexture(GL_TEXTURE_2D, id_);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, static_cast<GLsizei>(image.width), static_cast<GLsizei>(image.height),
+                    GL_RGBA, GL_UNSIGNED_BYTE, image.pixels.data());
+}
+
+void GlTexture::setSmooth(bool smooth) {
+    glBindTexture(GL_TEXTURE_2D, id_);
+    const GLint filter = smooth ? GL_LINEAR : GL_NEAREST;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+}
+
 void GlTexture::bind() const {
     glBindTexture(GL_TEXTURE_2D, id_);
 }

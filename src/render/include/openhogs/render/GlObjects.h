@@ -33,6 +33,13 @@ public:
 
     void bind() const;
 
+    // Replaces the pixels with `image`, which must have the same size
+    // (for pictures that change every frame, such as a video).
+    void update(const formats::RgbaImage& image);
+
+    // Smooth (bilinear) instead of sharp pixels when magnified.
+    void setSmooth(bool smooth);
+
 private:
     GLuint id_ = 0;
 };

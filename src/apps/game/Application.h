@@ -18,6 +18,7 @@
 #pragma once
 
 #include "CampaignSession.h"
+#include "CutscenePlayer.h"
 #include "Game.h"
 #include "Interface.h"
 #include "MenuBackground.h"
@@ -46,6 +47,7 @@ struct ApplicationOptions {
     audio::Volumes volumes;
     std::vector<std::string> maps;  // the levels offered by the menu
     std::filesystem::path savePath = "saves/campaign.ini";
+    bool intro = true;  // play the original's start-up videos first
 };
 
 class Application {
@@ -62,6 +64,11 @@ public:
 
     // Starts a match (shows "LOADING" while the map loads).
     void startMatch(const GameOptions& options);
+
+    // Plays videos (Language/Streams/...) before anything else; for the
+    // screenshot tool, advance them with advanceCutscenes().
+    void playCutscenes(std::vector<std::string> paths);
+    void advanceCutscenes(double seconds);
 
     // The current match, if any (for the screenshot tools).
     Game* game() { return game_.get(); }
@@ -102,6 +109,7 @@ private:
     bool campaignMatch_ = false;   // the match being played is a campaign mission
     std::filesystem::path savePath_;
     std::unique_ptr<Game> game_;
+    std::unique_ptr<CutscenePlayer> cutscenes_;  // videos being played over everything
 };
 
 // Volume levels of the menu sliders (0..10) <-> mixer volumes (0..1).

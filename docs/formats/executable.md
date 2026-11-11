@@ -100,8 +100,10 @@ mission held at VA 0x51F17B:
 
 The names `fmv03`...`fmv08` are an array of pointers at VA 0x4D18D0.
 On PC, `fmv 02` and `fmv 09` are 1-byte placeholders: the second intro
-film and the hard-mode ending exist only on PlayStation. OpenHogs:
-`game::introCutscenes()` and `game::campaignCutscenes()`.
+film and the hard-mode ending exist only on PlayStation. A key press
+during the start-up videos skips the rest of them. OpenHogs:
+`game::introCutscenes()`, `game::campaignCutscenes()`, played by
+`gameapp::CutscenePlayer` (format: `docs/formats/bink.md`).
 
 ## Sound
 

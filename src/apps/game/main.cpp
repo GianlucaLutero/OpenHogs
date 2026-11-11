@@ -13,6 +13,8 @@
 //   --hog <n>            hog to start with (1 = the first hog of the map; it
 //                        must belong to the team that plays first)
 //   --no-sound           play without sound
+//   --no-intro           skip the start-up videos
+//   --video <file>       with --screenshot: show this video at --seconds
 //   --seconds <s>        with --screenshot: let the match run this long first
 //   --auto-walk          with --screenshot: the active hog runs forward meanwhile
 //   --weapon <n>         with --screenshot: the active hog selects its n-th weapon (1 = first)
@@ -64,6 +66,8 @@ struct Options {
     std::optional<std::size_t> weaponSlot;  // 1-based, as typed
     std::optional<double> fireAt;
     bool pause = false;
+    bool intro = true;
+    std::optional<std::string> video;  // with --screenshot: a video to show
     std::string computer;  // "", "others" or "all"
     std::vector<ui::MenuInput> menuKeys;
     int width = 1280;
@@ -79,6 +83,8 @@ void printUsage() {
                  "  --list-maps          list the maps\n"
                  "  --hog <n>            hog to start with (1 = first; must be in the team that plays first)\n"
                  "  --no-sound           play without sound\n"
+                 "  --no-intro           skip the start-up videos\n"
+                 "  --video <file>       with --screenshot: show this video (e.g. Language/Streams/sheff.bik)\n"
                  "  --seconds <s>        with --screenshot: let the match run this long first\n"
                  "  --auto-walk          with --screenshot: the active hog runs forward meanwhile\n"
                  "  --weapon <n>         with --screenshot: the active hog selects its n-th weapon\n"
@@ -147,6 +153,10 @@ std::optional<Options> parseArguments(const std::vector<std::string>& args) {
                 options.pause = true;
                 continue;
             }
+            if (arg == "--no-intro") {
+                options.intro = false;
+                continue;
+            }
             if (i + 1 >= args.size()) {
                 return std::nullopt;
             }
@@ -167,6 +177,8 @@ std::optional<Options> parseArguments(const std::vector<std::string>& args) {
                 options.fireAt = std::stod(value);
             } else if (arg == "--seconds") {
                 options.seconds = std::stod(value);
+            } else if (arg == "--video") {
+                options.video = value;
             } else if (arg == "--screenshot") {
                 options.screenshotPath = value;
             } else if (arg == "--computer") {
@@ -209,6 +221,8 @@ int runGame(const Options& options) {
     appOptions.hiddenWindow = screenshotOnly;
     appOptions.sound = options.sound && !screenshotOnly;
     appOptions.maps = maps;
+    // The start-up videos, unless going straight to a match or a screenshot.
+    appOptions.intro = options.intro && !screenshotOnly && !options.mapName;
     // The campaign is saved next to the configuration folder: saves/campaign.ini.
     appOptions.savePath = options.configPath.parent_path().parent_path() / "saves" / "campaign.ini";
     if (!options.gameFolder) {
@@ -241,7 +255,10 @@ int runGame(const Options& options) {
         app.run();
         return 0;
     }
-    if (auto* game = app.game()) {
+    if (options.video) {
+        app.playCutscenes({*options.video});
+        app.advanceCutscenes(options.seconds);
+    } else if (auto* game = app.game()) {
         game->simulate(options.seconds);
         if (options.pause) game->pause();
     } else {

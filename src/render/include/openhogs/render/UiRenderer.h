@@ -47,6 +47,7 @@ public:
     explicit UiImage(const formats::RgbaImage& image);
 
     const GlTexture& texture() const { return texture_; }
+    GlTexture& texture() { return texture_; }
     float width() const { return width_; }
     float height() const { return height_; }
 

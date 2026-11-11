@@ -51,6 +51,7 @@ add_executable(openhogs_tests
     game/MatchSoundsTests.cpp
     game/MultiplayerTests.cpp
     ui/TextLayoutTests.cpp
+    video/BinkTests.cpp
     ui/MenuTests.cpp
     ui/HudLayoutTests.cpp
     ui/HudTests.cpp
@@ -67,6 +68,7 @@ target_link_libraries(openhogs_tests PRIVATE
     OpenHogs::audio
     OpenHogs::game
     OpenHogs::ui
+    OpenHogs::video
     OpenHogs::langpack
     Catch2::Catch2WithMain)
 openhogs_set_warnings(openhogs_tests)
