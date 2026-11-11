@@ -19,6 +19,7 @@
 
 #include <glm/glm.hpp>
 
+#include <array>
 #include <memory>
 #include <string_view>
 #include <vector>
@@ -84,6 +85,18 @@ public:
     // The whole picture stretched over the rectangle.
     void drawImage(const UiImage& image, float x, float y, float width, float height,
                    const glm::vec4& tint = glm::vec4(1.0f)) const;
+
+    // Part of the picture: texture coordinates u0..u1, v0..v1 (0..1, from
+    // the top-left corner) stretched over the rectangle. Swapping v0 and
+    // v1 draws it upside down; a narrower range crops it.
+    void drawImageRegion(const UiImage& image, float x, float y, float width, float height, float u0, float v0,
+                         float u1, float v1, const glm::vec4& tint = glm::vec4(1.0f)) const;
+
+    // The whole picture on any four-cornered shape (to turn it): the
+    // corners of the picture's top-left, top-right, bottom-right and
+    // bottom-left, in that order.
+    void drawImageQuad(const UiImage& image, const std::array<glm::vec2, 4>& corners,
+                       const glm::vec4& tint = glm::vec4(1.0f)) const;
 
     // One line of text; (x, y) is its top-left corner for left-aligned text
     // (top-centre or top-right for the other alignments).

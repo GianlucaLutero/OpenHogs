@@ -55,22 +55,8 @@ constexpr float kHealthBarHeight = 380.0f;  // above the feet
 constexpr double kCameraSwingSeconds = 1.5;
 
 // HUD layout, in canvas units (the screen is render::kCanvasHeight tall).
-constexpr float kHudMargin = 12.0f;
-constexpr float kPanelPadding = 10.0f;
-constexpr float kTurnPanelWidth = 240.0f;
-constexpr float kTurnPanelHeight = 74.0f;
-constexpr float kTimerWidth = 76.0f;
-constexpr float kTimerHeight = 52.0f;
-constexpr float kWeaponPanelWidth = 280.0f;
-constexpr float kWeaponPanelHeight = 76.0f;
-constexpr float kIconScale = 1.25f;  // icons are 56 x 34 pixels
-constexpr float kBarHeight = 10.0f;
-constexpr float kBannerY = 130.0f;
-constexpr int kTimerWarningSeconds = 10;  // the clock turns red
-constexpr glm::vec4 kTimerWarningColour{1.0f, 0.3f, 0.2f, 1.0f};
-constexpr glm::vec4 kHealthBarColour{0.25f, 0.85f, 0.25f, 1.0f};
-constexpr glm::vec4 kMovementBarColour{0.35f, 0.65f, 1.0f, 1.0f};
-constexpr glm::vec4 kPowerBarColour{1.0f, 0.55f, 0.1f, 1.0f};
+constexpr float kDamageNumberHeight = 450.0f;  // above the feet, over the health bar
+constexpr float kBannerY = 140.0f;  // the executable writes match messages at y = 140
 constexpr glm::vec4 kPauseShade{0.0f, 0.0f, 0.0f, 0.4f};
 
 // The computer opponent's settings. Its random errors are seeded from the
@@ -100,8 +86,9 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Inter
            SoundPlayer& sounds, const Gamepads& gamepads)
     : mapName_(options.mapName), library_(vfs),
       world_(game::loadWorld(vfs, options.mapName, turnRules(options), options.prepareHogs)),
-      pauseMenu_(userInterface.strings()), computerTeams_(options.computerTeams.begin(), options.computerTeams.end()),
-      computer_(computerSettings()), interface_(userInterface), sounds_(sounds), gamepads_(gamepads) {
+      pauseMenu_(userInterface.strings()), hud_(vfs),
+      computerTeams_(options.computerTeams.begin(), options.computerTeams.end()), computer_(computerSettings()),
+      interface_(userInterface), sounds_(sounds), gamepads_(gamepads) {
     const auto scene = scene::loadMapScene(vfs, options.mapName);
     for (const auto& warning : scene.warnings) {
         std::cerr << "Warning: " << warning << "\n";
@@ -152,7 +139,7 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Inter
     }
 
     if (const auto message = ui::turnMessage(world_, interface_.strings(), computerIsPlaying())) {
-        banner_.show(*message, kTurnMessageSeconds);
+        showMessage(*message, kTurnMessageSeconds, true);
     }
     const auto levelInfo = game::findLevel(mapName_);
     sounds_.startAmbience(levelInfo && game::isNightSky(levelInfo->sky));
@@ -363,7 +350,13 @@ void Game::handleEvents(const std::vector<game::GameEvent>& events) {
     using game::GameEventType;
     for (const auto& event : events) {
         if (const auto message = ui::messageForEvent(event, world_, interface_.strings(), computerIsPlaying())) {
-            banner_.show(*message, event.type == GameEventType::MatchOver ? kEndMessageSeconds : kTurnMessageSeconds);
+            showMessage(*message, event.type == GameEventType::MatchOver ? kEndMessageSeconds : kTurnMessageSeconds,
+                        event.type == GameEventType::TurnStarted);
+        }
+        if (event.type == GameEventType::Hurt && event.hog < world_.hogs().size()) {
+            const auto& hog = world_.hogs()[event.hog];
+            hud_.addDamage(hog.position + glm::vec3(0.0f, kDamageNumberHeight, 0.0f), event.amount,
+                           ui::teamMessageColour(world_.nationOf(hog.team)));
         }
         if (event.type == GameEventType::Died) {
             if (const auto squadIndex = world_.hogs()[event.hog].squadIndex) {
@@ -402,6 +395,7 @@ void Game::step(double seconds) {
     }
     handleEvents(world_.update(seconds, input, library_.animations()));
     banner_.update(seconds);
+    hud_.update(seconds, ui::describeTurn(world_, interface_.strings(), interface_.gameText()));
 
     // When the active hog changes, or while it moves, the camera swings
     // round behind the hog.
@@ -511,12 +505,17 @@ void Game::drawEffects(const render::Camera& camera, int width, int height) {
     }
 }
 
-void Game::drawScene(int width, int height) {
+render::Camera Game::sceneCamera() const {
     const auto pose = camera_.pose(world_.terrain());
     render::Camera camera;
     camera.position = pose.position;
     camera.yawDegrees = pose.yawDegrees;
     camera.pitchDegrees = pose.pitchDegrees;
+    return camera;
+}
+
+void Game::drawScene(int width, int height) {
+    const render::Camera camera = sceneCamera();
 
     render::DrawOptions options;
     options.showMarkers = false;  // the hogs themselves stand where the markers were
@@ -529,95 +528,30 @@ void Game::drawScene(int width, int height) {
     drawEffects(camera, width, height);
 }
 
-void Game::drawTurnPanel(const ui::HudInfo& info) {
-    // Top left: team, class and health of the active hog.
-    auto& ui = interface_.renderer();
-    const float left = kHudMargin;
-    const float top = kHudMargin;
-    ui.drawRect(left, top, kTurnPanelWidth, kTurnPanelHeight, colours::kPanel);
-
-    render::TextStyle teamStyle;
-    teamStyle.colour = teamColour(info.nation);
-    const std::string teamLabel =
-        isComputerTeam(info.team) ? info.teamName + " - " + interface_.strings().cpu : info.teamName;
-    ui.drawText(interface_.smallFont(), teamLabel, left + kPanelPadding, top + kPanelPadding, teamStyle);
-
-    render::TextStyle classStyle;
-    classStyle.scale = 0.75f;
-    classStyle.colour = colours::kText;
-    const std::string classLine = info.hogName.empty() ? info.className : info.hogName + " - " + info.className;
-    // Long names (translations) shrink to fit the panel.
-    const float classRoom = kTurnPanelWidth - 2.0f * kPanelPadding;
-    const float classWidth = render::UiRenderer::textWidth(interface_.bigFont(), classLine, classStyle.scale);
-    if (classWidth > classRoom) classStyle.scale *= classRoom / classWidth;
-    ui.drawText(interface_.bigFont(), classLine, left + kPanelPadding, top + 24.0f, classStyle);
-
-    const float barWidth = kTurnPanelWidth - 2.0f * kPanelPadding - 40.0f;
-    const float barY = top + kTurnPanelHeight - kPanelPadding - kBarHeight;
-    interface_.drawBar(left + kPanelPadding, barY, barWidth, kBarHeight, info.healthFraction, kHealthBarColour);
-    render::TextStyle healthStyle;
-    healthStyle.colour = colours::kText;
-    healthStyle.align = render::TextAlign::Right;
-    ui.drawText(interface_.smallFont(), std::to_string(info.health), left + kTurnPanelWidth - kPanelPadding,
-                barY - 1.0f, healthStyle);
-
-    // Top right: the turn clock.
-    const float timerLeft = ui.canvasWidth() - kHudMargin - kTimerWidth;
-    ui.drawRect(timerLeft, top, kTimerWidth, kTimerHeight, colours::kPanel);
-    render::TextStyle timerStyle;
-    timerStyle.scale = 1.25f;
-    timerStyle.colour = info.secondsLeft <= kTimerWarningSeconds ? kTimerWarningColour : colours::kTitle;
-    timerStyle.align = render::TextAlign::Centre;
-    const float digitsHeight = static_cast<float>(interface_.bigFont().font().lineHeight) * timerStyle.scale;
-    ui.drawText(interface_.bigFont(), std::to_string(info.secondsLeft), timerLeft + kTimerWidth / 2.0f,
-                top + (kTimerHeight - digitsHeight) / 2.0f, timerStyle);
-}
-
-void Game::drawWeaponPanel(const ui::HudInfo& info) {
-    // Bottom left: the selected weapon and the movement left; the power
-    // of a throw above it while charging.
-    auto& ui = interface_.renderer();
-    const float left = kHudMargin;
-    const float top = render::kCanvasHeight - kHudMargin - kWeaponPanelHeight;
-    ui.drawRect(left, top, kWeaponPanelWidth, kWeaponPanelHeight, colours::kPanel);
-
-    float textLeft = left + kPanelPadding;
-    if (const auto* icon = interface_.weaponIcon(info.weapon)) {
-        const float width = icon->width() * kIconScale;
-        const float height = icon->height() * kIconScale;
-        ui.drawImage(*icon, left + kPanelPadding, top + (kWeaponPanelHeight - height) / 2.0f, width, height);
-        textLeft += width + kPanelPadding;
-    }
-
-    render::TextStyle nameStyle;
-    nameStyle.scale = 0.75f;
-    nameStyle.colour = colours::kText;
-    // Long names (translations) shrink to fit the panel.
-    const float room = left + kWeaponPanelWidth - kPanelPadding - textLeft;
-    const float width = render::UiRenderer::textWidth(interface_.bigFont(), info.weaponName, nameStyle.scale);
-    if (width > room) nameStyle.scale *= room / width;
-    ui.drawText(interface_.bigFont(), info.weaponName, textLeft, top + kPanelPadding + 4.0f, nameStyle);
-
-    interface_.drawBar(textLeft, top + kWeaponPanelHeight - kPanelPadding - kBarHeight - 4.0f, room, kBarHeight,
-                       info.movementFraction, kMovementBarColour);
-
-    if (info.power) {
-        interface_.drawBar(left, top - kBarHeight * 2.0f - 6.0f, kWeaponPanelWidth, kBarHeight * 2.0f, *info.power,
-                           kPowerBarColour);
-    }
-}
-
-void Game::drawHud() {
-    if (const auto info = ui::describeTurn(world_, interface_.strings(), interface_.gameText())) {
-        drawTurnPanel(*info);
-        drawWeaponPanel(*info);
-    }
+void Game::drawHud(int width, int height) {
+    // The damage numbers float in the scene, under the instruments.
+    const render::Camera camera = sceneCamera();
+    const float aspect = height > 0 ? static_cast<float>(width) / static_cast<float>(height) : 1.0f;
+    hud_.drawDamageNumbers(interface_.renderer(), camera.projectionMatrix(aspect) * camera.viewMatrix(),
+                           camera.position);
+    hud_.draw(interface_, ui::describeTurn(world_, interface_.strings(), interface_.gameText()));
     if (const auto& message = banner_.current()) {
         // Turn messages fade out over their last quarter.
         const double progress = banner_.progress();
         const float alpha = progress > 0.75 ? static_cast<float>((1.0 - progress) / 0.25) : 1.0f;
-        interface_.drawBanner(*message, kBannerY, alpha);
+        interface_.drawBanner(*message, kBannerY, alpha, bannerColour_);
     }
+}
+
+void Game::showMessage(const std::string& message, double seconds, bool turnMessage) {
+    // As in the original, "GET READY ..." and "THE ENEMY RETALIATES..." are
+    // written in the colour of the team about to play, the other messages
+    // in white.
+    bannerColour_ = glm::vec4(1.0f);
+    if (turnMessage && world_.turns()) {
+        bannerColour_ = ui::teamMessageColour(world_.nationOf(world_.turns()->activeTeam()));
+    }
+    banner_.show(message, seconds);
 }
 
 void Game::advance(double elapsedSeconds) {
@@ -636,7 +570,7 @@ void Game::draw(int width, int height) {
         ui.drawRect(0.0f, 0.0f, ui.canvasWidth(), render::kCanvasHeight, kPauseShade);
         interface_.drawMenu(pauseMenu_.menu());
     } else {
-        drawHud();
+        drawHud(width, height);
     }
     ui.end();
 }

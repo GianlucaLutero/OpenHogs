@@ -14,7 +14,7 @@ listed before it below.
 | `tools/langpack` | done | `openhogs-langpack`: builds a language pack from the PlayStation disc (text alignment, overrides, briefing conversion). |
 | `tools/extractor` | done | `openhogs-extract`: unpacks archives, converts textures to PNG and text tables to text. |
 | `scene`   | done | Turns map data into triangles grouped by texture, places objects. Poses the hogs (`CharacterPose`: bone transforms, blending between frames) and loads them (`CharacterLibrary`: classes, teams, animation names); facial expressions and blinking (`CharacterExpressions`). Pure CPU code, unit tested. |
-| `ui`      | in progress | What the player sees and does around a match, with no drawing code: text layout in the bitmap fonts and `>S`/`>N` placeholders (`TextLayout`), menu and HUD texts from the text tables (`UiStrings`), menu screens (`Menu`), the menus before a match (`FrontEnd`), the pause menu (`PauseMenu`), timed messages (`MessageBanner`), what the HUD shows (`Hud`), the campaign pages (`CampaignMenu`). Unit tested. |
+| `ui`      | in progress | What the player sees and does around a match, with no drawing code: text layout in the bitmap fonts and `>S`/`>N` placeholders (`TextLayout`), menu and HUD texts from the text tables (`UiStrings`), menu screens (`Menu`), the menus before a match (`FrontEnd`), the pause menu (`PauseMenu`), timed messages (`MessageBanner`), what the HUD shows (`Hud`), the original HUD's layout and moving parts read from the executable (`HudLayout`), the damage numbers (`FloatingNumbers`), the campaign pages (`CampaignMenu`). Unit tested. |
 | `render`  | done | OpenGL 3.3 renderers for maps, characters (and any textured model), effects and the 2D interface (`UiRenderer`: font text, panels, icons) (glad), RAII GPU objects, free camera. No window code: the application creates the context. |
 | `apps/common` | done | Shared by the applications: opening the game files (`--game` or configuration + packs), the SDL3/OpenGL window, PNG screenshots. |
 | `apps/mapviewer` | done | `openhogs-mapviewer`: input, map switching, screenshots. |
@@ -22,7 +22,7 @@ listed before it below.
 | `audio`   | done | Sound effects, speech and music: `SoundLibrary` loads and caches WAV/Ogg files and `.srl` banks through the VFS, `Mixer` mixes any number of sounds at any rate with per-category volumes, `AudioDevice` (SDL3, built with the applications) feeds the mixer to the sound card. |
 | `apps/soundtest` | done | `openhogs-soundtest`: plays or renders any sound of the game. |
 | `game`    | in progress | Match state and rules, with no drawing, sound or window code. Done: `FixedTimestep` (simulation at 50 steps per second whatever the display rate), `TerrainHeightField`, `MapCollision` (terrain rules and the objects' collision boxes), `Hog` and `spawnHogs`, `AnimationPlayer` and `IdleAnimator`, `HogMovement`, `TurnSystem`, `Weapons` (the weapon table and loadouts), `Combat` (damage, death, explosions, bullets), `Projectiles`, `World` (turn phases: playing, resolving the shot, match over), `ChaseCamera`, `FieldConditions` (multiplayer settings applied to the map's hogs), `ComputerPlayer` (the computer opponent: `ShotPlanner` weighs every weapon against every enemy with the real flight rules, then the turn is played through the same `PlayerInput` as a person's). `Ranks` and `Campaign` (missions, squad, points, losses, saving, putting the squad on a map). `Levels` (the numbered levels of the executable with their sky) and `Cutscenes` (which videos play at start-up and between missions). |
-| `apps/game` | in progress | `openhogs`, the game: `Application` owns the window, the sound and the interface and switches between the menus and a match; `CampaignSession` runs a campaign (pages, briefings, missions, saving); `Gamepads` reads game controllers; `Game` is one match. Connects the `game` and `ui` modules to the input, the renderers and the sound. |
+| `apps/game` | in progress | `openhogs`, the game: `Application` owns the window, the sound and the interface and switches between the menus and a match; `CampaignSession` runs a campaign (pages, briefings, missions, saving); `Gamepads` reads game controllers; `Game` is one match; `OriginalHud` draws its HUD with the original instruments. Connects the `game` and `ui` modules to the input, the renderers and the sound. |
 
 ## How files are found
 
@@ -70,7 +70,8 @@ this order:
 3. **Drawing**: the map, each hog posed by its animation player (the
    active one with its weapon), the projectiles, then the effects
    (aiming line, tracers, explosions, health bars), and finally the HUD
-   (`ui::describeTurn`) and the current message. Drawing only reads the
+   (`ui::describeTurn` drawn by `OriginalHud`: damage numbers, angle and
+   power gauges, clock) and the current message. Drawing only reads the
    world.
 
 The `game` module does not know about OpenGL, SDL or the sound card, which

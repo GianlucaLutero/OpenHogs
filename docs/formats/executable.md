@@ -124,7 +124,7 @@ film and the hard-mode ending exist only on PlayStation. OpenHogs:
 | `Chars/sight.mtd`, `Chars/propoint.mtd` | aiming sight, promotion point marker |
 | `Maps/<map>.MTD` | the map's own textures |
 
-Their exact positions on screen are the subject of block `original-hud`.
+Their positions on screen and how they move: `docs/formats/hud.md`.
 
 ## Differences between versions
 

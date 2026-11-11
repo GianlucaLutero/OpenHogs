@@ -42,9 +42,6 @@ inline constexpr glm::vec4 kHighlight{0.55f, 0.45f, 0.1f, 0.55f};
 inline constexpr glm::vec4 kBarBack{0.1f, 0.1f, 0.1f, 0.85f};
 } // namespace colours
 
-// Colour of a team (nation index), for the HUD.
-glm::vec4 teamColour(int team);
-
 class Interface {
 public:
     // Throws std::runtime_error if the fonts are missing: there is no
@@ -69,8 +66,9 @@ public:
     // A picture stretched to fill the height of the screen, centred.
     void drawPicture(const render::UiImage& image);
 
-    // A big message across the middle of the screen at height `y`.
-    void drawBanner(std::string_view text, float y, float alpha = 1.0f);
+    // A big message across the middle of the screen at height `y`, gold
+    // unless another colour is given.
+    void drawBanner(std::string_view text, float y, float alpha = 1.0f, const glm::vec4& colour = colours::kTitle);
 
     // A bar `fraction` (0..1) full.
     void drawBar(float x, float y, float width, float height, float fraction, const glm::vec4& colour);

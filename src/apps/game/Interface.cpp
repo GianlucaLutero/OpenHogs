@@ -59,22 +59,6 @@ std::vector<std::string> loadTextTable(const core::VirtualFileSystem& vfs, const
 
 } // namespace
 
-glm::vec4 teamColour(int team) {
-    // The colours of the uniforms, in scene::characterTeams() order:
-    // british, american, french, german, japanese, russian, team lard.
-    constexpr std::array<glm::vec4, 7> kColours{{
-        {0.70f, 0.70f, 0.35f, 1.0f},  // khaki (British)
-        {0.45f, 0.75f, 1.00f, 1.0f},  // light blue (American)
-        {0.35f, 0.50f, 1.00f, 1.0f},  // blue (French)
-        {0.65f, 0.68f, 0.65f, 1.0f},  // grey (German)
-        {1.00f, 0.85f, 0.20f, 1.0f},  // yellow (Japanese)
-        {0.95f, 0.30f, 0.20f, 1.0f},  // red (Russian)
-        {0.75f, 0.45f, 0.90f, 1.0f},  // purple (Team Lard)
-    }};;
-    const auto count = static_cast<int>(kColours.size());
-    return kColours[static_cast<std::size_t>(((team % count) + count) % count)];
-}
-
 Interface::Interface(const core::VirtualFileSystem& vfs) {
     bigFont_ = loadFont(vfs, "BIG");
     smallFont_ = loadFont(vfs, "SMALL");
@@ -117,10 +101,10 @@ void Interface::drawBar(float x, float y, float width, float height, float fract
     renderer_.drawRect(x + inset, y + inset, inner, height - 2.0f * inset, colour);
 }
 
-void Interface::drawBanner(std::string_view text, float y, float alpha) {
+void Interface::drawBanner(std::string_view text, float y, float alpha, const glm::vec4& colour) {
     render::TextStyle style;
     style.scale = kBannerScale;
-    style.colour = colours::kTitle;
+    style.colour = colour;
     style.colour.a = alpha;
     style.align = render::TextAlign::Centre;
     // Very long messages (translations) shrink to fit the screen.

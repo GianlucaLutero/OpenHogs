@@ -36,12 +36,19 @@ std::optional<HudInfo> describeTurn(const game::World& world, const UiStrings& s
     info.healthFraction = hog.maxHealth > 0.0f ? std::clamp(hog.health / hog.maxHealth, 0.0f, 1.0f) : 0.0f;
     info.weapon = hog.selectedWeapon();
     info.weaponName = weaponDisplayName(info.weapon, gameText);
-    info.secondsLeft = static_cast<int>(std::ceil(std::max(0.0, turns->secondsLeft())));
+    info.exactSecondsLeft = std::max(0.0, turns->secondsLeft());
+    info.secondsLeft = static_cast<int>(std::ceil(info.exactSecondsLeft));
     const float allowance = turns->rules().movementAllowance;
     info.movementFraction = allowance > 0.0f ? std::clamp(turns->movementLeft() / allowance, 0.0f, 1.0f) : 0.0f;
     if (hog.charging) {
         info.power = std::clamp(hog.power, 0.0f, 1.0f);
     }
+    const auto& spec = game::weaponSpec(info.weapon);
+    info.aimDegrees = hog.aimDegrees;
+    info.canAim = spec.kind == game::WeaponKind::Bullet || spec.kind == game::WeaponKind::Thrown ||
+                  spec.kind == game::WeaponKind::Shell;
+    info.usesPower = spec.usesPower;
+    info.playing = world.phase() == game::MatchPhase::Playing;
     info.turnNumber = turns->turnNumber();
     return info;
 }

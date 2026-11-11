@@ -51,6 +51,7 @@ add_executable(openhogs_tests
     game/MultiplayerTests.cpp
     ui/TextLayoutTests.cpp
     ui/MenuTests.cpp
+    ui/HudLayoutTests.cpp
     ui/HudTests.cpp
     ui/CampaignMenuTests.cpp
     langpack/LangpackTests.cpp)

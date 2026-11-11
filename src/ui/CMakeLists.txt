@@ -8,13 +8,17 @@
 #   FrontEnd      - the menus before a match (main menu, levels, options)
 #   PauseMenu     - the menu over a paused match
 #   MessageBanner - timed messages in the middle of the screen
+#   FloatingNumbers - damage numbers rising above hurt hogs
 #   Hud           - what the HUD shows; messages for game events
+#   HudLayout     - the original HUD's layout and moving parts (from the executable)
 #   CampaignMenu  - the campaign pages: squad, promotions, mission results
 
 add_library(openhogs_ui STATIC
     src/CampaignMenu.cpp
+    src/FloatingNumbers.cpp
     src/FrontEnd.cpp
     src/Hud.cpp
+    src/HudLayout.cpp
     src/Menu.cpp
     src/MessageBanner.cpp
     src/PauseMenu.cpp

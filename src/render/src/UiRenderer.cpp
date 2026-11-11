@@ -147,6 +147,22 @@ void UiRenderer::drawImage(const UiImage& image, float x, float y, float width, 
     drawQuads(vertices, image.texture(), tint);
 }
 
+void UiRenderer::drawImageRegion(const UiImage& image, float x, float y, float width, float height, float u0,
+                                 float v0, float u1, float v1, const glm::vec4& tint) const {
+    std::vector<Vertex2D> vertices;
+    addRectangle(vertices, x, y, width, height, u0, v0, u1, v1);
+    drawQuads(vertices, image.texture(), tint);
+}
+
+void UiRenderer::drawImageQuad(const UiImage& image, const std::array<glm::vec2, 4>& corners,
+                               const glm::vec4& tint) const {
+    const Vertex2D topLeft{corners[0], {0.0f, 0.0f}};
+    const Vertex2D topRight{corners[1], {1.0f, 0.0f}};
+    const Vertex2D bottomRight{corners[2], {1.0f, 1.0f}};
+    const Vertex2D bottomLeft{corners[3], {0.0f, 1.0f}};
+    drawQuads({topLeft, topRight, bottomRight, topLeft, bottomRight, bottomLeft}, image.texture(), tint);
+}
+
 void UiRenderer::drawGlyphs(const UiFont& font, std::string_view text, float x, float y, float scale,
                             const glm::vec4& colour) const {
     const auto& atlas = font.font().atlas;
