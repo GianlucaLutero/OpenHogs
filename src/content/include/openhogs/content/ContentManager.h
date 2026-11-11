@@ -47,4 +47,11 @@ std::vector<ContentPack> selectActivePacks(const ContentConfig& config,
 core::VirtualFileSystem buildFileSystem(const ContentConfig& config,
                                         const std::vector<ContentPack>& activePacks);
 
+// The three steps above in one call, as every application needs them.
+struct LoadedContent {
+    core::VirtualFileSystem files;
+    std::vector<ContentPack> activePacks;  // bottom -> top
+};
+LoadedContent loadContent(const ContentConfig& config);
+
 } // namespace openhogs::content

@@ -32,6 +32,8 @@ add_executable(openhogs_tests
     formats/PsxDiscTests.cpp
     formats/TextTableTests.cpp
     formats/TimImageTests.cpp
+    formats/AudioFormatsTests.cpp
+    audio/AudioTests.cpp
     extractor/AssetExtractorTests.cpp
     extractor/PngWriterTests.cpp
     scene/SceneTests.cpp
@@ -44,6 +46,7 @@ target_link_libraries(openhogs_tests PRIVATE
     OpenHogs::formats
     OpenHogs::extractor
     OpenHogs::scene
+    OpenHogs::audio
     OpenHogs::langpack
     Catch2::Catch2WithMain)
 openhogs_set_warnings(openhogs_tests)

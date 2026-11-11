@@ -25,7 +25,8 @@ The goal is to play the original game natively on modern systems
 OpenHogs is in early development. Nothing is playable yet, but the
 original data can be extracted, every map can be explored in 3D, and an
 Italian (or French, German, Spanish) language pack can be built from your
-PlayStation disc.
+PlayStation disc, and every sound effect, voice and music track can be
+played.
 
 | Block | Status | What it delivers |
 |-------|--------|------------------|
@@ -34,6 +35,7 @@ PlayStation disc.
 | `ci-build`           | ✅ done | Automatic build and tests on Windows and Linux |
 | `map-viewer`         | ✅ done | Reads terrain, models and objects; `openhogs-mapviewer` 3D viewer |
 | `italian-pack`       | ✅ done | Italian text, menus and briefings from the PlayStation disc; `openhogs-langpack`, `openhogs-text` |
+| `audio`              | ✅ done | Plays effects, speech and music with separate volumes; `openhogs-soundtest` |
 | gameplay blocks      | planned | Movement, weapons, turns, AI, campaign |
 
 ## Requirements
@@ -251,10 +253,41 @@ Controls:
 Because the viewer reads files through the content system, a texture or
 map pack enabled in `config/openhogs.ini` shows up in the viewer too.
 
+### Listening to the game's sounds
+
+`openhogs-soundtest` plays any sound of the game, alone or several at
+once, like the sound test of old console games. It is also the quickest
+way to check a pack that replaces sounds or music.
+
+```sh
+# Windows
+build\bin\Release\openhogs-soundtest.exe --music 2
+build\bin\Release\openhogs-soundtest.exe --list-banks
+
+# Linux
+./build/bin/openhogs-soundtest --play Speech/Sku1/Sarge/SGEN0101.wav
+./build/bin/openhogs-soundtest --bank Audio/sfxday.srl --sound 2
+```
+
+| Option | Effect |
+|--------|--------|
+| `--play <file>` | play a sound file (`.wav` or `.ogg`), path relative to the game folder; repeat to play several at once |
+| `--bank <file.srl> --sound <n>` | play sound number `n` of a sound bank (see `--list-banks`) |
+| `--music <n>` | play music track `n` (2 to 32) |
+| `--list-banks` | list the sound banks and their numbered sounds |
+| `--list-music` | list the music tracks |
+| `--seconds <s>` | stop after `s` seconds (default: when every sound has ended) |
+| `--render <out.wav>` | write the mix to a WAV file instead of playing it |
+| `--game <folder>` / `--config <file>` | as for the map viewer |
+
+Volumes come from the `[Audio]` section of the configuration (see below).
+The audio files are described in
+[`docs/formats/audio.md`](docs/formats/audio.md).
+
 ### Game settings
 
 The engine will use the configuration described below; the content-pack
-system is already in place.
+system and the audio settings are already in place.
 
 ### Choosing the language
 
@@ -265,6 +298,19 @@ Language = it
 
 `en` uses the original English files. Any other language needs a language
 pack in `content/packs/` with the same `Language` code.
+
+### Volume
+
+```ini
+[Audio]
+MasterVolume = 100
+EffectsVolume = 100
+SpeechVolume = 80
+MusicVolume = 60
+```
+
+Each value goes from 0 (silent) to 100 (as recorded). A sound's final
+volume is its category volume multiplied by the master volume.
 
 ### Switching content packs on and off
 
@@ -292,15 +338,17 @@ OpenHogs/
 ├── src/
 │   ├── core/             binary reading, INI files, virtual file system
 │   ├── content/          config, content packs, pack selection
-│   ├── formats/          parsers: archives, text, textures, models, maps, PlayStation disc
+│   ├── formats/          parsers: archives, text, textures, models, maps, sounds, PlayStation disc
+│   ├── audio/            sound effects, speech, music: decoding, mixing, sound card
 │   ├── scene/            map data turned into triangles (no GPU code)
 │   ├── render/           OpenGL 3.3 renderer and camera
 │   ├── tools/extractor/  openhogs-extract command-line tool
 │   ├── tools/text/       openhogs-text: text tables <-> editable text
 │   ├── tools/langpack/   openhogs-langpack: language packs from the PlayStation disc
-│   └── apps/mapviewer/   openhogs-mapviewer application
+│   ├── apps/mapviewer/   openhogs-mapviewer application
+│   └── apps/soundtest/   openhogs-soundtest application
 ├── tests/                unit tests (see tests/README.md)
-└── third_party/          code not written for OpenHogs (glad OpenGL loader)
+└── third_party/          code not written for OpenHogs (glad, stb_vorbis)
 ```
 
 More details in [`docs/architecture.md`](docs/architecture.md).
@@ -320,9 +368,10 @@ OpenHogs builds on the work of others. Thank you!
 | Project | Authors | License | Used for |
 |---------|---------|---------|----------|
 | [OpenHoW](https://github.com/TalonBraveInfo/OpenHoW) | Mark Sowden (hogsy) and contributors | GPL-3.0-or-later | Its [file-format documentation](https://github.com/TalonBraveInfo/OpenHoW/tree/master/doc/file-formats) was the reference for the model (VTX, NO2, FAC) and map (PMG, POG, PTG) formats and confirmed the MAD/MTD layout. No code was copied; every layout was re-checked on the game data and some POG offsets were corrected (see `docs/formats/maps.md`). |
-| [SDL3](https://github.com/libsdl-org/SDL) | Sam Lantinga and SDL contributors | zlib | Window, input and OpenGL context of the map viewer (downloaded at build time). |
+| [SDL3](https://github.com/libsdl-org/SDL) | Sam Lantinga and SDL contributors | zlib | Window, input and OpenGL context of the map viewer, sound output of the sound test (downloaded at build time). |
 | [GLM](https://github.com/g-truc/glm) | G-Truc Creation (Christophe Riccio) and contributors | MIT | Vector and matrix maths (downloaded at build time). |
 | [glad](https://github.com/Dav1dde/glad) | David Herberth | generated code: WTFPL or CC0-1.0; `khrplatform.h`: Apache-2.0 (Khronos Group) | OpenGL 3.3 function loader, generated into `third_party/glad`. |
+| [stb_vorbis](https://github.com/nothings/stb) | Sean Barrett and contributors | public domain (Unlicense) or MIT, at your choice | Decodes the Ogg Vorbis music. Copied unmodified into `third_party/stb_vorbis` (v1.22). |
 | [Catch2](https://github.com/catchorg/Catch2) | Catch2 authors (Martin Hořeňovský, Phil Nash and contributors) | BSL-1.0 | Unit test framework (downloaded at build time). |
 
 *Hogs of War* was developed by Infogrames Sheffield House (formerly Gremlin

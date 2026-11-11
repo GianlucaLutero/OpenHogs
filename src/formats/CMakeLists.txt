@@ -10,6 +10,8 @@
 #   TextureTable    - .PTG terrain textures
 #   PsxDisc         - files on a PlayStation disc image (.bin / .iso)
 #   RawImage        - headerless 15-bit PlayStation pictures (briefings)
+#   WaveFile        - .WAV sound effects and speech
+#   SoundBank       - .SRL lists that number the sound effects
 #
 # Format documentation lives in docs/formats/.
 
@@ -21,9 +23,11 @@ add_library(openhogs_formats STATIC
     src/PackageArchive.cpp
     src/PsxDisc.cpp
     src/RawImage.cpp
+    src/SoundBank.cpp
     src/TextTable.cpp
     src/TextureTable.cpp
-    src/TimImage.cpp)
+    src/TimImage.cpp
+    src/WaveFile.cpp)
 
 add_library(OpenHogs::formats ALIAS openhogs_formats)
 

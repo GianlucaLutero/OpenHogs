@@ -9,14 +9,15 @@ listed before it below.
 |--------|--------|----------------|
 | `core`    | done    | Shared building blocks: `BinaryReader`, `IniFile`, path helpers, `VirtualFileSystem`. No dependencies. |
 | `content` | done    | Replaceable content: user config, content packs, language selection. Builds the virtual file system the rest of the game reads from. |
-| `formats` | done | Parsers for the original file formats: MAD/MTD archives, text tables and encoding (with accents), TIM textures, models (VTX/NO2/FAC), maps (PMG/POG/PTG), PlayStation disc images and raw pictures. See [formats/](formats/). |
+| `formats` | done | Parsers for the original file formats: MAD/MTD archives, text tables and encoding (with accents), TIM textures, models (VTX/NO2/FAC), maps (PMG/POG/PTG), sounds (WAV, `.srl` banks), PlayStation disc images and raw pictures. See [formats/](formats/). |
 | `tools/text` | done | `openhogs-text`: converts text tables to editable UTF-8 listings and back. |
 | `tools/langpack` | done | `openhogs-langpack`: builds a language pack from the PlayStation disc (text alignment, overrides, briefing conversion). |
 | `tools/extractor` | done | `openhogs-extract`: unpacks archives, converts textures to PNG and text tables to text. |
 | `scene`   | done | Turns map data into triangles grouped by texture, places objects. Pure CPU code, unit tested. |
 | `render`  | done | OpenGL 3.3 renderer (glad), RAII GPU objects, free camera. No window code: the application creates the context. |
 | `apps/mapviewer` | done | `openhogs-mapviewer`: SDL3 window, input, map switching, screenshots. |
-| `audio`   | planned | Sound effects, speech and music. |
+| `audio`   | done | Sound effects, speech and music: `SoundLibrary` loads and caches WAV/Ogg files and `.srl` banks through the VFS, `Mixer` mixes any number of sounds at any rate with per-category volumes, `AudioDevice` (SDL3, built with the applications) feeds the mixer to the sound card. |
+| `apps/soundtest` | done | `openhogs-soundtest`: plays or renders any sound of the game. |
 | `game`    | planned | Game rules: turns, hogs, weapons, AI, campaign. |
 
 ## How files are found

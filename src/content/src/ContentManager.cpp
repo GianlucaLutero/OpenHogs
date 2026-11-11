@@ -108,4 +108,11 @@ core::VirtualFileSystem buildFileSystem(const ContentConfig& config,
     return vfs;
 }
 
+LoadedContent loadContent(const ContentConfig& config) {
+    LoadedContent content;
+    content.activePacks = selectActivePacks(config, discoverPacks(config.packsDirectory));
+    content.files = buildFileSystem(config, content.activePacks);
+    return content;
+}
+
 } // namespace openhogs::content
