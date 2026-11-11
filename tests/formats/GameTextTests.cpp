@@ -24,27 +24,43 @@ TEST_CASE("decodeGameText maps font codes to readable characters", "[formats][Ga
     CHECK(decodeGameText(encoded.bytes()) == "I SPY...");
 }
 
-// Codes outside the ASCII range (accented letters in other languages) must
+// The Italian translation relies on accented capitals. These words come
+// from the PlayStation Italian menus ("MODALIT{50}", "S{5A}", "GI{64}") and
+// the codes match the glyphs drawn in the PC fonts. If the mapping drifted,
+// every translated menu would show the wrong letters.
+TEST_CASE("Accented letters decode to UTF-8 and encode back", "[formats][GameText]") {
+    ByteBuilder modalita;
+    modalita.raw("\x2E\x30\x25\x22\x2D\x2A\x35\x50");  // M O D A L I T À
+    ByteBuilder si;
+    si.u8(0x34).u8(0x5A);  // S Ì
+    ByteBuilder giu;
+    giu.u8(0x28).u8(0x2A).u8(0x64);  // G I Ù
+
+    CHECK(decodeGameText(modalita.bytes()) == "MODALITÀ");
+    CHECK(decodeGameText(si.bytes()) == "SÌ");
+    CHECK(decodeGameText(giu.bytes()) == "GIÙ");
+
+    // Translators type lower case: it must give the same bytes.
+    CHECK(encodeGameText("modalità") == modalita.bytes());
+    CHECK(encodeGameText("Giù") == giu.bytes());
+}
+
+// Icon codes (hearts, PlayStation buttons) have no character: they must
 // survive a decode/encode round trip, or translated tables would be corrupt.
-TEST_CASE("Unknown font codes round-trip through {xx} escapes", "[formats][GameText]") {
+TEST_CASE("Icon codes round-trip through {xx} escapes", "[formats][GameText]") {
     ByteBuilder encoded;
-    encoded.u8(0x2C).u8(0x50).u8(0x68);  // 'K' followed by two extra glyphs
+    encoded.u8(0x2C).u8(0x45).u8(0x3F);  // 'K', circle button, heart
 
     const auto text = decodeGameText(encoded.bytes());
-    CHECK(text == "K{50}{68}");
+    CHECK(text == "K{45}{3F}");
     CHECK(encodeGameText(text) == encoded.bytes());
 }
 
-// Translators will naturally type lower case; the font only has capitals,
-// so lower case must be accepted and stored as upper case.
-TEST_CASE("encodeGameText stores lower case as upper case", "[formats][GameText]") {
-    CHECK(encodeGameText("Bye bye") == encodeGameText("BYE BYE"));
-}
-
-// Characters the font cannot draw, broken escapes and {00} (which would cut
-// the string short inside the game) must be refused with an error.
+// Characters the fonts cannot draw, broken escapes and {00} (which would
+// cut the string short inside the game) must be refused with an error.
 TEST_CASE("encodeGameText rejects text the game cannot display", "[formats][GameText]") {
-    CHECK_THROWS_AS(encodeGameText("caf\xC3\xA8"), FormatError);  // UTF-8 'è' without a code
+    CHECK_THROWS_AS(encodeGameText("10\xE2\x82\xAC"), FormatError);  // euro sign
+    CHECK_THROWS_AS(encodeGameText("a~b"), FormatError);
     CHECK_THROWS_AS(encodeGameText("{5"), FormatError);
     CHECK_THROWS_AS(encodeGameText("{zz}"), FormatError);
     CHECK_THROWS_AS(encodeGameText("{00}"), FormatError);

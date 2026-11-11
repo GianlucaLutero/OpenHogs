@@ -6,6 +6,9 @@
 #include "openhogs/core/BinaryReader.h"  // FormatError
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
+
+#include <string>
 
 using openhogs::core::FormatError;
 using openhogs::formats::TextTable;
@@ -70,4 +73,32 @@ TEST_CASE("TextTable rejects strings without a terminator", "[formats][TextTable
     strings.u8(0x33).u8(0x2A);  // "RI" and no zero
 
     CHECK_THROWS_AS(TextTable::parse(offsets.bytes(), strings.bytes()), FormatError);
+}
+
+// The listing is what translators edit. Reading it back must give the same
+// strings, accents and leading/trailing spaces included, and tolerate the
+// Windows line endings a text editor may add.
+TEST_CASE("Text listings round-trip, accents and spaces included", "[formats][TextTable]") {
+    TextTable table;
+    table.entries = {"MODALITÀ", " ", "SALVATE IL SOLDATO MAYAL"};
+
+    const std::string listing = table.toListing();
+    CHECK(listing == "[0000] MODALITÀ\n[0001]  \n[0002] SALVATE IL SOLDATO MAYAL\n");
+
+    std::string windows;
+    for (const char c : listing) {
+        if (c == '\n') windows += '\r';
+        windows += c;
+    }
+    CHECK(TextTable::fromListing(windows).entries == table.entries);
+}
+
+// A deleted or duplicated line would shift every following string to the
+// wrong index in the game; it must be reported with its line number.
+TEST_CASE("Text listings reject missing, duplicated and malformed lines", "[formats][TextTable]") {
+    using Catch::Matchers::ContainsSubstring;
+
+    CHECK_THROWS_WITH(TextTable::fromListing("[0000] A\n[0002] C\n"), ContainsSubstring("line 2"));
+    CHECK_THROWS_WITH(TextTable::fromListing("[0000] A\n[0000] B\n"), ContainsSubstring("expected index 1"));
+    CHECK_THROWS_WITH(TextTable::fromListing("0000 A\n"), ContainsSubstring("line 1"));
 }

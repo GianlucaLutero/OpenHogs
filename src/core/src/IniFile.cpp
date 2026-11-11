@@ -136,6 +136,14 @@ bool IniFile::getBool(std::string_view section, std::string_view key, bool fallb
                       " must be true/false, got '" + *value + "'");
 }
 
+std::vector<std::pair<std::string, std::string>> IniFile::entries(std::string_view section) const {
+    const auto it = sections_.find(toLower(section));
+    if (it == sections_.end()) {
+        return {};
+    }
+    return {it->second.begin(), it->second.end()};
+}
+
 std::vector<std::string> IniFile::getList(std::string_view section, std::string_view key) const {
     std::vector<std::string> items;
     const std::string value = getString(section, key);

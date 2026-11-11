@@ -9,7 +9,9 @@ listed before it below.
 |--------|--------|----------------|
 | `core`    | done    | Shared building blocks: `BinaryReader`, `IniFile`, path helpers, `VirtualFileSystem`. No dependencies. |
 | `content` | done    | Replaceable content: user config, content packs, language selection. Builds the virtual file system the rest of the game reads from. |
-| `formats` | done | Parsers for the original file formats: MAD/MTD archives, text tables and encoding, TIM textures, models (VTX/NO2/FAC), maps (PMG/POG/PTG). See [formats/](formats/). |
+| `formats` | done | Parsers for the original file formats: MAD/MTD archives, text tables and encoding (with accents), TIM textures, models (VTX/NO2/FAC), maps (PMG/POG/PTG), PlayStation disc images and raw pictures. See [formats/](formats/). |
+| `tools/text` | done | `openhogs-text`: converts text tables to editable UTF-8 listings and back. |
+| `tools/langpack` | done | `openhogs-langpack`: builds a language pack from the PlayStation disc (text alignment, overrides, briefing conversion). |
 | `tools/extractor` | done | `openhogs-extract`: unpacks archives, converts textures to PNG and text tables to text. |
 | `scene`   | done | Turns map data into triangles grouped by texture, places objects. Pure CPU code, unit tested. |
 | `render`  | done | OpenGL 3.3 renderer (glad), RAII GPU objects, free camera. No window code: the application creates the context. |

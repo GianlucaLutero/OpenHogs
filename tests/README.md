@@ -34,11 +34,12 @@ a user, a pack author or another module relies on.
 
 ```
 tests/
-├── support/    helpers shared by tests (TempDirectory, ByteBuilder)
+├── support/    helpers shared by tests (TempDirectory, ByteBuilder, IsoBuilder)
 ├── core/       tests for src/core
 ├── content/    tests for src/content
 ├── formats/    tests for src/formats
 ├── extractor/  tests for src/tools/extractor
+├── langpack/   tests for src/tools/langpack
 └── scene/      tests for src/scene
 ```
 
@@ -56,8 +57,9 @@ Each new module gets its own folder, mirroring `src/`.
 | `ContentConfig` | relative paths resolved from the config folder, required game folder, normalised ids |
 | `ContentManager` | packs on/off via `EnabledPacks`, language selection, priority order, discovery, original files restored when a pack is off |
 | `PackageArchive` | entries and data read correctly, case-insensitive lookup, out-of-file entries rejected, non-archives detected |
-| `GameText` | font-code mapping, lossless `{xx}` escapes, lower case accepted, undisplayable text rejected |
-| `TextTable` | strings in index order, byte-identical re-encoding, offsets recomputed for longer translations, missing terminators rejected |
+| `GameText` | font-code mapping, accented capitals as UTF-8 (both directions, lower case accepted), lossless `{xx}` escapes for icons, undisplayable text rejected |
+| `TextTable` | strings in index order, byte-identical re-encoding, offsets recomputed for longer translations, missing terminators rejected, readable listings round-trip and reject missing/duplicated lines |
+| `PsxDisc` / `decodeRaw15` | files read from raw and ISO images (sub-folders, multi-sector files), path spellings, non-disc files rejected, 15-bit colour layout |
 | `TimImage` | 4-bit nibble order and width, PS1 transparency, out-of-palette pixels and non-TIM data rejected |
 | `PngWriter` | checksums against reference values, whole file against an independent encoder |
 | `AssetExtractor` | end-to-end extraction, bad files reported without stopping, entry names cannot escape the output folder, repeated names kept |
@@ -66,6 +68,8 @@ Each new module gets its own folder, mirroring `src/`.
 | `MapObjects` | 94-byte records, trailing bytes ignored, team/script/flags at the offsets verified on the game data, truncated files rejected |
 | `TextureTable` | equal-size image slices, uneven files rejected |
 | `scene` | terrain rows go towards -Z, tile texture flip/rotation, two triangles per tile grouped by texture, model UV normalisation and quad split, object scale/yaw/Y-flip, objects without a model become markers |
+
+| `langpack` | translations follow the English text to the PC indices, differently worded and missing strings keep the English, overrides apply and reject foreign indices, the shipped Italian overrides encode, bottom-up BMPs, the OS/2 BMP header, bilinear scaling, a complete pack built from a miniature disc, clear errors for unusable discs |
 
 ### Not covered by unit tests
 

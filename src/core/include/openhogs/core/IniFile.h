@@ -23,6 +23,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace openhogs::core {
@@ -46,6 +47,10 @@ public:
                           std::string_view fallback = {}) const;
     int getInt(std::string_view section, std::string_view key, int fallback) const;
     bool getBool(std::string_view section, std::string_view key, bool fallback) const;
+
+    // All key/value pairs of a section (keys in lower case, sorted), or an
+    // empty list if the section does not exist.
+    std::vector<std::pair<std::string, std::string>> entries(std::string_view section) const;
 
     // Splits a comma-separated value ("a, b ,c") into trimmed, non-empty items.
     std::vector<std::string> getList(std::string_view section, std::string_view key) const;

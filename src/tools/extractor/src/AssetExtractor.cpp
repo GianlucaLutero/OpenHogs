@@ -8,7 +8,6 @@
 #include "openhogs/formats/TextTable.h"
 #include "openhogs/formats/TimImage.h"
 
-#include <cstdio>
 #include <exception>
 #include <fstream>
 #include <set>
@@ -36,20 +35,6 @@ void writeBytes(const fs::path& path, std::span<const std::byte> data) {
 
 void writeText(const fs::path& path, const std::string& text) {
     writeBytes(path, std::as_bytes(std::span(text.data(), text.size())));
-}
-
-// "[0042] DEATH VALLEY": the index is what the engine uses to find a string,
-// so it is kept visible for translators.
-std::string formatTextTable(const formats::TextTable& table) {
-    std::string text;
-    char index[32];  // large enough for any std::size_t
-    for (std::size_t i = 0; i < table.entries.size(); ++i) {
-        std::snprintf(index, sizeof(index), "[%04zu] ", i);
-        text += index;
-        text += table.entries[i];
-        text += '\n';
-    }
-    return text;
 }
 
 } // namespace
@@ -159,7 +144,7 @@ void AssetExtractor::extractTextTable(const core::VirtualFileSystem& vfs, const 
     }
 
     const auto table = formats::TextTable::parse(vfs.readFile(offsetsKey), vfs.readFile(stringsKey));
-    writeText(outputDirectory_ / (baseKey + ".txt"), formatTextTable(table));
+    writeText(outputDirectory_ / (baseKey + ".txt"), table.toListing());
     ++report.textTables;
 }
 

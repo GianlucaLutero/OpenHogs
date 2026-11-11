@@ -16,6 +16,7 @@ FetchContent_Declare(Catch2
 FetchContent_MakeAvailable(Catch2)
 
 add_executable(openhogs_tests
+    support/IsoBuilder.cpp
     support/TempDirectory.cpp
     core/BinaryReaderTests.cpp
     core/IniFileTests.cpp
@@ -28,11 +29,13 @@ add_executable(openhogs_tests
     formats/MapFormatsTests.cpp
     formats/ModelTests.cpp
     formats/PackageArchiveTests.cpp
+    formats/PsxDiscTests.cpp
     formats/TextTableTests.cpp
     formats/TimImageTests.cpp
     extractor/AssetExtractorTests.cpp
     extractor/PngWriterTests.cpp
-    scene/SceneTests.cpp)
+    scene/SceneTests.cpp
+    langpack/LangpackTests.cpp)
 
 target_include_directories(openhogs_tests PRIVATE support)
 target_link_libraries(openhogs_tests PRIVATE
@@ -41,8 +44,12 @@ target_link_libraries(openhogs_tests PRIVATE
     OpenHogs::formats
     OpenHogs::extractor
     OpenHogs::scene
+    OpenHogs::langpack
     Catch2::Catch2WithMain)
 openhogs_set_warnings(openhogs_tests)
+
+# Lets tests check files shipped in the repository (e.g. translations).
+target_compile_definitions(openhogs_tests PRIVATE OPENHOGS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 
 # Register every TEST_CASE with CTest individually.
 list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)

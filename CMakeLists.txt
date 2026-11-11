@@ -33,6 +33,8 @@ add_subdirectory(src/core)      # binary reading, INI files, virtual file system
 add_subdirectory(src/content)   # replaceable content: packs, languages, config
 add_subdirectory(src/formats)   # parsers for the original file formats
 add_subdirectory(src/tools/extractor)  # openhogs-extract command-line tool
+add_subdirectory(src/tools/text)       # openhogs-text: text tables <-> editable text
+add_subdirectory(src/tools/langpack)   # openhogs-langpack: language packs from the PS1 disc
 add_subdirectory(src/scene)     # map data turned into renderable geometry (no GPU code)
 
 if(OPENHOGS_BUILD_VIEWER)
