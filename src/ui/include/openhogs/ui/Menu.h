@@ -1,8 +1,9 @@
 // Menu.h
 //
 // One menu screen: a title and a vertical list of items the player moves
-// through with up/down and picks with confirm. An item is either an action
-// ("START GAME") or a slider ("MASTER" volume) changed with left/right.
+// through with up/down and picks with confirm. An item is an action
+// ("START GAME"), a slider ("MASTER" volume) or a choice between a few
+// words ("PLAYER" / "CPU"); sliders and choices change with left/right.
 //
 // The menu only keeps the selection and slider values and tells the caller
 // what happened; what an item does is up to the screen that owns the menu
@@ -12,6 +13,7 @@
 
 #include <cstddef>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace openhogs::ui {
@@ -20,21 +22,25 @@ namespace openhogs::ui {
 enum class MenuInput { Up, Down, Left, Right, Confirm, Back };
 
 struct MenuItem {
-    enum class Kind { Action, Slider };
+    enum class Kind { Action, Slider, Choice };
 
     int id = 0;  // chosen by the owner, returned in MenuResponse
     std::string label;
     Kind kind = Kind::Action;
     bool enabled = true;  // disabled items are shown but skipped
-    int value = 0;        // sliders: 0 .. maxValue
+    int value = 0;        // sliders: 0 .. maxValue; choices: index into `choices`
     int maxValue = 10;
+    std::vector<std::string> choices;  // choices: the words to pick from
+
+    // The word a choice shows; empty for other items.
+    std::string choiceText() const;
 };
 
 struct MenuResponse {
     enum class Type {
         None,       // nothing changed (e.g. up on a one-item menu)
         Moved,      // the selection moved
-        Changed,    // a slider moved; see Menu::selectedItem()
+        Changed,    // a slider or choice changed; see Menu::selectedItem()
         Activated,  // confirm on an action
         Back,       // the player wants to leave this menu
     };
@@ -50,6 +56,7 @@ public:
     MenuResponse handle(MenuInput input);
 
     const std::string& title() const { return title_; }
+    void setTitle(std::string title) { title_ = std::move(title); }
     const std::vector<MenuItem>& items() const { return items_; }
     std::size_t selectedIndex() const { return selected_; }
     const MenuItem& selectedItem() const { return items_.at(selected_); }

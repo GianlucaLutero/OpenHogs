@@ -40,6 +40,7 @@ answer.
 | 36 | HUD | What did the original HUD look like (layout, colours, which information)? Its pictures are probably among the undecoded `.mgl` files. | OpenHogs' own layout: team, class and health top left, turn clock top right (red under 10 s), weapon icon and name with the movement bar bottom left, power bar above it while charging; team colours red, blue, light blue, grey, white, gold, pink. | `Game::drawHud`, `teamColour` in `src/apps/game/Interface.cpp` |
 | 37 | HUD | Which rank name does each class show? The game names ranks (GRUNT, GUNNER, BOMBARDIER, ACE...), OpenHogs has one model per class. | The rank the model stands for; the heavy weapons hog is a GUNNER. | `kGtClassNames` in `src/ui/src/UiStrings.cpp` |
 | 38 | Match end | The original has a results screen (BATTLE RESULTS, ENEMY GRILLED, FRIENDS FRIED..., gtext 195–199). | "VICTORY TO ...!!" stays on screen; Enter goes back to the main menu. | `Game::handleKey` |
+| 44 | AI | How does the original computer opponent choose its target, weapon and movement, and how accurate is it (the PS1 version has difficulty levels)? | It weighs every weapon against every enemy with the real flight rules and picks the most damage to enemies minus 1.5 × the damage to its own team (30 points extra for a kill); without a shot worth 8 points it runs towards the nearest enemy (jumping once if blocked), then plans again. One level: up to 2° off in direction and angle, 4 % in power. | `src/game/src/ComputerPlayer.cpp`, `AiSettings` |
 
 ## Design: what do we want?
 
@@ -55,11 +56,13 @@ answer.
 | 30 | Sound | Sounds for hurt, death, a new turn and victory. | `P_OWW`, `P_MOAN`, `S_SELECT`, `P_WHOHO`. | `src/apps/game/Game.cpp` |
 | 31 | Aiming | What should the aiming arc show when not charging? | The arc at full power; while charging, at the current power. | `World::aimPreview` |
 | 19 | CI | Re-enable the Linux jobs (GCC, Clang) once their package installation step no longer hangs. | Only Windows (MSVC) runs on pull requests; GCC and Clang are run locally before each PR. | `.github/workflows/build.yml` |
-| 39 | Menus | ONE PLAYER (campaign) and the multiplayer setup (teams, game modes such as DEATH MATCH or SURVIVAL, turn time, health). | ONE PLAYER is shown greyed out; MULTI-PLAYER goes straight to the level list and the map's own teams play. | `ui::FrontEnd` |
+| 39 | Menus | ONE PLAYER (campaign) and the multiplayer setup (game modes such as DEATH MATCH or SURVIVAL, turn time, health, number of players). | ONE PLAYER is a skirmish on any level: the team that plays first is the player's, the others the computer's. MULTI-PLAYER: the map's own teams, each PLAYER (default) or CPU on the PLAYERS page. | `ui::FrontEnd` |
 | 40 | Options | Should volume changes made in the menu be saved? | They last for the session; the starting values come from `[Audio]` in `config/openhogs.ini`. | `Application::handleFrontEndResult` |
 | 41 | Sound | Menu sounds and menu music. | `click1` to move, `click5` to pick, `Indu006` to go back (FESounds bank); no music yet. | `src/apps/game/MenuControls.h` |
 | 42 | Menus | Behaviour of the menu cursor and of confirmations. | The cursor wraps around and skips greyed-out entries; ARE YOU SURE? starts on NO, so a double Enter never quits or aborts. | `ui::Menu`, `ui::FrontEnd`, `ui::PauseMenu` |
 | 43 | Match | Messages and pause. | "GET READY ..." for 2.5 s at each turn (fading out); the match pauses by itself when the window loses focus; the pause menu stops the turn clock and the camera. | `src/apps/game/Game.cpp` |
+| 45 | AI | Explosives put down (TNT, mines) are never used by the computer: the hog cannot walk away after using them. Without any worthwhile shot it ends its turn rather than firing at random. | Not used / turn ended. | `ShotPlanner::step`, `ComputerPlayer::decide` |
+| 46 | AI | Pace of the computer's turn. | It thinks for 1 s (planning one weapon and enemy per step meanwhile), then turns, picks the weapon and aims at the normal speeds; its random errors are seeded from the clock, so no two matches are the same. | `AiSettings`, `computerSettings()` in `src/apps/game/Game.cpp` |
 
 ## Settled
 

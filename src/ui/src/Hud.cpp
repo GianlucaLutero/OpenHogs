@@ -44,19 +44,22 @@ std::optional<HudInfo> describeTurn(const game::World& world, const UiStrings& s
     return info;
 }
 
-std::optional<std::string> turnMessage(const game::World& world, const UiStrings& strings) {
+std::optional<std::string> turnMessage(const game::World& world, const UiStrings& strings, bool computerTurn) {
     const auto& turns = world.turns();
     if (!turns) {
         return std::nullopt;
+    }
+    if (computerTurn) {
+        return strings.enemyTurn;
     }
     return fillPlaceholders(strings.getReady, {strings.teamName(turns->activeTeam())});
 }
 
 std::optional<std::string> messageForEvent(const game::GameEvent& event, const game::World& world,
-                                           const UiStrings& strings) {
+                                           const UiStrings& strings, bool computerTurn) {
     switch (event.type) {
     case game::GameEventType::TurnStarted:
-        return turnMessage(world, strings);
+        return turnMessage(world, strings, computerTurn);
     case game::GameEventType::MatchOver:
         if (event.team < 0) {
             return strings.draw;

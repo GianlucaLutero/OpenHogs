@@ -70,6 +70,14 @@ constexpr glm::vec4 kMovementBarColour{0.35f, 0.65f, 1.0f, 1.0f};
 constexpr glm::vec4 kPowerBarColour{1.0f, 0.55f, 0.1f, 1.0f};
 constexpr glm::vec4 kPauseShade{0.0f, 0.0f, 0.0f, 0.4f};
 
+// The computer opponent's settings. Its random errors are seeded from the
+// clock, so it does not play every match the same way.
+game::AiSettings computerSettings() {
+    game::AiSettings settings;
+    settings.seed = static_cast<std::uint32_t>(SDL_GetTicksNS());
+    return settings;
+}
+
 // How long the match messages stay on screen.
 constexpr double kTurnMessageSeconds = 2.5;
 constexpr double kEndMessageSeconds = -1.0;  // until the players leave
@@ -79,7 +87,8 @@ constexpr double kEndMessageSeconds = -1.0;  // until the players leave
 Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Interface& userInterface,
            SoundPlayer& sounds)
     : mapName_(options.mapName), library_(vfs), world_(game::loadWorld(vfs, options.mapName)),
-      pauseMenu_(userInterface.strings()), interface_(userInterface), sounds_(sounds) {
+      pauseMenu_(userInterface.strings()), computerTeams_(options.computerTeams.begin(), options.computerTeams.end()),
+      computer_(computerSettings()), interface_(userInterface), sounds_(sounds) {
     const auto scene = scene::loadMapScene(vfs, options.mapName);
     for (const auto& warning : scene.warnings) {
         std::cerr << "Warning: " << warning << "\n";
@@ -126,7 +135,7 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Inter
         }
     }
 
-    if (const auto message = ui::turnMessage(world_, interface_.strings())) {
+    if (const auto message = ui::turnMessage(world_, interface_.strings(), computerIsPlaying())) {
         banner_.show(*message, kTurnMessageSeconds);
     }
     sounds_.startAmbience();
@@ -244,21 +253,33 @@ GameRequest Game::handlePauseKey(const SDL_Event& event) {
     return GameRequest::None;
 }
 
+bool Game::isComputerTeam(int team) const {
+    return computerTeams_.contains(team);
+}
+
+bool Game::computerIsPlaying() const {
+    return world_.turns() && isComputerTeam(world_.turns()->activeTeam());
+}
+
 GameRequest Game::handleKey(const SDL_Event& event) {
-    switch (event.key.key) {
-    case SDLK_ESCAPE:
-    case SDLK_P:
+    const SDL_Keycode key = event.key.key;
+    if (key == SDLK_ESCAPE || key == SDLK_P) {
         pause();
         playMenuSound(sounds_, ui::MenuSound::Select);
-        break;
+        return GameRequest::None;
+    }
+    if (world_.phase() == game::MatchPhase::Over) {
+        return (key == SDLK_RETURN || key == SDLK_KP_ENTER) ? GameRequest::LeaveMatch : GameRequest::None;
+    }
+    if (computerIsPlaying()) {
+        return GameRequest::None;  // the computer has the hog
+    }
+    switch (key) {
     case SDLK_TAB:
         world_.switchHog((event.key.mod & SDL_KMOD_SHIFT) ? -1 : 1);
         break;
     case SDLK_RETURN:
     case SDLK_KP_ENTER:
-        if (world_.phase() == game::MatchPhase::Over) {
-            return GameRequest::LeaveMatch;
-        }
         world_.endTurn();
         break;
     case SDLK_SPACE:
@@ -304,7 +325,7 @@ game::PlayerInput Game::readInput() {
 void Game::handleEvents(const std::vector<game::GameEvent>& events) {
     using game::GameEventType;
     for (const auto& event : events) {
-        if (const auto message = ui::messageForEvent(event, world_, interface_.strings())) {
+        if (const auto message = ui::messageForEvent(event, world_, interface_.strings(), computerIsPlaying())) {
             banner_.show(*message, event.type == GameEventType::MatchOver ? kEndMessageSeconds : kTurnMessageSeconds);
         }
         const auto playSound = [this](std::string_view name) { sounds_.play(SoundBankId::Match, name); };
@@ -328,7 +349,15 @@ void Game::step(double seconds) {
     if (paused_) {
         return;  // the camera waits too: the pause menu covers the view
     }
-    handleEvents(world_.update(seconds, readInput(), library_.animations()));
+    game::PlayerInput input = readInput();  // read anyway: it clears the remembered key presses
+    if (computerIsPlaying()) {
+        const auto decision = computer_.update(world_, seconds);
+        if (decision.endTurn) {
+            world_.endTurn();
+        }
+        input = decision.input;
+    }
+    handleEvents(world_.update(seconds, input, library_.animations()));
     banner_.update(seconds);
 
     // When the active hog changes, or while it moves, the camera swings
@@ -464,7 +493,9 @@ void Game::drawTurnPanel(const ui::HudInfo& info) {
 
     render::TextStyle teamStyle;
     teamStyle.colour = teamColour(info.team);
-    ui.drawText(interface_.smallFont(), info.teamName, left + kPanelPadding, top + kPanelPadding, teamStyle);
+    const std::string teamLabel =
+        isComputerTeam(info.team) ? info.teamName + " - " + interface_.strings().cpu : info.teamName;
+    ui.drawText(interface_.smallFont(), teamLabel, left + kPanelPadding, top + kPanelPadding, teamStyle);
 
     render::TextStyle classStyle;
     classStyle.scale = 0.75f;

@@ -96,6 +96,8 @@ TEST_CASE("Turn and match messages name the right team", "[ui][hud]") {
     auto world = makeWorld();
     const UiStrings strings;
     CHECK(turnMessage(world, strings) == "GET READY TOMMY'S TROTTERS...");
+    // The computer's turns are announced as the enemy's.
+    CHECK(turnMessage(world, strings, true) == "THE ENEMY RETALIATES...");
 
     GameEvent over;
     over.type = GameEventType::MatchOver;

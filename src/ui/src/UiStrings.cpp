@@ -22,6 +22,9 @@ constexpr std::size_t kFeMaster = 76;
 constexpr std::size_t kFeEffects = 77;
 constexpr std::size_t kFeVoices = 78;
 constexpr std::size_t kFeSelectLevel = 105;
+constexpr std::size_t kFeStartGame = 134;
+constexpr std::size_t kFePlayer = 330;
+constexpr std::size_t kFeCpu = 331;
 constexpr std::size_t kFeBack = 350;
 constexpr std::size_t kFeLoading = 465;
 constexpr std::size_t kFeMusic = 648;
@@ -32,6 +35,7 @@ constexpr std::array<std::size_t, 7> kFeTeamNames{25, 27, 26, 30, 29, 28, 226};
 constexpr std::size_t kGtVictory = 165;
 constexpr std::size_t kGtDraw = 166;
 constexpr std::size_t kGtGetReady = 168;
+constexpr std::size_t kGtEnemyTurn = 169;
 constexpr std::size_t kGtPaused = 173;
 constexpr std::size_t kGtAbortSkirmish = 180;
 constexpr std::size_t kGtContinue = 181;
@@ -90,6 +94,9 @@ UiStrings loadUiStrings(const std::vector<std::string>& frontEndText, const std:
     take(strings.back, fe, kFeBack);
     take(strings.loading, fe, kFeLoading);
     take(strings.music, fe, kFeMusic);
+    take(strings.startGame, fe, kFeStartGame);
+    take(strings.player, fe, kFePlayer);
+    take(strings.cpu, fe, kFeCpu);
     for (std::size_t team = 0; team < kFeTeamNames.size(); ++team) {
         take(strings.teamNames[team], fe, kFeTeamNames[team]);
     }
@@ -98,6 +105,7 @@ UiStrings loadUiStrings(const std::vector<std::string>& frontEndText, const std:
     take(strings.victory, gt, kGtVictory);
     take(strings.draw, gt, kGtDraw);
     take(strings.getReady, gt, kGtGetReady);
+    take(strings.enemyTurn, gt, kGtEnemyTurn);
     take(strings.paused, gt, kGtPaused);
     take(strings.abortSkirmish, gt, kGtAbortSkirmish);
     take(strings.continueGame, gt, kGtContinue);

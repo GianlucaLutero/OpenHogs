@@ -9,6 +9,13 @@
 
 namespace openhogs::ui {
 
+std::string MenuItem::choiceText() const {
+    if (kind != Kind::Choice || value < 0 || static_cast<std::size_t>(value) >= choices.size()) {
+        return {};
+    }
+    return choices[static_cast<std::size_t>(value)];
+}
+
 Menu::Menu(std::string title, std::vector<MenuItem> items) : title_(std::move(title)), items_(std::move(items)) {
     // Start on the first item that can be picked.
     const auto first = std::find_if(items_.begin(), items_.end(), [](const MenuItem& item) { return item.enabled; });
@@ -33,10 +40,17 @@ MenuResponse Menu::handle(MenuInput input) {
     case MenuInput::Left:
     case MenuInput::Right: {
         MenuItem& item = items_[selected_];
+        const int step = input == MenuInput::Right ? 1 : -1;
+        if (item.kind == MenuItem::Kind::Choice && !item.choices.empty()) {
+            // Choices go round: with two words, either key swaps them.
+            const auto count = static_cast<int>(item.choices.size());
+            item.value = ((item.value + step) % count + count) % count;
+            return count > 1 ? MenuResponse{MenuResponse::Type::Changed, item.id} : MenuResponse{};
+        }
         if (item.kind != MenuItem::Kind::Slider) {
             return {};
         }
-        const int value = std::clamp(item.value + (input == MenuInput::Right ? 1 : -1), 0, item.maxValue);
+        const int value = std::clamp(item.value + step, 0, item.maxValue);
         if (value == item.value) {
             return {};
         }
@@ -85,7 +99,8 @@ const MenuItem& Menu::item(int id) const {
 
 void Menu::setValue(int id, int value) {
     MenuItem& item = items_[indexOf(id)];
-    item.value = std::clamp(value, 0, item.maxValue);
+    const int highest = item.kind == MenuItem::Kind::Choice ? static_cast<int>(item.choices.size()) - 1 : item.maxValue;
+    item.value = std::clamp(value, 0, std::max(0, highest));
 }
 
 void Menu::select(int id) {

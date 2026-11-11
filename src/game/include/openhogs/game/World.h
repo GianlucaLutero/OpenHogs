@@ -150,6 +150,11 @@ private:
 // file simply has no hogs and no obstacles.
 World loadWorld(const core::VirtualFileSystem& vfs, std::string_view mapName, TurnRules rules = {});
 
+// The teams of a map, the one that plays first first (the map marks the
+// player's hog). Empty for a map without hogs. Used by the menus to offer
+// each team to a human or the computer.
+std::vector<int> mapTeams(const core::VirtualFileSystem& vfs, std::string_view mapName);
+
 // Where a hog's shots start, and the direction it aims in.
 glm::vec3 muzzlePosition(const Hog& hog);
 glm::vec3 aimDirection(const Hog& hog);

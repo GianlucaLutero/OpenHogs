@@ -45,12 +45,13 @@ std::string weaponDisplayName(game::WeaponId weapon, const std::vector<std::stri
 std::optional<HudInfo> describeTurn(const game::World& world, const UiStrings& strings,
                                     const std::vector<std::string>& gameText);
 
-// The message of the start of the current turn ("GET READY >S...").
-std::optional<std::string> turnMessage(const game::World& world, const UiStrings& strings);
+// The message of the start of the current turn: "GET READY >S..." for a
+// team played by a person, "THE ENEMY RETALIATES..." for the computer.
+std::optional<std::string> turnMessage(const game::World& world, const UiStrings& strings, bool computerTurn = false);
 
-// The message a game event deserves, if any: the start of a turn or the
-// end of the match.
+// The message a game event deserves, if any: the start of a turn (see
+// turnMessage) or the end of the match.
 std::optional<std::string> messageForEvent(const game::GameEvent& event, const game::World& world,
-                                           const UiStrings& strings);
+                                           const UiStrings& strings, bool computerTurn = false);
 
 } // namespace openhogs::ui

@@ -29,7 +29,9 @@ rifles and machine guns, grenades, mortars and bazookas, TNT and mines.
 Hogs get hurt, thrown about and killed, and the last team standing wins.
 A main menu leads to the level choice and the volume options, and the
 match has its HUD and pause menu, all in the game's own fonts and words
-(so in Italian with the Italian pack). The computer opponents come next. Besides that, the original data can be
+(so in Italian with the Italian pack). Any team can be played by the
+computer, which picks its target and weapon, gets closer when it has to,
+aims and fires like a player would. The campaign comes next. Besides that, the original data can be
 extracted, every map explored in 3D, an Italian (or French, German,
 Spanish) language pack built from your PlayStation disc, every sound,
 voice and music track played, and the hogs watched in all their
@@ -48,7 +50,8 @@ animations.
 | `game-framework`     | ✅ done | The `openhogs` game: fixed-rate game loop, hogs placed on the map, chase camera, ambient sound |
 | `hog-movement`       | ✅ done | Turns (time limit, movement allowance), running, jumping, falling, swimming, collisions with the scenery, footsteps |
 | `weapons`            | ✅ done | 20 weapons (melee, bullets, grenades, shells, TNT, mines), health, explosions, knockback, fall damage, death, victory |
-| `menus-and-hud`      | 🔍 in review | Main menu, level choice, volume options, pause menu, HUD (team, class, health, weapon icon, time, movement, power), match messages; the game's bitmap fonts with accented letters |
+| `menus-and-hud`      | ✅ done | Main menu, level choice, volume options, pause menu, HUD (team, class, health, weapon icon, time, movement, power), match messages; the game's bitmap fonts with accented letters |
+| `ai`                 | 🔍 in review | Computer opponents: shot planning with the real flight rules, approach, aiming errors; ONE PLAYER skirmish against the computer, PLAYER/CPU choice per team in multiplayer |
 | gameplay blocks      | planned | Movement, weapons, turns, AI, campaign |
 
 ## Requirements
@@ -139,15 +142,18 @@ Directory = C:\Program Files (x86)\Steam\steamapps\common\HogsofWar
 
 `openhogs` is the game itself. It opens on the **main menu**:
 
-- **MULTI-PLAYER** → **SELECT LEVEL**: pick a map and the match starts;
+- **ONE PLAYER** → pick a map: you play the team that starts, the
+  computer plays all the others (a skirmish, until the campaign exists);
+- **MULTI-PLAYER** → pick a map → **PLAYERS**: for each team choose
+  *PLAYER* (a person at this keyboard) or *CPU* (the computer) with the
+  left/right keys, then **START GAME**;
 - **OPTIONS** → **VOLUME CONTROL**: master, effects, voices and music
   volume (for this session; the starting values come from
   `config/openhogs.ini`);
 - **QUIT APPLICATION** asks for confirmation.
 
-*ONE PLAYER* (the campaign) is shown but not available yet. In the menus
-the arrow keys (or `W` `A` `S` `D`) move and change the sliders, `Enter`
-picks and `Esc` goes back.
+In the menus the arrow keys (or `W` `A` `S` `D`) move and change the
+sliders and choices, `Enter` picks and `Esc` goes back.
 
 In a match the hogs stand where the map places them, each in its team's
 uniform, and the teams take turns: each turn one hog moves, then fires one
@@ -155,10 +161,12 @@ of its weapons. The turn ends when the shot is over (or when time runs
 out, or when you press Enter); the match ends when only one team has hogs
 left, and `Enter` then goes back to the menu.
 
-Every team is played from the same keyboard (hot seat) until the computer
-opponents exist. The HUD shows the team and class of the active hog and
+Teams played by people share the keyboard (hot seat). During a computer
+team's turn ("THE ENEMY RETALIATES...") the hog keys do nothing; watch it
+think, turn, pick a weapon, aim and fire. The HUD shows the team and class of the active hog and
 its health (top left), the seconds left in the turn (top right), the
-selected weapon with its icon and the movement left (bottom left) and,
+selected weapon with its icon and the movement left (bottom left; the
+team name says *CPU* for a computer team) and,
 while charging a throw, its power. "GET READY ..." announces each turn
 and "VICTORY TO ...!!" the winner. Health bars float above the hogs. All
 texts come from the game's own tables, so with the Italian pack they are
@@ -178,6 +186,7 @@ build\bin\Release\openhogs.exe --map ESTU
 |--------|--------|
 | `--map <name>` | skip the menus and play this map; `--list-maps` prints the maps |
 | `--hog <n>` | hog to start on (1 = the first hog of the map) |
+| `--computer others` / `--computer all` | with `--map`: the computer plays every team but the first, or every team (to watch a match) |
 | `--no-sound` | play without sound |
 | `--screenshot <file>` | save the match (or, without `--map`, the menu) as an image and exit; `--seconds <s>` lets it run for a while first, `--auto-walk` makes the active hog run meanwhile, `--weapon <n>` and `--fire-at <s>` make it pick its n-th weapon and fire, `--pause` shows the pause menu, `--menu-keys down,enter` presses menu keys first |
 | `--game <folder>` / `--config <file>` / `--size <W>x<H>` | as for the other programs |

@@ -27,6 +27,9 @@
 //   Enter               end the turn (after the match: back to the menu)
 //   Left mouse drag     turn the camera around the hog     Mouse wheel: zoom
 //   Esc or P            pause menu (continue / abort the match)
+//
+// During the turns of the computer's teams (GameOptions::computerTeams)
+// the keys that control the hog do nothing; the camera keys still work.
 //   F12                 save a screenshot (openhogs-<map>.png)
 
 #pragma once
@@ -36,6 +39,7 @@
 
 #include "openhogs/core/VirtualFileSystem.h"
 #include "openhogs/game/ChaseCamera.h"
+#include "openhogs/game/ComputerPlayer.h"
 #include "openhogs/game/FixedTimestep.h"
 #include "openhogs/game/World.h"
 #include "openhogs/render/CharacterRenderer.h"
@@ -49,6 +53,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 
 union SDL_Event;
@@ -63,6 +68,7 @@ struct GameOptions {
     // and hold "fire" from this time (seconds) for kAutoFireHoldSeconds.
     std::optional<std::size_t> autoWeaponSlot;
     std::optional<double> autoFireAt;
+    std::vector<int> computerTeams;  // teams played by the computer (game::ComputerPlayer)
 };
 
 // What the match asks of the application after an input event.
@@ -124,6 +130,8 @@ private:
     const formats::Model& modelFor(const scene::CharacterClass& characterClass);
     const TeamLook& lookFor(int team);
     glm::vec3 cameraTarget() const;
+    bool isComputerTeam(int team) const;
+    bool computerIsPlaying() const;  // the active team is the computer's
 
     std::string mapName_;
     scene::CharacterLibrary library_;
@@ -133,6 +141,8 @@ private:
     bool paused_ = false;
     ui::PauseMenu pauseMenu_;
     ui::MessageBanner banner_;
+    std::set<int> computerTeams_;
+    game::ComputerPlayer computer_;
     bool autoWalk_ = false;
     std::optional<double> autoFireAt_;
     bool jumpPressed_ = false;  // Space was pressed since the last step
