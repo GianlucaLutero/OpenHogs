@@ -62,8 +62,12 @@ public:
 
     // --- Shared drawing (between renderer().begin() and end()) -----------
 
-    // A menu in a panel centred on the screen, at most `rows` items tall.
-    void drawMenu(const ui::Menu& menu, std::size_t rows = 10);
+    // A menu in a panel centred on the screen, at most `rows` items tall,
+    // with optional lines of information under its title.
+    void drawMenu(const ui::Menu& menu, std::size_t rows = 10, const std::vector<std::string>& lines = {});
+
+    // A picture stretched to fill the height of the screen, centred.
+    void drawPicture(const render::UiImage& image);
 
     // A big message across the middle of the screen at height `y`.
     void drawBanner(std::string_view text, float y, float alpha = 1.0f);

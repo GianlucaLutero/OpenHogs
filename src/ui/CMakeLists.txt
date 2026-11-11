@@ -9,8 +9,10 @@
 #   PauseMenu     - the menu over a paused match
 #   MessageBanner - timed messages in the middle of the screen
 #   Hud           - what the HUD shows; messages for game events
+#   CampaignMenu  - the campaign pages: squad, promotions, mission results
 
 add_library(openhogs_ui STATIC
+    src/CampaignMenu.cpp
     src/FrontEnd.cpp
     src/Hud.cpp
     src/Menu.cpp

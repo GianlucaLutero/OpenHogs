@@ -16,9 +16,12 @@
 #   World              - the map, the hogs and the turns of the match
 #   ChaseCamera        - the camera that follows the active hog
 #   ComputerPlayer     - the computer opponent: plans and plays a turn
+#   Ranks              - campaign ranks, careers and promotions
+#   Campaign           - the missions, the squad, points and saving
 
 add_library(openhogs_game STATIC
     src/AnimationPlayer.cpp
+    src/Campaign.cpp
     src/ChaseCamera.cpp
     src/ComputerPlayer.cpp
     src/Combat.cpp
@@ -28,6 +31,7 @@ add_library(openhogs_game STATIC
     src/IdleAnimator.cpp
     src/MapCollision.cpp
     src/Projectiles.cpp
+    src/Ranks.cpp
     src/TerrainHeightField.cpp
     src/TurnSystem.cpp
     src/Weapons.cpp

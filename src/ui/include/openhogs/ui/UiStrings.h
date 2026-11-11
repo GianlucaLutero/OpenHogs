@@ -12,8 +12,12 @@
 
 #pragma once
 
+#include "openhogs/game/Campaign.h"
+#include "openhogs/game/Ranks.h"
+
 #include <array>
 #include <cstddef>
+#include <map>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -68,6 +72,51 @@ struct UiStrings {
 
     // The name of a class; the id in capitals if it is unknown.
     std::string className(std::string_view classId) const;
+
+    // Campaign menus (fetext).
+    std::string newGame = "NEW GAME";
+    std::string loadGame = "LOAD GAME";
+    std::string skirmish = "DEATH MATCH";  // ONE PLAYER against the computer on any level
+    std::string selectTeam = "SELECT TEAM";
+    std::string startMission = "START MISSION";
+    std::string promote = "PROMOTE";
+    std::string swapPosition = "SWAP POSITION";
+    std::string careerPath = "CAREER PATH";
+    std::array<std::string, 4> careers{"HEAVY WEAPONS", "MEDIC", "ESPIONAGE", "ENGINEER"};
+    // Not in the game's tables (OpenHogs' own words).
+    std::string promotionPoints = "PROMOTION POINTS: >N";
+    std::string campaignComplete = "SAUSTRALASIA IS OURS!";
+
+    // Campaign texts (gtext).
+    std::string missionTitle = "MISSION >2N : >S";
+    std::string missionResults = "MISSION RESULTS";
+    std::string missionFailed = "MISSION FAILED!";
+    std::string missionAborted = "MISSION ABORTED";
+    std::string levelComplete = "LEVEL COMPLETE";
+    std::string survivalBonus = "SURVIVAL BONUS";
+    std::string retry = "RETRY";
+    std::string editSquad = "EDIT SQUAD";
+    std::string rip = "RIP";
+
+    // The hog names of each nation (fetext), in scene::characterTeams()
+    // order; the campaign squad takes its names from here.
+    std::array<std::vector<std::string>, 7> hogNames{{
+        {"NOBBY", "GINGER", "DEN", "MONTY", "BASIL", "PONSONBY", "PERCY", "SMITH", "JONES"},
+        {"CHUCKY", "SLY", "KEANU", "ABRAHAM", "JOHN-BOY", "JIM-BOB", "BOBBY-JIM", "BOBBY-JOE", "JOEY-BOB"},
+        {"BASTILLE", "LE CONT", "GERARD", "M. CHIEN", "SANGLIER", "COCHON", "PORC", "GOINFRE", "GLOUTON"},
+        {"HERMAN", "WOLFIE", "LEDERHOS", "HERR GEL", "HERR KUT", "SCHNITZEL", "HERR DRY", "HERR RAID", "SCHWEIN"},
+        {"SHOGUN", "KENDO", "KUNG FU", "FENG SHUI", "NINJA", "SUSHI", "KEMPO", "TENKO", "RAW FISH"},
+        {"YEHUDI", "HUSKI", "JETSKI", "SNOWSKI", "PESSKI", "MUSKI", "DUSKI", "RIMSKI", "MULE"},
+        {"SIMON", "TAPPER", "JOHN", "ANDY", "MARK", "JAKE", "MARTYN", "IZZY", "RICKI"},
+    }};
+
+    // Mission names (gtext), by game::Mission::nameEntry.
+    std::map<std::size_t, std::string> missionNames;
+    std::string missionName(const game::Mission& mission) const;
+
+    // Campaign rank names, in game::allRanks() order (from gtext).
+    std::vector<std::string> rankNames;
+    std::string rankName(game::RankId rank) const;
 };
 
 // Picks the texts out of the two tables (decoded entries, as from

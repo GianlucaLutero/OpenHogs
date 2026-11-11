@@ -31,7 +31,10 @@ A main menu leads to the level choice and the volume options, and the
 match has its HUD and pause menu, all in the game's own fonts and words
 (so in Italian with the Italian pack). Any team can be played by the
 computer, which picks its target and weapon, gets closer when it has to,
-aims and fires like a player would. The campaign comes next. Besides that, the original data can be
+aims and fires like a player would. The one-player campaign takes a
+squad of eight hogs through the 25 missions of Saustralasia, with the
+game's briefings, promotions along four careers and automatic saving.
+Besides that, the original data can be
 extracted, every map explored in 3D, an Italian (or French, German,
 Spanish) language pack built from your PlayStation disc, every sound,
 voice and music track played, and the hogs watched in all their
@@ -51,7 +54,8 @@ animations.
 | `hog-movement`       | ✅ done | Turns (time limit, movement allowance), running, jumping, falling, swimming, collisions with the scenery, footsteps |
 | `weapons`            | ✅ done | 20 weapons (melee, bullets, grenades, shells, TNT, mines), health, explosions, knockback, fall damage, death, victory |
 | `menus-and-hud`      | ✅ done | Main menu, level choice, volume options, pause menu, HUD (team, class, health, weapon icon, time, movement, power), match messages; the game's bitmap fonts with accented letters |
-| `ai`                 | 🔍 in review | Computer opponents: shot planning with the real flight rules, approach, aiming errors; ONE PLAYER skirmish against the computer, PLAYER/CPU choice per team in multiplayer |
+| `ai`                 | ✅ done | Computer opponents: shot planning with the real flight rules, approach, aiming errors; ONE PLAYER skirmish against the computer, PLAYER/CPU choice per team in multiplayer |
+| `campaign`           | 🔍 in review | The 25 missions in the original order with their maps, names and turn times; squad of eight, ranks and careers, promotion points, losses; briefings; mission results; saving |
 | gameplay blocks      | planned | Movement, weapons, turns, AI, campaign |
 
 ## Requirements
@@ -142,8 +146,10 @@ Directory = C:\Program Files (x86)\Steam\steamapps\common\HogsofWar
 
 `openhogs` is the game itself. It opens on the **main menu**:
 
-- **ONE PLAYER** → pick a map: you play the team that starts, the
-  computer plays all the others (a skirmish, until the campaign exists);
+- **ONE PLAYER** → **NEW GAME** → **SELECT TEAM**: start the campaign for
+  one of the six nations (see below); **LOAD GAME** continues it;
+  **DEATH MATCH** → pick a map: you play the team that starts, the
+  computer plays all the others;
 - **MULTI-PLAYER** → pick a map → **PLAYERS**: for each team choose
   *PLAYER* (a person at this keyboard) or *CPU* (the computer) with the
   left/right keys, then **START GAME**;
@@ -160,6 +166,19 @@ uniform, and the teams take turns: each turn one hog moves, then fires one
 of its weapons. The turn ends when the shot is over (or when time runs
 out, or when you press Enter); the match ends when only one team has hogs
 left, and `Enter` then goes back to the menu.
+
+**The campaign.** Your squad has eight hogs; the five marked `*` on the
+squad page go on the next mission (three in mission 1), the others wait
+in reserve. Pick a hog to **PROMOTE** it (a grunt first chooses one of
+four careers: heavy weapons, medic, espionage, engineer; every career
+leads to Commando and Hero) or to **SWAP POSITION** with another. A
+mission earns one promotion point, one more if nobody died, five more for
+conquering an island; a promotion costs its rank's level (1 to 5). Losing
+three hogs in a mission costs the first to die for good (four cost two),
+losing all of them fails the mission. **START MISSION** shows the game's
+briefing (Enter to go, Esc to go back), then the battle: defeat the enemy
+to complete it. The results page offers **RETRY** after a defeat. The
+campaign is saved automatically in `saves/campaign.ini`.
 
 Teams played by people share the keyboard (hot seat). During a computer
 team's turn ("THE ENEMY RETALIATES...") the hog keys do nothing; watch it
@@ -215,7 +234,8 @@ and the other choices still to be compared with the original game, are
 listed in [`docs/open-decisions.md`](docs/open-decisions.md).
 The weapons, their names, models and sounds are described in
 [`docs/formats/weapons.md`](docs/formats/weapons.md), the fonts and menu
-pictures in [`docs/formats/fonts.md`](docs/formats/fonts.md).
+pictures in [`docs/formats/fonts.md`](docs/formats/fonts.md), the campaign
+in [`docs/formats/campaign.md`](docs/formats/campaign.md).
 
 ### Extracting the game data
 
@@ -539,6 +559,8 @@ OpenHogs builds on the work of others. Thank you!
 | [GLM](https://github.com/g-truc/glm) | G-Truc Creation (Christophe Riccio) and contributors | MIT | Vector and matrix maths (downloaded at build time). |
 | [glad](https://github.com/Dav1dde/glad) | David Herberth | generated code: WTFPL or CC0-1.0; `khrplatform.h`: Apache-2.0 (Khronos Group) | OpenGL 3.3 function loader, generated into `third_party/glad`. |
 | [stb_vorbis](https://github.com/nothings/stb) | Sean Barrett and contributors | public domain (Unlicense) or MIT, at your choice | Decodes the Ogg Vorbis music. Copied unmodified into `third_party/stb_vorbis` (v1.22). |
+| [Hogs of War walkthrough (SuperCheats)](https://www.supercheats.com/playstation/walkthroughs/hogsofwar-walkthrough02.txt) | its anonymous author | all rights reserved (consulted, not copied) | Reference for the ranks' health and weapons and the order and names of the 25 missions, checked against the tables in the game's executable. |
+| [Hogs of War (Wikipedia)](https://en.wikipedia.org/wiki/Hogs_of_War) | Wikipedia contributors | CC BY-SA 4.0 (consulted, not copied) | The islands and the medals for conquering a region. |
 | [Catch2](https://github.com/catchorg/Catch2) | Catch2 authors (Martin Hořeňovský, Phil Nash and contributors) | BSL-1.0 | Unit test framework (downloaded at build time). |
 
 *Hogs of War* was developed by Infogrames Sheffield House (formerly Gremlin
@@ -547,7 +569,8 @@ format, the CD sector layout and the ISO 9660 file system (ECMA-119) are
 publicly documented; OpenHogs' readers were written from that
 documentation. The Italian overrides in `content/translations/it.ini` were
 written for OpenHogs and follow the wording of the original Italian
-translation.
+translation. The campaign rules follow the game's own manual (`manual.pdf`
+in the game folder).
 
 ## License
 

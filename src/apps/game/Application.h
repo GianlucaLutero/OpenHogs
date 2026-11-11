@@ -1,18 +1,23 @@
 // Application.h
 //
 // The game application as a whole: the window, the sound, the 2D
-// interface and the switch between the menus and a match.
+// interface and the switch between the menus, the campaign pages and a
+// match.
 //
 //     menus (ui::FrontEnd over a MenuBackground)
 //        │ a level is picked                     ▲ the match is aborted or over
 //        ▼                                       │
 //     match (Game) ──────────────────────────────┘
 //
+// A campaign (CampaignSession) has its own pages between missions; its
+// matches go back to those pages instead of the main menu.
+//
 // The window and its OpenGL context, the sound and the interface live as
 // long as the application; a Game exists only during a match.
 
 #pragma once
 
+#include "CampaignSession.h"
 #include "Game.h"
 #include "Interface.h"
 #include "MenuBackground.h"
@@ -40,6 +45,7 @@ struct ApplicationOptions {
     bool sound = true;
     audio::Volumes volumes;
     std::vector<std::string> maps;  // the levels offered by the menu
+    std::filesystem::path savePath = "saves/campaign.ini";
 };
 
 class Application {
@@ -69,6 +75,8 @@ public:
 
 private:
     void handleEvent(const SDL_Event& event, bool& running);
+    bool handleMenuInput(ui::MenuInput input);  // false: quit
+    void startCampaignMission();
     bool handleFrontEndResult(const ui::FrontEndResult& result);
     void update(double seconds);
     void draw(int width, int height);
@@ -88,6 +96,10 @@ private:
     std::unique_ptr<Interface> interface_;
     std::unique_ptr<MenuBackground> background_;  // empty if the map failed to load
     std::unique_ptr<ui::FrontEnd> frontEnd_;
+    std::unique_ptr<CampaignSession> campaign_;
+    bool inCampaign_ = false;      // the campaign pages are shown (or its match played)
+    bool campaignMatch_ = false;   // the match being played is a campaign mission
+    std::filesystem::path savePath_;
     std::unique_ptr<Game> game_;
 };
 

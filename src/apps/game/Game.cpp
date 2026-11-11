@@ -78,6 +78,14 @@ game::AiSettings computerSettings() {
     return settings;
 }
 
+game::TurnRules turnRules(const GameOptions& options) {
+    game::TurnRules rules;
+    if (options.turnSeconds) {
+        rules.turnSeconds = *options.turnSeconds;
+    }
+    return rules;
+}
+
 // How long the match messages stay on screen.
 constexpr double kTurnMessageSeconds = 2.5;
 constexpr double kEndMessageSeconds = -1.0;  // until the players leave
@@ -86,7 +94,8 @@ constexpr double kEndMessageSeconds = -1.0;  // until the players leave
 
 Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Interface& userInterface,
            SoundPlayer& sounds)
-    : mapName_(options.mapName), library_(vfs), world_(game::loadWorld(vfs, options.mapName)),
+    : mapName_(options.mapName), library_(vfs),
+      world_(game::loadWorld(vfs, options.mapName, turnRules(options), options.prepareHogs)),
       pauseMenu_(userInterface.strings()), computerTeams_(options.computerTeams.begin(), options.computerTeams.end()),
       computer_(computerSettings()), interface_(userInterface), sounds_(sounds) {
     const auto scene = scene::loadMapScene(vfs, options.mapName);
@@ -102,6 +111,9 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Inter
         weaponTextureSizes_ = scene::textureSizes(textures);
     } catch (const std::exception& error) {
         std::cerr << "Warning: no weapon models (" << error.what() << ")\n";
+    }
+    for (const auto& [team, nation] : options.teamNations) {
+        world_.setTeamNation(team, nation);
     }
     autoWalk_ = options.autoWalk;
     autoFireAt_ = options.autoFireAt;
@@ -194,7 +206,7 @@ const formats::Model& Game::modelFor(const scene::CharacterClass& characterClass
 const Game::TeamLook& Game::lookFor(int team) {
     auto found = teamLooks_.find(team);
     if (found == teamLooks_.end()) {
-        const auto textures = library_.loadTeamTextures(game::teamNation(team));
+        const auto textures = library_.loadTeamTextures(scene::characterTeams()[static_cast<std::size_t>(world_.nationOf(team))]);
         TeamLook look;
         look.textures = std::make_unique<render::CharacterTextureSet>(textures.images);
         look.textureSizes = scene::textureSizes(textures.images);
@@ -327,6 +339,11 @@ void Game::handleEvents(const std::vector<game::GameEvent>& events) {
     for (const auto& event : events) {
         if (const auto message = ui::messageForEvent(event, world_, interface_.strings(), computerIsPlaying())) {
             banner_.show(*message, event.type == GameEventType::MatchOver ? kEndMessageSeconds : kTurnMessageSeconds);
+        }
+        if (event.type == GameEventType::Died) {
+            if (const auto squadIndex = world_.hogs()[event.hog].squadIndex) {
+                squadDeaths_.push_back(*squadIndex);
+            }
         }
         const auto playSound = [this](std::string_view name) { sounds_.play(SoundBankId::Match, name); };
         switch (event.type) {
@@ -461,7 +478,7 @@ void Game::drawEffects(const render::Camera& camera, int width, int height) {
     for (std::size_t i = 0; i < world_.hogs().size(); ++i) {
         const auto& hog = world_.hogs()[i];
         if (!hog.alive) continue;
-        effects_->drawHealthBar(hog.position + glm::vec3(0.0f, kHealthBarHeight, 0.0f), hog.health / game::kMaxHealth,
+        effects_->drawHealthBar(hog.position + glm::vec3(0.0f, kHealthBarHeight, 0.0f), hog.health / hog.maxHealth,
                                 active == i ? kActiveHealthColour : kHealthColour);
     }
 }
@@ -492,7 +509,7 @@ void Game::drawTurnPanel(const ui::HudInfo& info) {
     ui.drawRect(left, top, kTurnPanelWidth, kTurnPanelHeight, colours::kPanel);
 
     render::TextStyle teamStyle;
-    teamStyle.colour = teamColour(info.team);
+    teamStyle.colour = teamColour(info.nation);
     const std::string teamLabel =
         isComputerTeam(info.team) ? info.teamName + " - " + interface_.strings().cpu : info.teamName;
     ui.drawText(interface_.smallFont(), teamLabel, left + kPanelPadding, top + kPanelPadding, teamStyle);
@@ -500,7 +517,12 @@ void Game::drawTurnPanel(const ui::HudInfo& info) {
     render::TextStyle classStyle;
     classStyle.scale = 0.75f;
     classStyle.colour = colours::kText;
-    ui.drawText(interface_.bigFont(), info.className, left + kPanelPadding, top + 24.0f, classStyle);
+    const std::string classLine = info.hogName.empty() ? info.className : info.hogName + " - " + info.className;
+    // Long names (translations) shrink to fit the panel.
+    const float classRoom = kTurnPanelWidth - 2.0f * kPanelPadding;
+    const float classWidth = render::UiRenderer::textWidth(interface_.bigFont(), classLine, classStyle.scale);
+    if (classWidth > classRoom) classStyle.scale *= classRoom / classWidth;
+    ui.drawText(interface_.bigFont(), classLine, left + kPanelPadding, top + 24.0f, classStyle);
 
     const float barWidth = kTurnPanelWidth - 2.0f * kPanelPadding - 40.0f;
     const float barY = top + kTurnPanelHeight - kPanelPadding - kBarHeight;

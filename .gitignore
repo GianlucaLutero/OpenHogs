@@ -50,3 +50,4 @@ CMakeUserPresets.json
 
 # Local configuration (copied from config/openhogs.default.ini)
 /config/openhogs.ini
+/saves/

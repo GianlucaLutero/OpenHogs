@@ -23,9 +23,11 @@
 namespace openhogs::ui {
 
 struct HudInfo {
-    int team = 0;  // nation index (for the team colour)
+    int team = 0;    // the team playing
+    int nation = 0;  // the nation it fights for (scene::characterTeams index, for the colour)
     std::string teamName;
-    std::string className;
+    std::string className;  // or the rank, for campaign hogs
+    std::string hogName;    // campaign hogs only
     int health = 0;               // whole points, rounded up (1 while alive)
     float healthFraction = 0.0f;  // 0 .. 1
     game::WeaponId weapon = game::WeaponId::Trotter;

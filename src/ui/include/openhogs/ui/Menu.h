@@ -31,6 +31,7 @@ struct MenuItem {
     int value = 0;        // sliders: 0 .. maxValue; choices: index into `choices`
     int maxValue = 10;
     std::vector<std::string> choices;  // choices: the words to pick from
+    std::string detail;                // actions: extra text shown on the right (a rank, a cost)
 
     // The word a choice shows; empty for other items.
     std::string choiceText() const;

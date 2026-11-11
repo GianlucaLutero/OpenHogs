@@ -14,6 +14,7 @@
 #include "openhogs/game/AnimationPlayer.h"
 #include "openhogs/game/HogMotion.h"
 #include "openhogs/game/IdleAnimator.h"
+#include "openhogs/game/Ranks.h"
 #include "openhogs/game/TerrainHeightField.h"
 #include "openhogs/game/Weapons.h"
 #include "openhogs/scene/CharacterLibrary.h"
@@ -21,6 +22,7 @@
 #include <glm/glm.hpp>
 
 #include <optional>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -54,7 +56,13 @@ struct Hog {
     std::optional<HeldAnimation> held;  // overrides the idle behaviour when set
 
     float health = kMaxHealth;
+    float maxHealth = kMaxHealth;   // unhurt health (campaign ranks differ)
     bool alive = true;
+
+    // Campaign squad hogs only: the pig's name and rank (shown by the HUD).
+    std::string name;
+    std::optional<RankId> rank;
+    std::optional<std::size_t> squadIndex;  // its place in the campaign squad
 
     std::vector<WeaponId> weapons;  // what it carries (from its class)
     std::size_t weaponSlot = 0;     // the selected one

@@ -23,6 +23,19 @@ constexpr std::size_t kFeEffects = 77;
 constexpr std::size_t kFeVoices = 78;
 constexpr std::size_t kFeSelectLevel = 105;
 constexpr std::size_t kFeStartGame = 134;
+constexpr std::size_t kFeSelectTeam = 24;
+constexpr std::size_t kFeStartMission = 50;
+constexpr std::size_t kFeNewGame = 55;
+constexpr std::size_t kFeLoadGame = 56;
+constexpr std::size_t kFePromote = 71;
+constexpr std::size_t kFeSwapPosition = 72;
+constexpr std::size_t kFeCareerPath = 90;
+constexpr std::size_t kFeDeathMatch = 109;
+// HEAVY WEAPONS 91, ENGINEER 92, ESPIONAGE 93, MEDIC 94, in UiStrings::careers order.
+constexpr std::array<std::size_t, 4> kFeCareers{91, 94, 93, 92};
+// Each nation's block: the team name, then its nine hog names.
+constexpr std::array<std::size_t, 7> kFeHogNameBlocks{166, 186, 176, 216, 206, 196, 226};
+constexpr std::size_t kHogNamesPerNation = 9;
 constexpr std::size_t kFePlayer = 330;
 constexpr std::size_t kFeCpu = 331;
 constexpr std::size_t kFeBack = 350;
@@ -36,6 +49,15 @@ constexpr std::size_t kGtVictory = 165;
 constexpr std::size_t kGtDraw = 166;
 constexpr std::size_t kGtGetReady = 168;
 constexpr std::size_t kGtEnemyTurn = 169;
+constexpr std::size_t kGtMissionTitle = 158;
+constexpr std::size_t kGtMissionResults = 187;
+constexpr std::size_t kGtMissionFailed = 188;
+constexpr std::size_t kGtMissionAborted = 189;
+constexpr std::size_t kGtLevelComplete = 190;
+constexpr std::size_t kGtSurvivalBonus = 191;
+constexpr std::size_t kGtRetry = 193;
+constexpr std::size_t kGtEditSquad = 194;
+constexpr std::size_t kGtRip = 271;
 constexpr std::size_t kGtPaused = 173;
 constexpr std::size_t kGtAbortSkirmish = 180;
 constexpr std::size_t kGtContinue = 181;
@@ -76,6 +98,21 @@ std::string UiStrings::className(std::string_view classId) const {
     return upper;
 }
 
+std::string UiStrings::missionName(const game::Mission& mission) const {
+    const auto found = missionNames.find(mission.nameEntry);
+    return found != missionNames.end() ? found->second : "MISSION " + std::to_string(mission.number);
+}
+
+std::string UiStrings::rankName(game::RankId rank) const {
+    const auto ranks = game::allRanks();
+    for (std::size_t i = 0; i < ranks.size(); ++i) {
+        if (ranks[i].id == rank) {
+            return i < rankNames.size() ? rankNames[i] : std::string(ranks[i].fallbackName);
+        }
+    }
+    return {};
+}
+
 UiStrings loadUiStrings(const std::vector<std::string>& frontEndText, const std::vector<std::string>& gameText) {
     UiStrings strings;
     const auto& fe = frontEndText;
@@ -97,6 +134,23 @@ UiStrings loadUiStrings(const std::vector<std::string>& frontEndText, const std:
     take(strings.startGame, fe, kFeStartGame);
     take(strings.player, fe, kFePlayer);
     take(strings.cpu, fe, kFeCpu);
+    take(strings.selectTeam, fe, kFeSelectTeam);
+    take(strings.startMission, fe, kFeStartMission);
+    take(strings.newGame, fe, kFeNewGame);
+    take(strings.loadGame, fe, kFeLoadGame);
+    take(strings.promote, fe, kFePromote);
+    take(strings.swapPosition, fe, kFeSwapPosition);
+    take(strings.careerPath, fe, kFeCareerPath);
+    take(strings.skirmish, fe, kFeDeathMatch);
+    for (std::size_t i = 0; i < kFeCareers.size(); ++i) {
+        take(strings.careers[i], fe, kFeCareers[i]);
+    }
+    for (std::size_t nation = 0; nation < kFeHogNameBlocks.size(); ++nation) {
+        auto& names = strings.hogNames[nation];
+        for (std::size_t i = 0; i < kHogNamesPerNation && i < names.size(); ++i) {
+            take(names[i], fe, kFeHogNameBlocks[nation] + 1 + i);
+        }
+    }
     for (std::size_t team = 0; team < kFeTeamNames.size(); ++team) {
         take(strings.teamNames[team], fe, kFeTeamNames[team]);
     }
@@ -106,10 +160,29 @@ UiStrings loadUiStrings(const std::vector<std::string>& frontEndText, const std:
     take(strings.draw, gt, kGtDraw);
     take(strings.getReady, gt, kGtGetReady);
     take(strings.enemyTurn, gt, kGtEnemyTurn);
+    take(strings.missionTitle, gt, kGtMissionTitle);
+    take(strings.missionResults, gt, kGtMissionResults);
+    take(strings.missionFailed, gt, kGtMissionFailed);
+    take(strings.missionAborted, gt, kGtMissionAborted);
+    take(strings.levelComplete, gt, kGtLevelComplete);
+    take(strings.survivalBonus, gt, kGtSurvivalBonus);
+    take(strings.retry, gt, kGtRetry);
+    take(strings.editSquad, gt, kGtEditSquad);
+    take(strings.rip, gt, kGtRip);
+    for (const auto& mission : game::campaignMissions()) {
+        if (mission.nameEntry < gt.size() && !isBlank(gt[mission.nameEntry])) {
+            strings.missionNames[mission.nameEntry] = gt[mission.nameEntry];
+        }
+    }
     take(strings.paused, gt, kGtPaused);
     take(strings.abortSkirmish, gt, kGtAbortSkirmish);
     take(strings.continueGame, gt, kGtContinue);
     take(strings.areYouSure, gt, kGtAreYouSure);
+    for (const auto& rank : game::allRanks()) {
+        std::string name(rank.fallbackName);
+        take(name, gt, rank.textEntry);
+        strings.rankNames.push_back(name);
+    }
     for (auto& [id, name] : strings.classNames) {
         for (const auto& [classId, index] : kGtClassNames) {
             if (classId == id) take(name, gt, index);
