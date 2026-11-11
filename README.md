@@ -56,8 +56,10 @@ animations.
 | `menus-and-hud`      | ✅ done | Main menu, level choice, volume options, pause menu, HUD (team, class, health, weapon icon, time, movement, power), match messages; the game's bitmap fonts with accented letters |
 | `ai`                 | ✅ done | Computer opponents: shot planning with the real flight rules, approach, aiming errors; ONE PLAYER skirmish against the computer, PLAYER/CPU choice per team in multiplayer |
 | `campaign`           | ✅ done | The 25 missions in the original order with their maps, names and turn times; squad of eight, ranks and careers, promotion points, losses; briefings; mission results; saving |
-| `local-multiplayer`  | 🔍 in review | Nation and PLAYER/CPU/OFF for every team, field conditions (hogs per team, turn time, health, sudden death), gamepads in menus and matches |
-| gameplay blocks      | planned | Movement, weapons, turns, AI, campaign |
+| `local-multiplayer`  | ✅ done | Nation and PLAYER/CPU/OFF for every team, field conditions (hogs per team, turn time, health, sudden death), gamepads in menus and matches |
+| `exe-analysis`       | 🔍 in review | The original executable studied with Ghidra: the exact level table (KEEP was missing, mission 1 is ESTU), skies and night sounds, the video schedule; `tools/ghidra` |
+| fidelity blocks      | planned | `original-hud`, `original-audio`, `cutscenes`, `mgl-pictures`, `original-menus`, `mission-scripts`, `weapons-complete`, `version-variants`: HUD, sound, videos, menus and missions exactly as in the original |
+| `release`            | planned | Packaged builds for Windows and Linux |
 
 ## Requirements
 
@@ -555,6 +557,7 @@ OpenHogs/
 │   ├── apps/characterviewer/ openhogs-characterviewer application
 │   └── apps/soundtest/   openhogs-soundtest application
 ├── tests/                unit tests (see tests/README.md)
+├── tools/ghidra/         how to study the original executable with Ghidra (outputs never committed)
 └── third_party/          code not written for OpenHogs (glad, stb_vorbis)
 ```
 
@@ -581,6 +584,7 @@ OpenHogs builds on the work of others. Thank you!
 | [stb_vorbis](https://github.com/nothings/stb) | Sean Barrett and contributors | public domain (Unlicense) or MIT, at your choice | Decodes the Ogg Vorbis music. Copied unmodified into `third_party/stb_vorbis` (v1.22). |
 | [Hogs of War walkthrough (SuperCheats)](https://www.supercheats.com/playstation/walkthroughs/hogsofwar-walkthrough02.txt) | its anonymous author | all rights reserved (consulted, not copied) | Reference for the ranks' health and weapons and the order and names of the 25 missions, checked against the tables in the game's executable. |
 | [Hogs of War (Wikipedia)](https://en.wikipedia.org/wiki/Hogs_of_War) | Wikipedia contributors | CC BY-SA 4.0 (consulted, not copied) | The islands and the medals for conquering a region. |
+| [Ghidra](https://github.com/NationalSecurityAgency/ghidra) | National Security Agency and contributors | Apache-2.0 | Used as a tool to study the original executable (`tools/ghidra`); nothing it produces is part of OpenHogs. |
 | [Catch2](https://github.com/catchorg/Catch2) | Catch2 authors (Martin Hořeňovský, Phil Nash and contributors) | BSL-1.0 | Unit test framework (downloaded at build time). |
 
 *Hogs of War* was developed by Infogrames Sheffield House (formerly Gremlin

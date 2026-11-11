@@ -4,6 +4,7 @@
 
 #include "MenuControls.h"
 
+#include "openhogs/game/Levels.h"
 #include "openhogs/game/Weapons.h"
 #include "openhogs/scene/CharacterExpressions.h"
 #include "openhogs/scene/MapScene.h"
@@ -153,7 +154,8 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Inter
     if (const auto message = ui::turnMessage(world_, interface_.strings(), computerIsPlaying())) {
         banner_.show(*message, kTurnMessageSeconds);
     }
-    sounds_.startAmbience();
+    const auto levelInfo = game::findLevel(mapName_);
+    sounds_.startAmbience(levelInfo && game::isNightSky(levelInfo->sky));
 }
 
 Game::~Game() {

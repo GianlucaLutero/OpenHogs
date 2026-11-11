@@ -4,6 +4,7 @@
 
 #include "openhogs/core/BinaryReader.h"  // FormatError
 #include "openhogs/core/IniFile.h"
+#include "openhogs/game/Levels.h"
 
 #include <algorithm>
 #include <array>
@@ -14,41 +15,42 @@ namespace openhogs::game {
 
 namespace {
 
-// The campaign as stored in warhogs_.exe (docs/formats/campaign.md):
-//   - a table of the game's 26 numbered levels (maps), whose names are the
-//     gtext entries 11 + level number;
-//   - the order of the missions, as level numbers;
-//   - the turn time of each mission (99: no hurry).
-// Islands and the mission numbers of their conquest follow the manual and
-// the retail game's achievement list.
-constexpr std::size_t kFirstLevelNameEntry = 11;
+// The campaign as stored in warhogs_.exe (docs/formats/executable.md):
+//   - the order of the missions, as level numbers (table at 0xD05F0);
+//   - the turn time of each mission (0xD0660; 99: no hurry).
+// The levels' maps and names come from Levels.h. Islands and the mission
+// numbers of their conquest follow the manual and the retail game's
+// achievement list.
+Mission makeMission(int number, int levelNumber, int island, double turnSeconds) {
+    return {number, level(levelNumber).map, level(levelNumber).nameEntry, island, turnSeconds};
+}
 
-constexpr std::array<Mission, kMissionCount> kMissions{{
-    {1, "DEMO", kFirstLevelNameEntry + 25, 0, 99},
-    {2, "ROAD", kFirstLevelNameEntry + 0, 0, 99},
-    {3, "TRENCH", kFirstLevelNameEntry + 1, 0, 60},
-    {4, "DEVI", kFirstLevelNameEntry + 3, 0, 60},
-    {5, "RUMBLE", kFirstLevelNameEntry + 2, 0, 60},
-    {6, "ZULUS", kFirstLevelNameEntry + 5, 1, 60},
-    {7, "TWIN", kFirstLevelNameEntry + 4, 1, 45},
-    {8, "SNIPER", kFirstLevelNameEntry + 6, 1, 45},
-    {9, "MASHED", kFirstLevelNameEntry + 9, 1, 45},
-    {10, "GUNS", kFirstLevelNameEntry + 7, 1, 45},
-    {11, "LIBERATE", kFirstLevelNameEntry + 11, 2, 45},
-    {12, "OASIS", kFirstLevelNameEntry + 8, 2, 45},
-    {13, "FJORDS", kFirstLevelNameEntry + 13, 2, 45},
-    {14, "EYRIE", kFirstLevelNameEntry + 14, 2, 45},
-    {15, "BAY", kFirstLevelNameEntry + 16, 2, 45},
-    {16, "MEDIX", kFirstLevelNameEntry + 12, 3, 45},
-    {17, "BRIDGE", kFirstLevelNameEntry + 15, 3, 45},
-    {18, "DESVAL", kFirstLevelNameEntry + 17, 3, 30},
-    {19, "SNAKE", kFirstLevelNameEntry + 18, 3, 30},
-    {20, "EMPLACE", kFirstLevelNameEntry + 19, 3, 30},
-    {21, "TESTER", kFirstLevelNameEntry + 21, 4, 30},
-    {22, "SUPLINE", kFirstLevelNameEntry + 20, 4, 30},
-    {23, "FOOT", kFirstLevelNameEntry + 22, 4, 30},
-    {24, "FINAL", kFirstLevelNameEntry + 23, 4, 15},
-    {25, "ESTU", kFirstLevelNameEntry + 24, 5, 30},
+const std::array<Mission, kMissionCount> kMissions{{
+    makeMission(1, 25, 0, 99),   // ESTU      THE WAR FOUNDATION
+    makeMission(2, 0, 0, 99),    // ROAD      ROUTINE PATROL
+    makeMission(3, 1, 0, 60),    // TRENCH    TRENCH WARFARE
+    makeMission(4, 3, 0, 60),    // DEVI      MORNING GLORY!
+    makeMission(5, 2, 0, 60),    // RUMBLE    ISLAND INVASION
+    makeMission(6, 5, 1, 60),    // ZULUS     UNDER SIEGE
+    makeMission(7, 4, 1, 45),    // TWIN      COMMUNICATION BREAKDOWN
+    makeMission(8, 6, 1, 45),    // SNIPER    THE SPYING GAME
+    makeMission(9, 9, 1, 45),    // MASHED    THE VILLAGE PEOPLE
+    makeMission(10, 7, 1, 45),   // GUNS      BANGERS 'N' MASH
+    makeMission(11, 11, 2, 45),  // LIBERATE  SAVING PRIVATE RIND
+    makeMission(12, 8, 2, 45),   // OASIS     JUST DESERTS
+    makeMission(13, 13, 2, 45),  // FJORDS    GLACIER GUNS
+    makeMission(14, 14, 2, 45),  // EYRIE     BATTLE STATIONS
+    makeMission(15, 16, 2, 45),  // BAY       FORTIFIED SWINE
+    makeMission(16, 12, 3, 45),  // MEDIX     OVER THE TOP
+    makeMission(17, 15, 3, 45),  // BRIDGE    GENEVA CONVENTION
+    makeMission(18, 17, 3, 30),  // DESVAL    I SPY...
+    makeMission(19, 18, 3, 30),  // SNAKE     CHEMICAL COMPOUND
+    makeMission(20, 19, 3, 30),  // EMPLACE   ACHILLES HEAL
+    makeMission(21, 21, 4, 30),  // SUPLINE   HIGH AND DRY
+    makeMission(22, 20, 4, 30),  // KEEP      ASSASSINATION
+    makeMission(23, 22, 4, 30),  // TESTER    HERO WARSHIP
+    makeMission(24, 23, 4, 15),  // FOOT      HAMBURGER HILL
+    makeMission(25, 24, 5, 30),  // FINAL     WELL, WELL, WELL!
 }};
 
 // Losing this many hogs in a mission starts costing hogs for good.

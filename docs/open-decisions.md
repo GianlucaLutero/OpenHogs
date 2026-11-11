@@ -49,6 +49,9 @@ answer.
 | 52 | Campaign | The turn-time table has 99 for Boot Camp and missions 1–2: no limit, or 99 seconds? | 99 seconds. | `kMissions` in `src/game/src/Campaign.cpp` |
 | 56 | Multiplayer | The original's PIGS setting offers "-1 / NORMAL / +1" or numbers (fetext 314–329 are not labelled); its default "depends on the number of teams". Up to four teams in the original. | PIGS: NORMAL (as on the map) or 1 to 8 per team (fewer if the map has fewer); every team of the map can play (FINAL has six). | `FrontEnd` field conditions, `applyFieldConditions` |
 | 57 | Multiplayer | Sudden death "at a turn": counted in turns or in rounds? What does it do besides health 1? | In rounds (every team has played once more): when round 10, 20 or 30 begins every hog is left with 1 health; banner SUDDEN DEATH and the big explosion sound (E_1000P). | `World::turnBegan` |
+| 61 | Sound | The PC game loads `sfxnight.srl` on night and sunset levels, but on PC it is a copy of `sfxday.srl`, so the night ambience (`AMB_1N`, `AMB_2N`) is never heard. Follow the PC (day ambience everywhere) or the intent (night ambience)? | The intent: `Audio/AMB_1N.wav` on the levels whose sky is night or sunset. | `SoundPlayer::startAmbience`, `game::isNightSky` |
+| 62 | Videos | `fmv 02` (second intro film) and `fmv 09` (hard-mode ending) are 1-byte placeholders on PC. Skip them, or let a content pack supply them? | Listed in the schedule like the PlayStation; a missing or empty file is simply skipped. | `game::introCutscenes`, `game::campaignCutscenes` |
+| 63 | Levels | The level property records (0xD4010) have 14 more fields after the sky, apparently colours (fog, light). | Only the sky is used; the rest are decoded in block `original-hud`/`original-audio` when needed. | `src/game/src/Levels.cpp` |
 
 ## Design: what do we want?
 

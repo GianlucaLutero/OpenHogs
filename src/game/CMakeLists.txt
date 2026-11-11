@@ -17,7 +17,9 @@
 #   ChaseCamera        - the camera that follows the active hog
 #   ComputerPlayer     - the computer opponent: plans and plays a turn
 #   Ranks              - campaign ranks, careers and promotions
+#   Levels             - the game's numbered levels: maps, names, skies
 #   Campaign           - the missions, the squad, points and saving
+#   Cutscenes          - which videos the original plays, and when
 #   FieldConditions    - multiplayer settings: teams off, hogs per team, health
 
 add_library(openhogs_game STATIC
@@ -25,12 +27,14 @@ add_library(openhogs_game STATIC
     src/Campaign.cpp
     src/ChaseCamera.cpp
     src/ComputerPlayer.cpp
+    src/Cutscenes.cpp
     src/Combat.cpp
     src/FieldConditions.cpp
     src/FixedTimestep.cpp
     src/Hog.cpp
     src/HogMovement.cpp
     src/IdleAnimator.cpp
+    src/Levels.cpp
     src/MapCollision.cpp
     src/Projectiles.cpp
     src/Ranks.cpp
