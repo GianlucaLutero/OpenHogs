@@ -47,8 +47,10 @@ public:
 
     // Starts playing a sound and returns an id to control it. The sound is
     // shared, so the same decoded sound can play several times at once.
+    // `pitch` speeds the sound up (above 1) or slows it down, raising or
+    // lowering its pitch, as the original does to vary repeated sounds.
     VoiceId play(std::shared_ptr<const formats::PcmSound> sound, SoundCategory category,
-                 float volume = 1.0f, bool loop = false);
+                 float volume = 1.0f, bool loop = false, float pitch = 1.0f);
 
     void stop(VoiceId voice);
     void stopCategory(SoundCategory category);
@@ -74,6 +76,7 @@ private:
         SoundCategory category;
         float volume;
         bool loop;
+        float pitch = 1.0f;
         double position = 0.0;  // in source frames, fractional for resampling
     };
 

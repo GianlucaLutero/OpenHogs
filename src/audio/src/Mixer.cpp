@@ -36,13 +36,13 @@ Mixer::Mixer(std::uint32_t outputRate) : outputRate_(outputRate) {
 }
 
 Mixer::VoiceId Mixer::play(std::shared_ptr<const formats::PcmSound> sound, SoundCategory category, float volume,
-                           bool loop) {
+                           bool loop, float pitch) {
     if (!sound || sound->frameCount() == 0 || sound->sampleRate == 0) {
         return 0;  // nothing to play; 0 is never a valid id
     }
     std::lock_guard lock(mutex_);
     const VoiceId id = nextId_++;
-    voices_.push_back({id, std::move(sound), category, volume, loop});
+    voices_.push_back({id, std::move(sound), category, volume, loop, pitch > 0.0f ? pitch : 1.0f});
     return id;
 }
 
@@ -85,7 +85,8 @@ bool Mixer::mixVoice(Voice& voice, std::span<float> output, float gain) const {
     const formats::PcmSound& sound = *voice.sound;
     const std::size_t frames = sound.frameCount();
     // How far to advance in the source for one output frame.
-    const double step = static_cast<double>(sound.sampleRate) / static_cast<double>(outputRate_);
+    const double step =
+        static_cast<double>(sound.sampleRate) / static_cast<double>(outputRate_) * static_cast<double>(voice.pitch);
 
     for (std::size_t out = 0; out + 1 < output.size(); out += 2) {
         if (voice.position >= static_cast<double>(frames)) {

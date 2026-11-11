@@ -14,12 +14,6 @@ constexpr std::uint32_t kAudioOutputRate = 48000;
 const char* const kMatchBank = "Audio/sfxday.srl";
 const char* const kFrontEndBank = "FESounds/Fesounds.srl";
 
-// The background sound of a match: the first sound of the daytime bank
-// (Audio/AMB_1D.wav), played in a loop under the footsteps.
-constexpr std::size_t kAmbientSound = 0;
-constexpr float kAmbientVolume = 0.6f;
-constexpr std::string_view kNightAmbience = "Audio/AMB_1N.wav";
-
 // File name without folder and extension, in lower case:
 // "AUDIO\\FT_GRASS.wav" -> "ft_grass".
 std::string soundStem(std::string_view path) {
@@ -89,46 +83,58 @@ std::shared_ptr<const formats::PcmSound> SoundPlayer::find(Bank& bank, std::stri
     return sound;
 }
 
-void SoundPlayer::play(SoundBankId bank, std::string_view name) {
+void SoundPlayer::play(SoundBankId bank, std::string_view name, float volume, float pitch) {
     if (!mixer_ || name.empty()) {
         return;
     }
     if (auto sound = find(bankFor(bank), name)) {
-        mixer_->play(std::move(sound), audio::SoundCategory::Effects);
+        mixer_->play(std::move(sound), audio::SoundCategory::Effects, volume, false, pitch);
     }
 }
 
-void SoundPlayer::startAmbience(bool night) {
-    if (!mixer_ || !matchBank_.files || ambience_) {
-        return;
+bool SoundPlayer::speaking() const { return mixer_ && speech_ && mixer_->isPlaying(*speech_); }
+
+bool SoundPlayer::say(std::string_view path, float volume) {
+    if (!mixer_ || path.empty() || speaking()) {
+        return false;
     }
     try {
-        // At night the original loads Audio/sfxnight.srl, but in the PC
-        // release that bank is a copy of the day one and its night
-        // ambience, AMB_1N.wav, is never played. OpenHogs plays it, as the
-        // night bank's name intends (docs/open-decisions.md).
-        std::shared_ptr<const formats::PcmSound> sound;
-        if (night) {
-            try {
-                sound = library_->load(kNightAmbience);
-            } catch (const std::exception&) {
-                sound.reset();  // not there: the day ambience will do
-            }
-        }
-        if (!sound) {
-            sound = library_->loadFromBank(*matchBank_.files, kAmbientSound);
-        }
-        ambience_ = mixer_->play(sound, audio::SoundCategory::Effects, kAmbientVolume, true);
+        speech_ = mixer_->play(library_->load(path), audio::SoundCategory::Speech, volume);
+        return true;
     } catch (const std::exception& error) {
-        std::cerr << "Warning: no background sound (" << error.what() << ")\n";
+        // A missing line (a voice not recorded) only stays silent.
+        std::cerr << "Warning: " << error.what() << "\n";
+        return false;
     }
 }
 
-void SoundPlayer::stopAmbience() {
-    if (mixer_ && ambience_) {
-        mixer_->stop(*ambience_);
+void SoundPlayer::playMusic(int track, float volume, bool loop) {
+    if (!mixer_) {
+        return;
     }
-    ambience_.reset();
+    stopMusic();
+    try {
+        music_ = mixer_->play(library_->load(audio::SoundLibrary::musicTrackPath(track)), audio::SoundCategory::Music,
+                              volume, loop);
+        musicTrack_ = track;
+    } catch (const std::exception& error) {
+        std::cerr << "Warning: no music (" << error.what() << ")\n";
+    }
+}
+
+void SoundPlayer::keepMusic(int track, float volume, bool loop) {
+    if (mixer_ && music_ && musicTrack_ == track && mixer_->isPlaying(*music_)) {
+        return;
+    }
+    playMusic(track, volume, loop);
+}
+
+void SoundPlayer::stopMusic() {
+    if (mixer_ && music_) {
+        mixer_->stop(*music_);
+    }
+    music_.reset();
+    musicTrack_ = 0;
 }
 
 void SoundPlayer::setVolumes(const audio::Volumes& volumes) {

@@ -4,7 +4,6 @@
 
 #include "MenuControls.h"
 
-#include "openhogs/game/Levels.h"
 #include "openhogs/game/Weapons.h"
 #include "openhogs/scene/CharacterExpressions.h"
 #include "openhogs/scene/MapScene.h"
@@ -37,10 +36,7 @@ constexpr std::string_view kSplashSound = "I_SPLASH";
 constexpr std::string_view kExplosionSound = "E_1";
 constexpr std::string_view kBulletHitSound = "I_BULIT1";
 constexpr std::string_view kBounceSound = "P_BOUNCE";
-constexpr std::string_view kHurtSound = "P_OWW";
 constexpr std::string_view kDeathSound = "P_MOAN";
-constexpr std::string_view kTurnSound = "S_SELECT";
-constexpr std::string_view kVictorySound = "P_WHOHO";
 constexpr std::string_view kSuddenDeathSound = "E_1000P";  // the big explosion
 
 // Effect colours.
@@ -88,7 +84,8 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Inter
       world_(game::loadWorld(vfs, options.mapName, turnRules(options), options.prepareHogs)),
       pauseMenu_(userInterface.strings()), hud_(vfs),
       computerTeams_(options.computerTeams.begin(), options.computerTeams.end()), computer_(computerSettings()),
-      interface_(userInterface), sounds_(sounds), gamepads_(gamepads) {
+      interface_(userInterface), sounds_(sounds), gamepads_(gamepads),
+      audio_(sounds, world_, [this](int team) { return isComputerTeam(team); }) {
     const auto scene = scene::loadMapScene(vfs, options.mapName);
     for (const auto& warning : scene.warnings) {
         std::cerr << "Warning: " << warning << "\n";
@@ -141,13 +138,10 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Inter
     if (const auto message = ui::turnMessage(world_, interface_.strings(), computerIsPlaying())) {
         showMessage(*message, kTurnMessageSeconds, true);
     }
-    const auto levelInfo = game::findLevel(mapName_);
-    sounds_.startAmbience(levelInfo && game::isNightSky(levelInfo->sky));
+    audio_.matchStarted();
 }
 
-Game::~Game() {
-    sounds_.stopAmbience();
-}
+Game::~Game() = default;
 
 const formats::Model* Game::weaponModel(std::string_view name) {
     if (name.empty() || !weaponTextures_) {
@@ -349,6 +343,7 @@ game::PlayerInput Game::readInput() {
 void Game::handleEvents(const std::vector<game::GameEvent>& events) {
     using game::GameEventType;
     for (const auto& event : events) {
+        audio_.handle(event);
         if (const auto message = ui::messageForEvent(event, world_, interface_.strings(), computerIsPlaying())) {
             showMessage(*message, event.type == GameEventType::MatchOver ? kEndMessageSeconds : kTurnMessageSeconds,
                         event.type == GameEventType::TurnStarted);
@@ -372,11 +367,11 @@ void Game::handleEvents(const std::vector<game::GameEvent>& events) {
         case GameEventType::Bounce: playSound(kBounceSound); break;
         case GameEventType::BulletHit: playSound(kBulletHitSound); break;
         case GameEventType::Explosion: playSound(kExplosionSound); break;
-        case GameEventType::Hurt: playSound(kHurtSound); break;
         case GameEventType::Died: playSound(kDeathSound); break;
-        case GameEventType::TurnStarted: playSound(kTurnSound); break;
         case GameEventType::SuddenDeath: playSound(kSuddenDeathSound); break;
-        case GameEventType::MatchOver: playSound(kVictorySound); break;
+        case GameEventType::Hurt:         // voices and music: MatchAudio
+        case GameEventType::TurnStarted:
+        case GameEventType::MatchOver: break;
         }
     }
 }
@@ -396,6 +391,7 @@ void Game::step(double seconds) {
     handleEvents(world_.update(seconds, input, library_.animations()));
     banner_.update(seconds);
     hud_.update(seconds, ui::describeTurn(world_, interface_.strings(), interface_.gameText()));
+    audio_.update(seconds);
 
     // When the active hog changes, or while it moves, the camera swings
     // round behind the hog.

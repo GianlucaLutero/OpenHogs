@@ -58,8 +58,9 @@ animations.
 | `campaign`           | ✅ done | The 25 missions in the original order with their maps, names and turn times; squad of eight, ranks and careers, promotion points, losses; briefings; mission results; saving |
 | `local-multiplayer`  | ✅ done | Nation and PLAYER/CPU/OFF for every team, field conditions (hogs per team, turn time, health, sudden death), gamepads in menus and matches |
 | `exe-analysis`       | ✅ done | The original executable studied with Ghidra: the exact level table (KEEP was missing, mission 1 is ESTU), skies and night sounds, the video schedule; `tools/ghidra` |
-| `original-hud`       | 🔍 in review | The original's brass instruments: angle gauge with the weapon icon and aim arrow, power gauge sliding up when charging, clock with rolling digits and warning lamp; turn messages in team colours; damage numbers above hurt hogs |
-| fidelity blocks      | planned | `original-audio`, `cutscenes`, `mgl-pictures`, `original-menus`, `mission-scripts`, `weapons-complete`, `version-variants`: HUD, sound, videos, menus and missions exactly as in the original |
+| `original-hud`       | ✅ done | The original's brass instruments: angle gauge with the weapon icon and aim arrow, power gauge sliding up when charging, clock with rolling digits and warning lamp; turn messages in team colours; damage numbers above hurt hogs |
+| `original-audio`     | 🔍 in review | Sounds where the original plays them: hog voices (ready lines by health, battle cries, cries of pain) in each nation's accent, the sergeant's comments, the music of the CD tracks (menus, battle, the computer's nation tunes, victory), occasional distant battle noise instead of a loop |
+| fidelity blocks      | planned | `cutscenes`, `mgl-pictures`, `original-menus`, `mission-scripts`, `weapons-complete`, `version-variants`: videos, pictures, menus and missions exactly as in the original |
 | `release`            | planned | Packaged builds for Windows and Linux |
 
 ## Requirements
@@ -197,7 +198,10 @@ shell or rocket is charged; the clock (bottom right) counts the seconds
 left and its lamp turns amber, then red, as time runs out. "GET READY
 ..." announces each turn in the team's colour and "VICTORY TO ...!!" the
 winner. Damage numbers rise above hurt hogs and health bars float above
-them. All
+them. As in the original, each hog speaks in its nation's accent when its
+turn starts, when it attacks and when it is hurt, the sergeant comments
+on the players' shots, and the computer's turns come with its nation's
+tune. All
 texts come from the game's own tables, so with the Italian pack they are
 in Italian.
 

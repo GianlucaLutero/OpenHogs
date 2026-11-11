@@ -21,6 +21,8 @@
 #   Campaign           - the missions, the squad, points and saving
 #   Cutscenes          - which videos the original plays, and when
 #   FieldConditions    - multiplayer settings: teams off, hogs per team, health
+#   MatchSounds        - which voice, music and background sound the original
+#                        plays during a match (the files, not the playing)
 
 add_library(openhogs_game STATIC
     src/AnimationPlayer.cpp
@@ -35,6 +37,7 @@ add_library(openhogs_game STATIC
     src/HogMovement.cpp
     src/IdleAnimator.cpp
     src/Levels.cpp
+    src/MatchSounds.cpp
     src/MapCollision.cpp
     src/Projectiles.cpp
     src/Ranks.cpp
