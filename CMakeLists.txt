@@ -12,7 +12,7 @@ project(OpenHogs
 
 # --- Options ---------------------------------------------------------------
 option(OPENHOGS_BUILD_TESTS "Build the unit test module" ON)
-option(OPENHOGS_BUILD_VIEWER "Build the applications that need SDL3: map viewer, character viewer, sound test (downloads and builds SDL3)" ON)
+option(OPENHOGS_BUILD_VIEWER "Build the applications that need SDL3: the game, map viewer, character viewer, sound test (downloads and builds SDL3)" ON)
 
 # --- Global settings -------------------------------------------------------
 set(CMAKE_CXX_STANDARD 20)
@@ -38,6 +38,7 @@ add_subdirectory(src/tools/langpack)   # openhogs-langpack: language packs from 
 add_subdirectory(third_party/stb_vorbis) # Ogg Vorbis decoder (music)
 add_subdirectory(src/audio)     # sound effects, speech, music: decoding and mixing
 add_subdirectory(src/scene)     # map data turned into renderable geometry (no GPU code)
+add_subdirectory(src/game)      # match state and rules: world, hogs, camera, fixed timestep
 
 if(OPENHOGS_BUILD_VIEWER)
     add_subdirectory(third_party/glad)        # OpenGL function loader
@@ -46,6 +47,7 @@ if(OPENHOGS_BUILD_VIEWER)
     add_subdirectory(src/apps/mapviewer)      # openhogs-mapviewer application
     add_subdirectory(src/apps/characterviewer) # openhogs-characterviewer application
     add_subdirectory(src/apps/soundtest)      # openhogs-soundtest application
+    add_subdirectory(src/apps/game)           # openhogs: the game
 endif()
 
 # --- Tests -----------------------------------------------------------------

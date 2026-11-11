@@ -97,4 +97,20 @@ Pose samplePose(const formats::Skeleton& skeleton, const formats::Animation& ani
     return chain(skeleton, blended);
 }
 
+Pose blendPoses(const Pose& from, const Pose& to, float amount) {
+    if (from.size() != to.size()) {
+        throw std::invalid_argument("Cannot blend poses with different bone counts");
+    }
+    // Bone transforms are a rotation plus a translation, so each part can
+    // be blended on its own (blending the matrices would distort the bone).
+    Pose blended(from.size());
+    for (std::size_t bone = 0; bone < from.size(); ++bone) {
+        const glm::quat rotation =
+            glm::slerp(glm::quat_cast(glm::mat3(from[bone])), glm::quat_cast(glm::mat3(to[bone])), amount);
+        const glm::vec3 translation = glm::mix(glm::vec3(from[bone][3]), glm::vec3(to[bone][3]), amount);
+        blended[bone] = glm::translate(glm::mat4(1.0f), translation) * glm::mat4_cast(rotation);
+    }
+    return blended;
+}
+
 } // namespace openhogs::scene

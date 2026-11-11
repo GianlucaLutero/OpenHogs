@@ -1,6 +1,6 @@
 # OpenHogs
 
-[![Build and test](https://github.com/GianlucaLutero/OpenHogs/actions/workflows/build.yml/badge.svg)](https://github.com/GianlucaLutero/OpenHogs/actions/workflows/build.yml)
+[![Build and test](https://github.com/GianlucaLutero/OpenHogs/actions/workflows/build.yml/badge.svg?event=pull_request)](https://github.com/GianlucaLutero/OpenHogs/actions/workflows/build.yml)
 
 **OpenHogs** is an open-source reimplementation of *Hogs of War*
 (Infogrames / Gremlin, 2000), the turn-based artillery game with pigs in the
@@ -22,11 +22,13 @@ The goal is to play the original game natively on modern systems
 
 ## Project status
 
-OpenHogs is in early development. Nothing is playable yet, but the
-original data can be extracted, every map can be explored in 3D, and an
-Italian (or French, German, Spanish) language pack can be built from your
-PlayStation disc, every sound effect, voice and music track can be
-played, and the hogs can be watched in all their animations.
+OpenHogs is in early development. The game starts, loads a map and puts
+the hogs on it, but they cannot be moved yet: for now you can look around
+a match that is waiting to begin. Besides that, the original data can be
+extracted, every map explored in 3D, an Italian (or French, German,
+Spanish) language pack built from your PlayStation disc, every sound,
+voice and music track played, and the hogs watched in all their
+animations.
 
 | Block | Status | What it delivers |
 |-------|--------|------------------|
@@ -37,6 +39,8 @@ played, and the hogs can be watched in all their animations.
 | `italian-pack`       | ✅ done | Italian text, menus and briefings from the PlayStation disc; `openhogs-langpack`, `openhogs-text` |
 | `audio`              | ✅ done | Plays effects, speech and music with separate volumes; `openhogs-soundtest` |
 | `characters`         | ✅ done | Hog skeleton, 93 animations, models of every class and team; `openhogs-characterviewer` |
+| `character-expressions` | ✅ done | Faces that follow what the hog is doing, blinking |
+| `game-framework`     | ✅ done | The `openhogs` game: fixed-rate game loop, hogs placed on the map, chase camera, ambient sound |
 | gameplay blocks      | planned | Movement, weapons, turns, AI, campaign |
 
 ## Requirements
@@ -107,9 +111,9 @@ To build only the command-line tools, without SDL3 and the viewer, add
 ctest --test-dir build --output-on-failure -C Release
 ```
 
-Every push and pull request is also built and tested automatically on
-Windows (Visual Studio) and Linux (GCC and Clang), with warnings in OpenHogs
-code treated as errors. See `.github/workflows/build.yml`.
+Every pull request is also built and tested automatically on
+Windows (Visual Studio), with warnings in OpenHogs code treated as errors
+(the Linux jobs with GCC and Clang are temporarily switched off). See `.github/workflows/build.yml`.
 
 ### 4. Configure
 
@@ -122,6 +126,41 @@ Directory = C:\Program Files (x86)\Steam\steamapps\common\HogsofWar
 ```
 
 ## Usage
+
+### Starting the game
+
+`openhogs` is the game itself. At this stage it loads a map, places the
+hogs where the map says, each in its team's uniform, and lets you look
+around while they wait (and fidget). Movement, weapons and turns come with
+the next blocks.
+
+```sh
+# Windows
+build\bin\Release\openhogs.exe --map ESTU
+
+# Linux
+./build/bin/openhogs --map ESTU
+```
+
+| Option | Effect |
+|--------|--------|
+| `--map <name>` | map to load (default: the first one); `--list-maps` prints them |
+| `--hog <n>` | hog to start on (1 = the first hog of the map) |
+| `--no-sound` | play without sound |
+| `--screenshot <file>` | save the match as an image and exit; `--seconds <s>` lets it run for a while first |
+| `--game <folder>` / `--config <file>` / `--size <W>x<H>` | as for the other programs |
+
+| Key | Action |
+|-----|--------|
+| `Tab` / `Shift+Tab` | next / previous hog (the camera glides to it) |
+| left mouse button + drag | turn the camera around the hog |
+| mouse wheel | zoom |
+| `P` | pause |
+| `F12` | save a screenshot (`openhogs-<MAP>.png`) |
+| `Esc` | quit |
+
+Teams wear the nations' uniforms in a fixed order for now (team 1 British,
+team 2 American, team 3 French...); choosing them comes with the menus.
 
 ### Extracting the game data
 
@@ -409,10 +448,12 @@ OpenHogs/
 │   │                     animations, PlayStation disc
 │   ├── audio/            sound effects, speech, music: decoding, mixing, sound card
 │   ├── scene/            maps and posed hogs turned into triangles (no GPU code)
+│   ├── game/             match state and rules: world, hogs, camera, fixed timestep
 │   ├── render/           OpenGL 3.3 renderer and camera
 │   ├── tools/extractor/  openhogs-extract command-line tool
 │   ├── tools/text/       openhogs-text: text tables <-> editable text
 │   ├── tools/langpack/   openhogs-langpack: language packs from the PlayStation disc
+│   ├── apps/game/        openhogs: the game
 │   ├── apps/mapviewer/   openhogs-mapviewer application
 │   ├── apps/common/      window, screenshots and game-file opening shared by the apps
 │   ├── apps/characterviewer/ openhogs-characterviewer application

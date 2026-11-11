@@ -41,6 +41,7 @@ add_executable(openhogs_tests
     scene/CharacterPoseTests.cpp
     scene/CharacterLibraryTests.cpp
     scene/CharacterExpressionsTests.cpp
+    game/GameTests.cpp
     langpack/LangpackTests.cpp)
 
 target_include_directories(openhogs_tests PRIVATE support)
@@ -51,6 +52,7 @@ target_link_libraries(openhogs_tests PRIVATE
     OpenHogs::extractor
     OpenHogs::scene
     OpenHogs::audio
+    OpenHogs::game
     OpenHogs::langpack
     Catch2::Catch2WithMain)
 openhogs_set_warnings(openhogs_tests)
