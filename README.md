@@ -1,6 +1,6 @@
 # OpenHogs
 
-[![Build and test](https://github.com/GianlucaLutero/OpenHogs/actions/workflows/build.yml/badge.svg)](https://github.com/GianlucaLutero/OpenHogs/actions/workflows/build.yml)
+[![Build and test](https://github.com/GianlucaLutero/OpenHogs/actions/workflows/build.yml/badge.svg?event=pull_request)](https://github.com/GianlucaLutero/OpenHogs/actions/workflows/build.yml)
 
 **OpenHogs** is an open-source reimplementation of *Hogs of War*
 (Infogrames / Gremlin, 2000), the turn-based artillery game with pigs in the
@@ -111,7 +111,7 @@ To build only the command-line tools, without SDL3 and the viewer, add
 ctest --test-dir build --output-on-failure -C Release
 ```
 
-Every push and pull request is also built and tested automatically on
+Every pull request is also built and tested automatically on
 Windows (Visual Studio) and Linux (GCC and Clang), with warnings in OpenHogs
 code treated as errors. See `.github/workflows/build.yml`.
 

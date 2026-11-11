@@ -1,5 +1,8 @@
 # Continuous integration: builds OpenHogs and runs the unit tests on every
-# push and pull request, on Windows (Visual Studio) and Linux (GCC, Clang).
+# pull request (when it is opened and each time commits are added to it),
+# on Windows (Visual Studio) and Linux (GCC, Clang). Pushes to branches
+# without a pull request are not built: every block reaches main through a
+# pull request, so that is where the check is needed.
 #
 # Warnings in OpenHogs code are treated as errors here, so that new warnings
 # are noticed in review instead of piling up (third-party code is exempt).
@@ -7,7 +10,6 @@
 name: Build and test
 
 on:
-  push:
   pull_request:
 
 jobs:
