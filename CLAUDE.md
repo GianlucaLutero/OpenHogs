@@ -9,6 +9,11 @@ These rules were set by the project owner and apply to every change.
 - A block branch is merged into `main` only after the owner has validated it,
   so every block ends with a pull request against `main` (or against the
   previous block's branch when blocks are stacked).
+- Decisions that do not block progress (a value to tune, an unclear
+  behaviour of the original, a design choice) are not asked one by one:
+  pick a reasonable default, implement it, and record it in
+  `docs/open-decisions.md`. They are settled together in the final
+  refinement phase, once a complete prototype exists.
 - Never commit original game files (audio, textures, maps, executables...).
   The engine reads them from the user's own installation at runtime.
 

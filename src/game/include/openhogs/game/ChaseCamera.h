@@ -38,6 +38,11 @@ public:
     // faces), keeping the current pitch.
     void lookAlong(const glm::vec3& direction);
 
+    // Swings the camera gradually round to look along a direction on the
+    // ground (taking the shorter way round). Called every step while the
+    // hog runs, it keeps the camera behind the hog without jerking.
+    void turnTowards(const glm::vec3& direction, double seconds);
+
     // Jumps to the target at once (used when a map starts).
     void snapTo(const glm::vec3& target);
 

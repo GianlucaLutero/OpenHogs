@@ -18,6 +18,11 @@ constexpr float kMaxDistance = 6000.0f;
 // gap shrinks to e^-6 (0.25%), i.e. a new hog is reached in about a second.
 constexpr double kFollowRate = 6.0;
 
+// How quickly turnTowards() swings the camera: the remaining angle
+// shrinks to e^-2.5 (8%) each second, slower than the hog turns, so the
+// camera follows smoothly instead of copying every small turn.
+constexpr double kSwingRate = 2.5;
+
 // The camera stays at least this far above the ground under it.
 constexpr float kGroundClearance = 60.0f;
 
@@ -44,6 +49,17 @@ void ChaseCamera::lookAlong(const glm::vec3& along) {
         return;  // straight up or down: no direction on the ground
     }
     yawDegrees_ = glm::degrees(std::atan2(along.x, -along.z));
+}
+
+void ChaseCamera::turnTowards(const glm::vec3& along, double seconds) {
+    if (along.x == 0.0f && along.z == 0.0f) {
+        return;
+    }
+    const float wanted = glm::degrees(std::atan2(along.x, -along.z));
+    // Shortest signed difference, in -180..180 degrees.
+    const float difference = std::remainder(wanted - yawDegrees_, 360.0f);
+    const auto share = static_cast<float>(1.0 - std::exp(-kSwingRate * seconds));
+    yawDegrees_ = std::fmod(yawDegrees_ + difference * share, 360.0f);
 }
 
 void ChaseCamera::snapTo(const glm::vec3& target) {

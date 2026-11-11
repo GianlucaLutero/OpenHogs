@@ -8,9 +8,11 @@
 //   --game <folder>      use this game folder directly, without config or packs
 //   --map <name>         map to play, e.g. ESTU (default: the first map)
 //   --list-maps          print the names of the maps, then exit
-//   --hog <n>            hog to select first (1 = the first hog of the map)
+//   --hog <n>            hog to start with (1 = the first hog of the map; it
+//                        must belong to the team that plays first)
 //   --no-sound           play without sound
 //   --seconds <s>        with --screenshot: let the match run this long first
+//   --auto-walk          with --screenshot: the active hog runs forward meanwhile
 //   --screenshot <file>  render the match to a PNG file and exit
 //   --size <W>x<H>       window size in pixels (default 1280x720)
 //
@@ -47,6 +49,7 @@ struct Options {
     double seconds = 0.0;
     bool listMaps = false;
     bool sound = true;
+    bool autoWalk = false;
     int width = 1280;
     int height = 720;
 };
@@ -58,12 +61,14 @@ void printUsage() {
                  "  --game <folder>      read this game folder directly (no config, no packs)\n"
                  "  --map <name>         map to play, e.g. ESTU (default: the first map)\n"
                  "  --list-maps          list the maps\n"
-                 "  --hog <n>            hog to select first (1 = first)\n"
+                 "  --hog <n>            hog to start with (1 = first; must be in the team that plays first)\n"
                  "  --no-sound           play without sound\n"
                  "  --seconds <s>        with --screenshot: let the match run this long first\n"
+                 "  --auto-walk          with --screenshot: the active hog runs forward meanwhile\n"
                  "  --screenshot <file>  save the match as a PNG image and exit\n"
                  "  --size <W>x<H>       window size (default 1280x720)\n\n"
-                 "Controls: Tab / Shift+Tab next / previous hog, left mouse turns the camera,\n"
+                 "Controls: W/S or Up/Down run / walk back, A/D or Left/Right turn, Space jump,\n"
+                 "Tab other hog (before moving), Enter end turn, left mouse turns the camera,\n"
                  "wheel zooms, P pause, F12 screenshot, Esc quit\n";
 }
 
@@ -89,6 +94,10 @@ std::optional<Options> parseArguments(const std::vector<std::string>& args) {
             }
             if (arg == "--no-sound") {
                 options.sound = false;
+                continue;
+            }
+            if (arg == "--auto-walk") {
+                options.autoWalk = true;
                 continue;
             }
             if (i + 1 >= args.size()) {
@@ -147,6 +156,7 @@ int runGame(const Options& options) {
     const bool screenshotOnly = options.screenshotPath.has_value();
     gameOptions.hiddenWindow = screenshotOnly;
     gameOptions.sound = options.sound && !screenshotOnly;
+    gameOptions.autoWalk = options.autoWalk && screenshotOnly;
 
     gameapp::Game game(vfs, gameOptions);
     if (screenshotOnly) {

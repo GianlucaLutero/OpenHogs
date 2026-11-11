@@ -84,9 +84,13 @@ Each new module gets its own folder, mirroring `src/`.
 | `FixedTimestep` | same steps for the same time however it is cut into frames, stalls capped and their backlog dropped |
 | `TerrainHeightField` | samples at their world position, heights equal to every drawn terrain triangle, edge height outside the map, tile lookup |
 | `spawnHogs` / `Hog` | class from the object name (commando included), team, player flag, facing, feet on the ground, hogs on towers keep their height, model matrix agrees with the facing |
-| `IdleAnimator` | reproducible per seed, mostly standing, fidgets followed by standing, cross-faded changes |
-| `World` | selection starts on the player's hog and wraps, update advances time and animations |
-| `ChaseCamera` | looks at the target from its distance, glides independently of the step length, stays above the terrain, zoom and pitch limits |
+| `AnimationPlayer` | looping and one-shot playback, frames passed across the loop's end (footsteps), no restart when asked again, cross-faded changes |
+| `IdleAnimator` | reproducible per seed, mostly standing, fidgets followed by standing, any other animation gives way to standing |
+| `MapCollision` | boxes from the map's objects (hogs and invisible objects left out), boxes turn with their object, low boxes are floors, tall ones obstacles, high ones overhead |
+| `HogMovement` | running speed and direction, footsteps per cycle, turning without movement left, gentle slopes followed and cliffs stopping, wall tiles not climbable, obstacles stopping with sliding, hogs blocking but able to step apart, jump height and length, falls with their height, swimming, map edge, footstep sound names |
+| `TurnSystem` | teams in order starting with the player's, hogs in rotation, time limit, movement allowance, changing hog only before moving |
+| `World` | only the active hog follows the input, ending the turn hands control over, a map without hogs has no turns |
+| `ChaseCamera` | looks at the target from its distance, glides independently of the step length, swings round the short way, stays above the terrain, zoom and pitch limits |
 | `TextureTable` | equal-size image slices, uneven files rejected |
 | `scene` | terrain rows go towards -Z, tile texture flip/rotation, two triangles per tile grouped by texture, model UV normalisation and quad split, object scale/yaw/Y-flip, objects without a model become markers |
 | `langpack` | translations follow the English text to the PC indices, differently worded and missing strings keep the English, overrides apply and reject foreign indices, the shipped Italian overrides encode, bottom-up BMPs, the OS/2 BMP header, bilinear scaling, a complete pack built from a miniature disc, clear errors for unusable discs |

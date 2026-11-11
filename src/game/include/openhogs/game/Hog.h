@@ -11,6 +11,8 @@
 #pragma once
 
 #include "openhogs/formats/MapObjects.h"
+#include "openhogs/game/AnimationPlayer.h"
+#include "openhogs/game/HogMotion.h"
 #include "openhogs/game/IdleAnimator.h"
 #include "openhogs/game/TerrainHeightField.h"
 #include "openhogs/scene/CharacterLibrary.h"
@@ -28,7 +30,9 @@ struct Hog {
     bool playerControlled = false;  // the map marks hogs meant for the player
     glm::vec3 position{0.0f};       // where its feet are, world units
     float yawRadians = 0.0f;        // turn around the vertical axis, as for map objects
-    IdleAnimator animator;
+    AnimationPlayer animation;      // what its body is doing
+    IdleAnimator idle;              // chooses the animation while it waits
+    HogMotion motion;               // walking, jumping, swimming...
 };
 
 // The class a map object stands for ("GR_ME" -> grunt), or nullptr if the
