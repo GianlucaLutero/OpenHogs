@@ -100,6 +100,20 @@ Animation numbers and names are listed by `openhogs-characterviewer --list`;
 press `E` in the viewer to try each face. Animations not in the file keep
 the built-in rule.
 
+## Menus and HUD
+
+The menus and the HUD use the game's own files, so a pack can replace them
+like any other file:
+
+- words: `Language/Text/fetext` (menus, team names) and
+  `Language/Text/gtext` (match messages, pause menu, rank and weapon
+  names); the entry numbers are listed in `docs/formats/fonts.md`;
+- letters: `FEText/BIG.tab` + `BIG.BMP` and `FEText/SMALL.tab` +
+  `SMALL.BMP` (a font for another alphabet, for instance);
+- weapon icons: `Language/Tims/MENUTIMS.MAD`.
+
+Words that a pack leaves out (or leaves empty) fall back to English.
+
 ## Copyright
 
 Do not publish packs that contain files copied from the original game. A

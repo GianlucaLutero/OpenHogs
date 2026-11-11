@@ -27,7 +27,9 @@ the hogs on it; teams take turns, and the active hog runs, jumps, swims,
 picks one of its weapons, aims and fires: fists and blades, pistols,
 rifles and machine guns, grenades, mortars and bazookas, TNT and mines.
 Hogs get hurt, thrown about and killed, and the last team standing wins.
-Menus and the computer opponents come next. Besides that, the original data can be
+A main menu leads to the level choice and the volume options, and the
+match has its HUD and pause menu, all in the game's own fonts and words
+(so in Italian with the Italian pack). The computer opponents come next. Besides that, the original data can be
 extracted, every map explored in 3D, an Italian (or French, German,
 Spanish) language pack built from your PlayStation disc, every sound,
 voice and music track played, and the hogs watched in all their
@@ -46,6 +48,7 @@ animations.
 | `game-framework`     | ✅ done | The `openhogs` game: fixed-rate game loop, hogs placed on the map, chase camera, ambient sound |
 | `hog-movement`       | ✅ done | Turns (time limit, movement allowance), running, jumping, falling, swimming, collisions with the scenery, footsteps |
 | `weapons`            | ✅ done | 20 weapons (melee, bullets, grenades, shells, TNT, mines), health, explosions, knockback, fall damage, death, victory |
+| `menus-and-hud`      | 🔍 in review | Main menu, level choice, volume options, pause menu, HUD (team, class, health, weapon icon, time, movement, power), match messages; the game's bitmap fonts with accented letters |
 | gameplay blocks      | planned | Movement, weapons, turns, AI, campaign |
 
 ## Requirements
@@ -134,17 +137,34 @@ Directory = C:\Program Files (x86)\Steam\steamapps\common\HogsofWar
 
 ### Starting the game
 
-`openhogs` is the game itself. At this stage it loads a map, places the
-hogs where the map says, each in its team's uniform, and the teams take
-turns: each turn one hog moves, then fires one of its weapons. The turn
-ends when the shot is over (or when time runs out, or when you press
-Enter); the match ends when only one team has hogs left.
+`openhogs` is the game itself. It opens on the **main menu**:
+
+- **MULTI-PLAYER** → **SELECT LEVEL**: pick a map and the match starts;
+- **OPTIONS** → **VOLUME CONTROL**: master, effects, voices and music
+  volume (for this session; the starting values come from
+  `config/openhogs.ini`);
+- **QUIT APPLICATION** asks for confirmation.
+
+*ONE PLAYER* (the campaign) is shown but not available yet. In the menus
+the arrow keys (or `W` `A` `S` `D`) move and change the sliders, `Enter`
+picks and `Esc` goes back.
+
+In a match the hogs stand where the map places them, each in its team's
+uniform, and the teams take turns: each turn one hog moves, then fires one
+of its weapons. The turn ends when the shot is over (or when time runs
+out, or when you press Enter); the match ends when only one team has hogs
+left, and `Enter` then goes back to the menu.
 
 Every team is played from the same keyboard (hot seat) until the computer
-opponents exist. The state of the turn (team, hog, health, weapon, seconds
-and movement left) is shown in the window title until the in-game display
-exists; health bars float above the hogs. Weapon names come from the
-game's own text, so with the Italian pack they are in Italian.
+opponents exist. The HUD shows the team and class of the active hog and
+its health (top left), the seconds left in the turn (top right), the
+selected weapon with its icon and the movement left (bottom left) and,
+while charging a throw, its power. "GET READY ..." announces each turn
+and "VICTORY TO ...!!" the winner. Health bars float above the hogs. All
+texts come from the game's own tables, so with the Italian pack they are
+in Italian.
+
+`--map` skips the menus and starts a match on that map directly:
 
 ```sh
 # Windows
@@ -156,10 +176,10 @@ build\bin\Release\openhogs.exe --map ESTU
 
 | Option | Effect |
 |--------|--------|
-| `--map <name>` | map to load (default: the first one); `--list-maps` prints them |
+| `--map <name>` | skip the menus and play this map; `--list-maps` prints the maps |
 | `--hog <n>` | hog to start on (1 = the first hog of the map) |
 | `--no-sound` | play without sound |
-| `--screenshot <file>` | save the match as an image and exit; `--seconds <s>` lets it run for a while first, `--auto-walk` makes the active hog run meanwhile, `--weapon <n>` and `--fire-at <s>` make it pick its n-th weapon and fire |
+| `--screenshot <file>` | save the match (or, without `--map`, the menu) as an image and exit; `--seconds <s>` lets it run for a while first, `--auto-walk` makes the active hog run meanwhile, `--weapon <n>` and `--fire-at <s>` make it pick its n-th weapon and fire, `--pause` shows the pause menu, `--menu-keys down,enter` presses menu keys first |
 | `--game <folder>` / `--config <file>` / `--size <W>x<H>` | as for the other programs |
 
 | Key | Action |
@@ -172,20 +192,21 @@ build\bin\Release\openhogs.exe --map ESTU
 | `R` / `F` | aim up / down (the white dots show where the shot goes) |
 | `Ctrl` or `X` | fire; for grenades, mortars and bazookas hold it to throw further and release to fire |
 | `Tab` / `Shift+Tab` | another hog of the same team (only before moving) |
-| `Enter` | end the turn |
+| `Enter` | end the turn (after the match: back to the menu) |
 | left mouse button + drag | turn the camera around the hog |
 | mouse wheel | zoom |
-| `P` | pause |
+| `Esc` or `P` | pause menu: CONTINUE, or ABORT SKIRMISH (asks for confirmation) |
 | `F12` | save a screenshot (`openhogs-<MAP>.png`) |
-| `Esc` | quit |
 
 Teams wear the nations' uniforms in a fixed order for now (team 1 British,
-team 2 American, team 3 French...); choosing them comes with the menus.
+team 2 American, team 3 French...); choosing them comes with the
+campaign and multiplayer setup.
 A turn lasts 60 seconds and allows about 7 seconds of running. These values,
 and the other choices still to be compared with the original game, are
 listed in [`docs/open-decisions.md`](docs/open-decisions.md).
 The weapons, their names, models and sounds are described in
-[`docs/formats/weapons.md`](docs/formats/weapons.md).
+[`docs/formats/weapons.md`](docs/formats/weapons.md), the fonts and menu
+pictures in [`docs/formats/fonts.md`](docs/formats/fonts.md).
 
 ### Extracting the game data
 
@@ -469,11 +490,12 @@ OpenHogs/
 ├── src/
 │   ├── core/             binary reading, INI files, virtual file system
 │   ├── content/          config, content packs, pack selection
-│   ├── formats/          parsers: archives, text, textures, models, maps, sounds, skeleton,
+│   ├── formats/          parsers: archives, text, fonts, textures, models, maps, sounds, skeleton,
 │   │                     animations, PlayStation disc
 │   ├── audio/            sound effects, speech, music: decoding, mixing, sound card
 │   ├── scene/            maps and posed hogs turned into triangles (no GPU code)
 │   ├── game/             match state and rules: world, hogs, camera, fixed timestep
+│   ├── ui/               menus, HUD and text layout logic (no drawing code)
 │   ├── render/           OpenGL 3.3 renderer and camera
 │   ├── tools/extractor/  openhogs-extract command-line tool
 │   ├── tools/text/       openhogs-text: text tables <-> editable text

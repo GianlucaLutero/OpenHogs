@@ -5,6 +5,7 @@
 #   MapRenderer  - uploads a MapScene to the GPU and draws it
 #   CharacterRenderer - draws posed hogs (and any textured model)
 #   EffectsRenderer   - aiming dots, tracers, explosions, health bars
+#   UiRenderer        - 2D interface: bitmap-font text, panels, icons
 #
 # The OpenGL context itself is created by the application (with SDL), so
 # this module does not depend on any windowing library.
@@ -14,10 +15,11 @@ add_library(openhogs_render STATIC
     src/CharacterRenderer.cpp
     src/EffectsRenderer.cpp
     src/GlObjects.cpp
-    src/MapRenderer.cpp)
+    src/MapRenderer.cpp
+    src/UiRenderer.cpp)
 
 add_library(OpenHogs::render ALIAS openhogs_render)
 
 target_include_directories(openhogs_render PUBLIC include)
-target_link_libraries(openhogs_render PUBLIC OpenHogs::scene glad)
+target_link_libraries(openhogs_render PUBLIC OpenHogs::scene OpenHogs::ui glad)
 openhogs_set_warnings(openhogs_render)

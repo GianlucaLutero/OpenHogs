@@ -3,10 +3,12 @@
 // Usage:
 //   openhogs [options]
 //
+// Without --map the game starts on the main menu.
+//
 // Options:
 //   --config <file>      OpenHogs configuration (default: config/openhogs.ini)
 //   --game <folder>      use this game folder directly, without config or packs
-//   --map <name>         map to play, e.g. ESTU (default: the first map)
+//   --map <name>         skip the menus and play this map, e.g. ESTU
 //   --list-maps          print the names of the maps, then exit
 //   --hog <n>            hog to start with (1 = the first hog of the map; it
 //                        must belong to the team that plays first)
@@ -15,13 +17,17 @@
 //   --auto-walk          with --screenshot: the active hog runs forward meanwhile
 //   --weapon <n>         with --screenshot: the active hog selects its n-th weapon (1 = first)
 //   --fire-at <s>        with --screenshot: the active hog fires at s seconds
-//   --screenshot <file>  render the match to a PNG file and exit
+//   --pause              with --screenshot: show the pause menu
+//   --menu-keys <keys>   with --screenshot and no --map: press these menu keys
+//                        first, e.g. "down,enter" (up, down, left, right,
+//                        enter, back)
+//   --screenshot <file>  render the match (or the menu) to a PNG file and exit
 //   --size <W>x<H>       window size in pixels (default 1280x720)
 //
 // Files are read through the content module, so content packs
 // (config/openhogs.ini) are applied unless --game is used.
 
-#include "Game.h"
+#include "Application.h"
 
 #include "openhogs/apps/GameFiles.h"
 #include "openhogs/audio/AudioSettings.h"
@@ -32,6 +38,7 @@
 // (e.g. WinMain on Windows). It must be included in this file only.
 #include <SDL3/SDL_main.h>
 
+#include <algorithm>
 #include <exception>
 #include <iostream>
 #include <optional>
@@ -54,6 +61,8 @@ struct Options {
     bool autoWalk = false;
     std::optional<std::size_t> weaponSlot;  // 1-based, as typed
     std::optional<double> fireAt;
+    bool pause = false;
+    std::vector<ui::MenuInput> menuKeys;
     int width = 1280;
     int height = 720;
 };
@@ -63,7 +72,7 @@ void printUsage() {
                  "Usage: openhogs [options]\n\n"
                  "  --config <file>      configuration file (default: config/openhogs.ini)\n"
                  "  --game <folder>      read this game folder directly (no config, no packs)\n"
-                 "  --map <name>         map to play, e.g. ESTU (default: the first map)\n"
+                 "  --map <name>         skip the menus and play this map, e.g. ESTU\n"
                  "  --list-maps          list the maps\n"
                  "  --hog <n>            hog to start with (1 = first; must be in the team that plays first)\n"
                  "  --no-sound           play without sound\n"
@@ -71,12 +80,35 @@ void printUsage() {
                  "  --auto-walk          with --screenshot: the active hog runs forward meanwhile\n"
                  "  --weapon <n>         with --screenshot: the active hog selects its n-th weapon\n"
                  "  --fire-at <s>        with --screenshot: the active hog fires at s seconds\n"
-                 "  --screenshot <file>  save the match as a PNG image and exit\n"
+                 "  --pause              with --screenshot: show the pause menu\n"
+                 "  --menu-keys <keys>   with --screenshot and no --map: press these menu keys first,\n"
+                 "                       e.g. down,enter (up, down, left, right, enter, back)\n"
+                 "  --screenshot <file>  save the match (or the menu) as a PNG image and exit\n"
                  "  --size <W>x<H>       window size (default 1280x720)\n\n"
-                 "Controls: W/S or Up/Down run / walk back, A/D or Left/Right turn, Space jump,\n"
+                 "Menus: arrows or W/A/S/D move, Enter picks, Esc goes back.\n"
+                 "Match: W/S or Up/Down run / walk back, A/D or Left/Right turn, Space jump,\n"
                  "Q/E weapon, R/F aim, Ctrl or X fire (hold to throw further),\n"
                  "Tab other hog (before moving), Enter end turn, left mouse turns the camera,\n"
-                 "wheel zooms, P pause, F12 screenshot, Esc quit\n";
+                 "wheel zooms, Esc or P pause menu, F12 screenshot\n";
+}
+
+// "down,down,enter" -> the menu inputs; std::nullopt for an unknown key.
+std::optional<std::vector<ui::MenuInput>> parseMenuKeys(const std::string& text) {
+    std::vector<ui::MenuInput> inputs;
+    std::size_t start = 0;
+    while (start <= text.size()) {
+        const auto comma = std::min(text.find(',', start), text.size());
+        const std::string key = text.substr(start, comma - start);
+        if (key == "up") inputs.push_back(ui::MenuInput::Up);
+        else if (key == "down") inputs.push_back(ui::MenuInput::Down);
+        else if (key == "left") inputs.push_back(ui::MenuInput::Left);
+        else if (key == "right") inputs.push_back(ui::MenuInput::Right);
+        else if (key == "enter") inputs.push_back(ui::MenuInput::Confirm);
+        else if (key == "back") inputs.push_back(ui::MenuInput::Back);
+        else return std::nullopt;
+        start = comma + 1;
+    }
+    return inputs;
 }
 
 bool parseSize(const std::string& text, int& width, int& height) {
@@ -107,6 +139,10 @@ std::optional<Options> parseArguments(const std::vector<std::string>& args) {
                 options.autoWalk = true;
                 continue;
             }
+            if (arg == "--pause") {
+                options.pause = true;
+                continue;
+            }
             if (i + 1 >= args.size()) {
                 return std::nullopt;
             }
@@ -129,6 +165,10 @@ std::optional<Options> parseArguments(const std::vector<std::string>& args) {
                 options.seconds = std::stod(value);
             } else if (arg == "--screenshot") {
                 options.screenshotPath = value;
+            } else if (arg == "--menu-keys") {
+                const auto keys = parseMenuKeys(value);
+                if (!keys) return std::nullopt;
+                options.menuKeys = *keys;
             } else if (arg == "--size") {
                 if (!parseSize(value, options.width, options.height)) return std::nullopt;
             } else {
@@ -154,34 +194,48 @@ int runGame(const Options& options) {
         return 0;
     }
 
-    gameapp::GameOptions gameOptions;
-    gameOptions.mapName = options.mapName.value_or(maps.front());
-    gameOptions.width = options.width;
-    gameOptions.height = options.height;
-    if (options.hog) {
-        gameOptions.startHog = *options.hog - 1;
-    }
-    if (!options.gameFolder) {
-        gameOptions.volumes = audio::volumesFromIni(core::IniFile::load(options.configPath));
-    }
-
     const bool screenshotOnly = options.screenshotPath.has_value();
-    gameOptions.hiddenWindow = screenshotOnly;
-    gameOptions.sound = options.sound && !screenshotOnly;
-    gameOptions.autoWalk = options.autoWalk && screenshotOnly;
-    if (screenshotOnly) {
-        gameOptions.autoFireAt = options.fireAt;
-        if (options.weaponSlot) gameOptions.autoWeaponSlot = *options.weaponSlot - 1;
+
+    gameapp::ApplicationOptions appOptions;
+    appOptions.width = options.width;
+    appOptions.height = options.height;
+    appOptions.hiddenWindow = screenshotOnly;
+    appOptions.sound = options.sound && !screenshotOnly;
+    appOptions.maps = maps;
+    if (!options.gameFolder) {
+        appOptions.volumes = audio::volumesFromIni(core::IniFile::load(options.configPath));
+    }
+    gameapp::Application app(vfs, appOptions);
+
+    if (options.mapName) {
+        gameapp::GameOptions gameOptions;
+        gameOptions.mapName = *options.mapName;
+        if (options.hog) {
+            gameOptions.startHog = *options.hog - 1;
+        }
+        if (screenshotOnly) {
+            gameOptions.autoWalk = options.autoWalk;
+            gameOptions.autoFireAt = options.fireAt;
+            if (options.weaponSlot) gameOptions.autoWeaponSlot = *options.weaponSlot - 1;
+        }
+        app.startMatch(gameOptions);
     }
 
-    gameapp::Game game(vfs, gameOptions);
-    if (screenshotOnly) {
-        game.simulate(options.seconds);
-        game.saveScreenshot(*options.screenshotPath);
-        std::cout << "Saved " << options.screenshotPath->string() << "\n";
+    if (!screenshotOnly) {
+        app.run();
         return 0;
     }
-    game.run();
+    if (auto* game = app.game()) {
+        game->simulate(options.seconds);
+        if (options.pause) game->pause();
+    } else {
+        app.sendMenuInputs(options.menuKeys);
+        if (auto* started = app.game()) {
+            started->simulate(options.seconds);
+        }
+    }
+    app.saveScreenshot(*options.screenshotPath);
+    std::cout << "Saved " << options.screenshotPath->string() << "\n";
     return 0;
 }
 

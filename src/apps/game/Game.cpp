@@ -2,7 +2,8 @@
 
 #include "Game.h"
 
-#include "openhogs/formats/TextTable.h"
+#include "MenuControls.h"
+
 #include "openhogs/game/Weapons.h"
 #include "openhogs/scene/CharacterExpressions.h"
 #include "openhogs/scene/MapScene.h"
@@ -27,15 +28,7 @@ constexpr float kZoomStep = 0.9f;  // distance factor per wheel notch
 // The camera looks at the hog's chest, this far above its feet.
 constexpr float kCameraTargetHeight = 180.0f;
 
-constexpr std::uint32_t kAudioOutputRate = 48000;
-
-// The background sound of a match: the first sound of the daytime bank
-// (Audio/AMB_1D.wav), played in a loop.
-const char* const kAmbientBank = "Audio/sfxday.srl";
-constexpr std::size_t kAmbientSound = 0;
-constexpr float kAmbientVolume = 0.6f;  // under the footsteps
-
-// Sounds of the same bank, by file name, for what happens in a match. The
+// Sounds of the match bank (Audio/sfxday.srl), by file name, for what happens in a match. The
 // choice is OpenHogs' own (docs/open-decisions.md).
 constexpr std::string_view kLandingSound = "P_LAND1";
 constexpr std::string_view kSplashSound = "I_SPLASH";
@@ -58,26 +51,35 @@ constexpr float kHealthBarHeight = 380.0f;  // above the feet
 // How long the camera swings round behind a newly active hog.
 constexpr double kCameraSwingSeconds = 1.5;
 
-// File name without folder and extension: "AUDIO\\FT_GRASS.wav" -> "ft_grass".
-std::string soundStem(const std::string& path) {
-    const auto slash = path.find_last_of("\\/");
-    std::string stem = path.substr(slash == std::string::npos ? 0 : slash + 1);
-    const auto dot = stem.rfind('.');
-    if (dot != std::string::npos) {
-        stem.resize(dot);
-    }
-    for (char& c : stem) {
-        if (c >= 'A' && c <= 'Z') c = static_cast<char>(c - 'A' + 'a');
-    }
-    return stem;
-}
+// HUD layout, in canvas units (the screen is render::kCanvasHeight tall).
+constexpr float kHudMargin = 12.0f;
+constexpr float kPanelPadding = 10.0f;
+constexpr float kTurnPanelWidth = 240.0f;
+constexpr float kTurnPanelHeight = 74.0f;
+constexpr float kTimerWidth = 76.0f;
+constexpr float kTimerHeight = 52.0f;
+constexpr float kWeaponPanelWidth = 280.0f;
+constexpr float kWeaponPanelHeight = 76.0f;
+constexpr float kIconScale = 1.25f;  // icons are 56 x 34 pixels
+constexpr float kBarHeight = 10.0f;
+constexpr float kBannerY = 130.0f;
+constexpr int kTimerWarningSeconds = 10;  // the clock turns red
+constexpr glm::vec4 kTimerWarningColour{1.0f, 0.3f, 0.2f, 1.0f};
+constexpr glm::vec4 kHealthBarColour{0.25f, 0.85f, 0.25f, 1.0f};
+constexpr glm::vec4 kMovementBarColour{0.35f, 0.65f, 1.0f, 1.0f};
+constexpr glm::vec4 kPowerBarColour{1.0f, 0.55f, 0.1f, 1.0f};
+constexpr glm::vec4 kPauseShade{0.0f, 0.0f, 0.0f, 0.4f};
+
+// How long the match messages stay on screen.
+constexpr double kTurnMessageSeconds = 2.5;
+constexpr double kEndMessageSeconds = -1.0;  // until the players leave
 
 } // namespace
 
-Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options)
+Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Interface& userInterface,
+           SoundPlayer& sounds)
     : mapName_(options.mapName), library_(vfs), world_(game::loadWorld(vfs, options.mapName)),
-      window_("OpenHogs", options.width, options.height, options.hiddenWindow), width_(options.width),
-      height_(options.height) {
+      pauseMenu_(userInterface.strings()), interface_(userInterface), sounds_(sounds) {
     const auto scene = scene::loadMapScene(vfs, options.mapName);
     for (const auto& warning : scene.warnings) {
         std::cerr << "Warning: " << warning << "\n";
@@ -92,14 +94,6 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options)
     } catch (const std::exception& error) {
         std::cerr << "Warning: no weapon models (" << error.what() << ")\n";
     }
-    try {
-        const auto table = formats::TextTable::parse(vfs.readFile("Language/Text/gtext.ofs"),
-                                                     vfs.readFile("Language/Text/gtext.bin"));
-        gameText_ = table.entries;
-    } catch (const std::exception& error) {
-        std::cerr << "Warning: no game text, weapon names in English (" << error.what() << ")\n";
-    }
-
     autoWalk_ = options.autoWalk;
     autoFireAt_ = options.autoFireAt;
     if (options.startHog) {
@@ -132,73 +126,14 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options)
         }
     }
 
-    if (options.sound) {
-        startSound(vfs, options.volumes);
+    if (const auto message = ui::turnMessage(world_, interface_.strings())) {
+        banner_.show(*message, kTurnMessageSeconds);
     }
-    updateTitle();
+    sounds_.startAmbience();
 }
 
 Game::~Game() {
-    audioDevice_.reset();  // stops the sound thread before the mixer goes
-    teamLooks_.clear();    // GPU resources must go before the window's context
-    weaponTextures_.reset();
-    effects_.reset();
-    hogRenderer_.reset();
-    mapRenderer_.reset();
-}
-
-void Game::startSound(const core::VirtualFileSystem& vfs, const audio::Volumes& volumes) {
-    try {
-        sounds_ = std::make_unique<audio::SoundLibrary>(vfs);
-        soundBank_ = sounds_->loadBank(kAmbientBank);
-        const auto ambience = sounds_->loadFromBank(*soundBank_, kAmbientSound);
-
-        mixer_ = std::make_unique<audio::Mixer>(kAudioOutputRate);
-        mixer_->setVolumes(volumes);
-        mixer_->play(ambience, audio::SoundCategory::Effects, kAmbientVolume, true);
-        audioDevice_ = std::make_unique<audio::AudioDevice>(*mixer_);
-    } catch (const std::exception& error) {
-        // No sound card, or a missing sound file: play without sound.
-        std::cerr << "Warning: no sound (" << error.what() << ")\n";
-        audioDevice_.reset();
-        mixer_.reset();
-    }
-}
-
-void Game::playSound(std::string_view name) {
-    if (!mixer_ || !soundBank_ || name.empty()) {
-        return;
-    }
-    const std::string wanted = soundStem(std::string(name));
-    auto found = loadedSounds_.find(wanted);
-    if (found == loadedSounds_.end()) {
-        std::shared_ptr<const formats::PcmSound> sound;
-        for (std::size_t i = 0; i < soundBank_->files.size(); ++i) {
-            if (soundStem(soundBank_->files[i]) == wanted) {
-                try {
-                    sound = sounds_->loadFromBank(*soundBank_, i);
-                } catch (const std::exception& error) {
-                    std::cerr << "Warning: " << error.what() << "\n";
-                }
-                break;
-            }
-        }
-        if (!sound) {
-            std::cerr << "Warning: sound " << name << " not found in " << kAmbientBank << "\n";
-        }
-        found = loadedSounds_.emplace(wanted, sound).first;  // remembered even if missing
-    }
-    if (found->second) {
-        mixer_->play(found->second, audio::SoundCategory::Effects);
-    }
-}
-
-std::string Game::weaponName(game::WeaponId weapon) const {
-    const auto index = static_cast<std::size_t>(weapon);
-    if (index < gameText_.size() && !gameText_[index].empty()) {
-        return gameText_[index];
-    }
-    return std::string(game::weaponSpec(weapon).fallbackName);
+    sounds_.stopAmbience();
 }
 
 const formats::Model* Game::weaponModel(std::string_view name) {
@@ -260,92 +195,85 @@ const Game::TeamLook& Game::lookFor(int team) {
     return found->second;
 }
 
-void Game::updateTitle() {
-    std::string title = "OpenHogs - " + mapName_;
-    const auto& turns = world_.turns();
-    if (world_.phase() == game::MatchPhase::Over) {
-        const auto winner = world_.winner();
-        title += winner ? " - VICTORY TO TEAM " + std::to_string(*winner + 1) + " (" +
-                              std::string(game::teamNation(*winner)) + ")!"
-                        : " - IT'S A DRAW!";
-    } else if (turns) {
-        const auto& hog = world_.hogs()[turns->activeHog()];
-        const auto allowance = turns->rules().movementAllowance;
-        const int movementPercent =
-            allowance > 0.0f ? static_cast<int>(std::lround(100.0f * turns->movementLeft() / allowance)) : 0;
-        char text[320];
-        std::snprintf(text, sizeof(text), " - turn %d - team %d (%s), %s, health %d - %s%s - %d s - movement %d%%%s%s",
-                      turns->turnNumber(), turns->activeTeam() + 1, std::string(game::teamNation(hog.team)).c_str(),
-                      std::string(hog.characterClass->name).c_str(), static_cast<int>(std::ceil(hog.health)),
-                      weaponName(hog.selectedWeapon()).c_str(),
-                      hog.charging ? (" " + std::to_string(static_cast<int>(hog.power * 100.0f)) + "%").c_str() : "",
-                      static_cast<int>(std::ceil(std::max(0.0, turns->secondsLeft()))), movementPercent,
-                      turns->canSwitchHog() && world_.phase() == game::MatchPhase::Playing ? " - Tab: other hog" : "",
-                      paused_ ? " - paused" : "");
-        title += text;
-    } else {
-        title += " - no hogs on this map";
-    }
-    if (title != lastTitle_) {  // changing the title every frame is wasteful
-        window_.setTitle(title);
-        lastTitle_ = title;
+void Game::pause() {
+    if (!paused_) {
+        paused_ = true;
+        pauseMenu_.reset();
     }
 }
 
-void Game::handleEvent(const SDL_Event& event, bool& running) {
+GameRequest Game::handleEvent(const SDL_Event& event) {
     switch (event.type) {
-    case SDL_EVENT_QUIT:
-        running = false;
-        break;
-
     case SDL_EVENT_MOUSE_MOTION:
-        if (event.motion.state & SDL_BUTTON_LMASK) {
+        if (!paused_ && (event.motion.state & SDL_BUTTON_LMASK)) {
             camera_.orbit(event.motion.xrel * kOrbitDegreesPerPixel, -event.motion.yrel * kOrbitDegreesPerPixel);
         }
-        break;
+        return GameRequest::None;
 
     case SDL_EVENT_MOUSE_WHEEL:
-        camera_.zoom(std::pow(kZoomStep, event.wheel.y));
-        break;
+        if (!paused_) camera_.zoom(std::pow(kZoomStep, event.wheel.y));
+        return GameRequest::None;
+
+    case SDL_EVENT_WINDOW_FOCUS_LOST:
+        pause();  // nobody is watching: stop the turn clock
+        return GameRequest::None;
 
     case SDL_EVENT_KEY_DOWN:
-        switch (event.key.key) {
-        case SDLK_ESCAPE:
-            running = false;
-            break;
-        case SDLK_TAB:
-            world_.switchHog((event.key.mod & SDL_KMOD_SHIFT) ? -1 : 1);
-            break;
-        case SDLK_RETURN:
-        case SDLK_KP_ENTER:
-            if (!paused_) world_.endTurn();
-            break;
-        case SDLK_SPACE:
-            jumpPressed_ = true;
-            break;
-        case SDLK_Q:
-            weaponStep_ = -1;
-            break;
-        case SDLK_E:
-            weaponStep_ = 1;
-            break;
-        case SDLK_P:
-            paused_ = !paused_;
-            break;
-        case SDLK_F12: {
-            const std::string file = "openhogs-" + mapName_ + ".png";
-            saveScreenshot(file);
-            std::cout << "Saved " << file << "\n";
-            break;
+        if (event.key.key == SDLK_F12) {
+            return GameRequest::Screenshot;
         }
-        default:
-            break;
-        }
-        break;
+        return paused_ ? handlePauseKey(event) : handleKey(event);
 
+    default:
+        return GameRequest::None;
+    }
+}
+
+GameRequest Game::handlePauseKey(const SDL_Event& event) {
+    const auto input = menuInputForKey(event.key.key);
+    if (!input) {
+        return GameRequest::None;
+    }
+    const auto result = pauseMenu_.handle(*input);
+    playMenuSound(sounds_, result.sound);
+    switch (result.request) {
+    case ui::PauseResult::Request::Resume: paused_ = false; break;
+    case ui::PauseResult::Request::Abort: return GameRequest::LeaveMatch;
+    case ui::PauseResult::Request::None: break;
+    }
+    return GameRequest::None;
+}
+
+GameRequest Game::handleKey(const SDL_Event& event) {
+    switch (event.key.key) {
+    case SDLK_ESCAPE:
+    case SDLK_P:
+        pause();
+        playMenuSound(sounds_, ui::MenuSound::Select);
+        break;
+    case SDLK_TAB:
+        world_.switchHog((event.key.mod & SDL_KMOD_SHIFT) ? -1 : 1);
+        break;
+    case SDLK_RETURN:
+    case SDLK_KP_ENTER:
+        if (world_.phase() == game::MatchPhase::Over) {
+            return GameRequest::LeaveMatch;
+        }
+        world_.endTurn();
+        break;
+    case SDLK_SPACE:
+        jumpPressed_ = true;
+        break;
+    case SDLK_Q:
+        weaponStep_ = -1;
+        break;
+    case SDLK_E:
+        weaponStep_ = 1;
+        break;
     default:
         break;
     }
+    return GameRequest::None;
 }
 
 game::PlayerInput Game::readInput() {
@@ -373,9 +301,13 @@ game::PlayerInput Game::readInput() {
     return input;
 }
 
-void Game::playSounds(const std::vector<game::GameEvent>& events) {
+void Game::handleEvents(const std::vector<game::GameEvent>& events) {
     using game::GameEventType;
     for (const auto& event : events) {
+        if (const auto message = ui::messageForEvent(event, world_, interface_.strings())) {
+            banner_.show(*message, event.type == GameEventType::MatchOver ? kEndMessageSeconds : kTurnMessageSeconds);
+        }
+        const auto playSound = [this](std::string_view name) { sounds_.play(SoundBankId::Match, name); };
         switch (event.type) {
         case GameEventType::Footstep: playSound(game::footstepSoundName(event.surface)); break;
         case GameEventType::Landed: playSound(kLandingSound); break;
@@ -393,12 +325,14 @@ void Game::playSounds(const std::vector<game::GameEvent>& events) {
 }
 
 void Game::step(double seconds) {
-    if (!paused_) {
-        playSounds(world_.update(seconds, readInput(), library_.animations()));
+    if (paused_) {
+        return;  // the camera waits too: the pause menu covers the view
     }
+    handleEvents(world_.update(seconds, readInput(), library_.animations()));
+    banner_.update(seconds);
 
-    // The camera works while paused too. When the active hog changes, or
-    // while it moves, it swings round behind the hog.
+    // When the active hog changes, or while it moves, the camera swings
+    // round behind the hog.
     const auto active = world_.activeHog();
     if (active != cameraHog_) {
         cameraHog_ = active;
@@ -416,7 +350,6 @@ void Game::step(double seconds) {
     }
     cameraSwingSecondsLeft_ = std::max(0.0, cameraSwingSecondsLeft_ - seconds);
     camera_.update(seconds, cameraTarget());
-    updateTitle();
 }
 
 void Game::simulate(double seconds) {
@@ -504,7 +437,7 @@ void Game::drawEffects(const render::Camera& camera, int width, int height) {
     }
 }
 
-void Game::draw(int width, int height) {
+void Game::drawScene(int width, int height) {
     const auto pose = camera_.pose(world_.terrain());
     render::Camera camera;
     camera.position = pose.position;
@@ -522,38 +455,109 @@ void Game::draw(int width, int height) {
     drawEffects(camera, width, height);
 }
 
-void Game::run() {
-    bool running = true;
-    Uint64 previous = SDL_GetTicksNS();
+void Game::drawTurnPanel(const ui::HudInfo& info) {
+    // Top left: team, class and health of the active hog.
+    auto& ui = interface_.renderer();
+    const float left = kHudMargin;
+    const float top = kHudMargin;
+    ui.drawRect(left, top, kTurnPanelWidth, kTurnPanelHeight, colours::kPanel);
 
-    while (running) {
-        SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-            handleEvent(event, running);
-        }
+    render::TextStyle teamStyle;
+    teamStyle.colour = teamColour(info.team);
+    ui.drawText(interface_.smallFont(), info.teamName, left + kPanelPadding, top + kPanelPadding, teamStyle);
 
-        const Uint64 now = SDL_GetTicksNS();
-        const double elapsed = static_cast<double>(now - previous) / 1e9;
-        previous = now;
-        const int steps = timestep_.advance(elapsed);
-        for (int i = 0; i < steps; ++i) {
-            step(timestep_.stepSeconds());
-        }
+    render::TextStyle classStyle;
+    classStyle.scale = 0.75f;
+    classStyle.colour = colours::kText;
+    ui.drawText(interface_.bigFont(), info.className, left + kPanelPadding, top + 24.0f, classStyle);
 
-        window_.sizeInPixels(width_, height_);
-        draw(width_, height_);
-        window_.swap();
+    const float barWidth = kTurnPanelWidth - 2.0f * kPanelPadding - 40.0f;
+    const float barY = top + kTurnPanelHeight - kPanelPadding - kBarHeight;
+    interface_.drawBar(left + kPanelPadding, barY, barWidth, kBarHeight, info.healthFraction, kHealthBarColour);
+    render::TextStyle healthStyle;
+    healthStyle.colour = colours::kText;
+    healthStyle.align = render::TextAlign::Right;
+    ui.drawText(interface_.smallFont(), std::to_string(info.health), left + kTurnPanelWidth - kPanelPadding,
+                barY - 1.0f, healthStyle);
+
+    // Top right: the turn clock.
+    const float timerLeft = ui.canvasWidth() - kHudMargin - kTimerWidth;
+    ui.drawRect(timerLeft, top, kTimerWidth, kTimerHeight, colours::kPanel);
+    render::TextStyle timerStyle;
+    timerStyle.scale = 1.25f;
+    timerStyle.colour = info.secondsLeft <= kTimerWarningSeconds ? kTimerWarningColour : colours::kTitle;
+    timerStyle.align = render::TextAlign::Centre;
+    const float digitsHeight = static_cast<float>(interface_.bigFont().font().lineHeight) * timerStyle.scale;
+    ui.drawText(interface_.bigFont(), std::to_string(info.secondsLeft), timerLeft + kTimerWidth / 2.0f,
+                top + (kTimerHeight - digitsHeight) / 2.0f, timerStyle);
+}
+
+void Game::drawWeaponPanel(const ui::HudInfo& info) {
+    // Bottom left: the selected weapon and the movement left; the power
+    // of a throw above it while charging.
+    auto& ui = interface_.renderer();
+    const float left = kHudMargin;
+    const float top = render::kCanvasHeight - kHudMargin - kWeaponPanelHeight;
+    ui.drawRect(left, top, kWeaponPanelWidth, kWeaponPanelHeight, colours::kPanel);
+
+    float textLeft = left + kPanelPadding;
+    if (const auto* icon = interface_.weaponIcon(info.weapon)) {
+        const float width = icon->width() * kIconScale;
+        const float height = icon->height() * kIconScale;
+        ui.drawImage(*icon, left + kPanelPadding, top + (kWeaponPanelHeight - height) / 2.0f, width, height);
+        textLeft += width + kPanelPadding;
+    }
+
+    render::TextStyle nameStyle;
+    nameStyle.scale = 0.75f;
+    nameStyle.colour = colours::kText;
+    // Long names (translations) shrink to fit the panel.
+    const float room = left + kWeaponPanelWidth - kPanelPadding - textLeft;
+    const float width = render::UiRenderer::textWidth(interface_.bigFont(), info.weaponName, nameStyle.scale);
+    if (width > room) nameStyle.scale *= room / width;
+    ui.drawText(interface_.bigFont(), info.weaponName, textLeft, top + kPanelPadding + 4.0f, nameStyle);
+
+    interface_.drawBar(textLeft, top + kWeaponPanelHeight - kPanelPadding - kBarHeight - 4.0f, room, kBarHeight,
+                       info.movementFraction, kMovementBarColour);
+
+    if (info.power) {
+        interface_.drawBar(left, top - kBarHeight * 2.0f - 6.0f, kWeaponPanelWidth, kBarHeight * 2.0f, *info.power,
+                           kPowerBarColour);
     }
 }
 
-void Game::saveScreenshot(const std::filesystem::path& path) {
-    // Off-screen, so it works even with a hidden or covered window.
-    render::GlFramebuffer target(width_, height_);
-    target.bind();
-    draw(width_, height_);
-    const auto image = render::captureFramebuffer(width_, height_);
-    render::GlFramebuffer::unbind();
-    apps::savePng(image, path);
+void Game::drawHud() {
+    if (const auto info = ui::describeTurn(world_, interface_.strings(), interface_.gameText())) {
+        drawTurnPanel(*info);
+        drawWeaponPanel(*info);
+    }
+    if (const auto& message = banner_.current()) {
+        // Turn messages fade out over their last quarter.
+        const double progress = banner_.progress();
+        const float alpha = progress > 0.75 ? static_cast<float>((1.0 - progress) / 0.25) : 1.0f;
+        interface_.drawBanner(*message, kBannerY, alpha);
+    }
+}
+
+void Game::advance(double elapsedSeconds) {
+    const int steps = timestep_.advance(elapsedSeconds);
+    for (int i = 0; i < steps; ++i) {
+        step(timestep_.stepSeconds());
+    }
+}
+
+void Game::draw(int width, int height) {
+    drawScene(width, height);
+
+    auto& ui = interface_.renderer();
+    ui.begin(width, height);
+    if (paused_) {
+        ui.drawRect(0.0f, 0.0f, ui.canvasWidth(), render::kCanvasHeight, kPauseShade);
+        interface_.drawMenu(pauseMenu_.menu());
+    } else {
+        drawHud();
+    }
+    ui.end();
 }
 
 } // namespace openhogs::gameapp
