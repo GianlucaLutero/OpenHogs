@@ -4,9 +4,10 @@
 // HUD, messages), loaded once and shared by the menus and the match:
 //
 //   - the renderer (render::UiRenderer);
-//   - the game's fonts: FEText/BIG (titles, menu entries, messages) and
-//     FEText/SMALL (small labels). Both have the accented letters of the
-//     translations, unlike GameChars and BigChars (docs/formats/fonts.md);
+//   - the game's fonts: FEText/BIG (titles, menu entries, messages),
+//     FEText/SMALL (small labels) and FEText/chars3 (the original list
+//     menu's words). All have the accented letters of the translations,
+//     unlike GameChars and BigChars (docs/formats/fonts.md);
 //   - the weapon icons of Language/Tims/MENUTIMS.MAD;
 //   - the texts (ui::UiStrings) and the game text table (weapon names).
 //
@@ -51,6 +52,8 @@ public:
     render::UiRenderer& renderer() { return renderer_; }
     const render::UiFont& bigFont() const { return *bigFont_; }
     const render::UiFont& smallFont() const { return *smallFont_; }
+    // chars3, the font of the original front end's menus (BIG if missing).
+    const render::UiFont& menuFont() const { return menuFont_ ? *menuFont_ : *bigFont_; }
     const ui::UiStrings& strings() const { return strings_; }
     const std::vector<std::string>& gameText() const { return gameText_; }
 
@@ -79,6 +82,7 @@ private:
     render::UiRenderer renderer_;
     std::unique_ptr<render::UiFont> bigFont_;
     std::unique_ptr<render::UiFont> smallFont_;
+    std::unique_ptr<render::UiFont> menuFont_;  // null if missing
     std::map<game::WeaponId, render::UiImage> weaponIcons_;
     ui::UiStrings strings_;
     std::vector<std::string> gameText_;

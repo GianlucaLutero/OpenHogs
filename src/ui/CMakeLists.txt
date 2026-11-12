@@ -11,6 +11,7 @@
 #   FloatingNumbers - damage numbers rising above hurt hogs
 #   Hud           - what the HUD shows; messages for game events
 #   HudLayout     - the original HUD's layout and moving parts (from the executable)
+#   OriginalMenu  - the original list menu's layout and animation (from the executable)
 #   CampaignMenu  - the campaign pages: squad, promotions, mission results
 
 add_library(openhogs_ui STATIC
@@ -20,6 +21,7 @@ add_library(openhogs_ui STATIC
     src/Hud.cpp
     src/HudLayout.cpp
     src/Menu.cpp
+    src/OriginalMenu.cpp
     src/MessageBanner.cpp
     src/PauseMenu.cpp
     src/TextLayout.cpp

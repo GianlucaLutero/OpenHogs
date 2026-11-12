@@ -11,6 +11,7 @@
 #   MatchAudio     - voices, music and background sounds of a match
 #   MenuBackground - the original's picture behind the menus
 #   OriginalHud    - the original's HUD instruments: angle and power gauges, clock
+#   OriginalMenuView - the short menus as the original's brass list menu
 #   SoundPlayer    - mixer, sound device, sounds by name from the banks
 #   MenuControls   - menu keys and sounds
 #
@@ -30,6 +31,7 @@ add_executable(openhogs
     MatchAudio.cpp
     MenuBackground.cpp
     OriginalHud.cpp
+    OriginalMenuView.cpp
     SoundPlayer.cpp)
 
 target_link_libraries(openhogs PRIVATE

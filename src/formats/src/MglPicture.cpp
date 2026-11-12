@@ -99,8 +99,12 @@ std::vector<std::byte> decompressMgl(std::span<const std::byte> mgl) {
 
 RgbaImage decodeMglPicture(std::span<const std::byte> mgl) {
     auto image = decodeBitmap(decompressMgl(mgl));
+    // Most pictures were made from 15-bit art, where the key is stored as
+    // (248, 0, 248); others use (255, 0, 255). Comparing the top five bits
+    // of each channel, as a 15-bit screen would, catches both.
+    const auto top5 = [](std::uint8_t channel) { return channel >> 3; };
     for (std::size_t i = 0; i + 3 < image.pixels.size(); i += 4) {
-        if (image.pixels[i] == 255 && image.pixels[i + 1] == 0 && image.pixels[i + 2] == 255) {
+        if (top5(image.pixels[i]) == 31 && top5(image.pixels[i + 1]) == 0 && top5(image.pixels[i + 2]) == 31) {
             image.pixels[i + 3] = 0;
         }
     }

@@ -68,8 +68,9 @@ TEST_CASE("Damaged data is refused, not read past", "[formats][mgl]") {
 }
 
 TEST_CASE("Magenta pixels of menu pictures become transparent", "[formats][mgl]") {
-    // The PC front end draws pure magenta as see-through, which is how its
-    // brass panels sit on the background.
+    // The PC front end draws magenta as see-through, which is how its brass
+    // panels sit on the background. Most pictures store it in its 15-bit
+    // form (248, 0, 248), so that form must be caught as well.
     std::vector<std::byte> bmp;
     const auto u16 = [&](std::uint16_t v) { for (int i = 0; i < 2; ++i) bmp.push_back(static_cast<std::byte>((v >> (8 * i)) & 0xFF)); };
     const auto u32 = [&](std::uint32_t v) { for (int i = 0; i < 4; ++i) bmp.push_back(static_cast<std::byte>((v >> (8 * i)) & 0xFF)); };
@@ -78,7 +79,7 @@ TEST_CASE("Magenta pixels of menu pictures become transparent", "[formats][mgl]"
     bmp.push_back(std::byte{'M'});
     u32(62); u16(0); u16(0); u32(54);
     u32(40); u32(2); u32(1); u16(1); u16(24); u32(0); u32(8); u32(0); u32(0); u32(0); u32(0);
-    for (const int value : {255, 0, 255, 128, 128, 128, 0, 0}) bmp.push_back(static_cast<std::byte>(value));  // B G R
+    for (const int value : {248, 0, 248, 128, 128, 128, 0, 0}) bmp.push_back(static_cast<std::byte>(value));  // B G R
 
     std::vector<std::byte> mgl;
     for (std::size_t start = 0; start < bmp.size(); start += 63) {

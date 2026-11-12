@@ -15,7 +15,7 @@
 //   --no-sound           play without sound
 //   --no-intro           skip the start-up videos
 //   --video <file>       with --screenshot: show this video at --seconds
-//   --seconds <s>        with --screenshot: let the match run this long first
+//   --seconds <s>        with --screenshot: let the match (or the menu) run this long first
 //   --auto-walk          with --screenshot: the active hog runs forward meanwhile
 //   --weapon <n>         with --screenshot: the active hog selects its n-th weapon (1 = first)
 //   --fire-at <s>        with --screenshot: the active hog fires at s seconds
@@ -85,7 +85,7 @@ void printUsage() {
                  "  --no-sound           play without sound\n"
                  "  --no-intro           skip the start-up videos\n"
                  "  --video <file>       with --screenshot: show this video (e.g. Language/Streams/sheff.bik)\n"
-                 "  --seconds <s>        with --screenshot: let the match run this long first\n"
+                 "  --seconds <s>        with --screenshot: let the match (or the menu) run this long first\n"
                  "  --auto-walk          with --screenshot: the active hog runs forward meanwhile\n"
                  "  --weapon <n>         with --screenshot: the active hog selects its n-th weapon\n"
                  "  --fire-at <s>        with --screenshot: the active hog fires at s seconds\n"
@@ -265,6 +265,8 @@ int runGame(const Options& options) {
         app.sendMenuInputs(options.menuKeys);
         if (auto* started = app.game()) {
             started->simulate(options.seconds);
+        } else {
+            app.advanceMenus(options.seconds);
         }
     }
     app.saveScreenshot(*options.screenshotPath);

@@ -27,7 +27,8 @@ the hogs on it; teams take turns, and the active hog runs, jumps, swims,
 picks one of its weapons, aims and fires: fists and blades, pistols,
 rifles and machine guns, grenades, mortars and bazookas, TNT and mines.
 Hogs get hurt, thrown about and killed, and the last team standing wins.
-A main menu leads to the level choice and the volume options, and the
+A main menu, the original's brass machine with its dial and lamps, leads
+to the level choice and the volume options, and the
 match has the original's HUD and a pause menu, all in the game's own fonts and words
 (so in Italian with the Italian pack). Any team can be played by the
 computer, which picks its target and weapon, gets closer when it has to,
@@ -61,8 +62,9 @@ animations.
 | `original-hud`       | ✅ done | The original's brass instruments: angle gauge with the weapon icon and aim arrow, power gauge sliding up when charging, clock with rolling digits and warning lamp; turn messages in team colours; damage numbers above hurt hogs |
 | `original-audio`     | ✅ done | Sounds where the original plays them: hog voices (ready lines by health, battle cries, cries of pain) in each nation's accent, the sergeant's comments, the music of the CD tracks (menus, battle, the computer's nation tunes, victory), occasional distant battle noise instead of a loop |
 | `cutscenes`          | ✅ done | The original's Bink videos with their sound, decoded by OpenHogs' own player: the start-up films and the films between the campaign's islands; any key skips |
-| `mgl-pictures`       | 🔍 in review | The original's compressed `.mgl` pictures decoded: the menus over the game's own background; translated title screens, newspapers and headlines in the language pack |
-| fidelity blocks      | planned | `original-menus`, `mission-scripts`, `weapons-complete`, `version-variants`: videos, pictures, menus and missions exactly as in the original |
+| `mgl-pictures`       | ✅ done | The original's compressed `.mgl` pictures decoded: the menus over the game's own background; translated title screens, newspapers and headlines in the language pack |
+| `original-menus`     | 🔍 in review | The original's brass list menu (main menu, ONE PLAYER, ARE YOU SURE?) read from the executable: panel, bars, lamps, dial, racks, its spring animations and its font |
+| fidelity blocks      | planned | the other original screens, `mission-scripts`, `weapons-complete`, `version-variants`: videos, pictures, menus and missions exactly as in the original |
 | `release`            | planned | Packaged builds for Windows and Linux |
 
 ## Requirements
@@ -270,7 +272,8 @@ listed in [`docs/open-decisions.md`](docs/open-decisions.md).
 The weapons, their names, models and sounds are described in
 [`docs/formats/weapons.md`](docs/formats/weapons.md), the fonts and menu
 pictures in [`docs/formats/fonts.md`](docs/formats/fonts.md) and
-[`docs/formats/mgl.md`](docs/formats/mgl.md), the campaign
+[`docs/formats/mgl.md`](docs/formats/mgl.md), the menus' layout and animation in
+[`docs/formats/front-end.md`](docs/formats/front-end.md), the campaign
 in [`docs/formats/campaign.md`](docs/formats/campaign.md).
 
 ### Extracting the game data
