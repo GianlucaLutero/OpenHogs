@@ -57,14 +57,9 @@ Application::Application(const core::VirtualFileSystem& vfs, ApplicationOptions 
         playCutscenes(game::introCutscenes());
     }
 
-    // The first map circles behind the menus (docs/open-decisions.md).
-    if (!maps_.empty()) {
-        try {
-            background_ = std::make_unique<MenuBackground>(vfs, maps_.front());
-        } catch (const std::exception& error) {
-            std::cerr << "Warning: no menu background (" << error.what() << ")\n";
-        }
-    }
+    // The original front end's pictures; its background is behind the menus.
+    pictures_ = std::make_unique<FrontEndPictures>(vfs);
+    background_ = std::make_unique<MenuBackground>(*pictures_);
 }
 
 Application::~Application() {
@@ -77,6 +72,7 @@ Application::~Application() {
     campaign_.reset();
     frontEnd_.reset();
     background_.reset();
+    pictures_.reset();
     interface_.reset();
 }
 
@@ -271,22 +267,16 @@ void Application::update(double seconds) {
     }
     // The menus play the long theme in a loop, as the original's front end.
     sounds_->keepMusic(game::kThemeTrack, 1.0f, true);
-    if (background_) {
-        background_->update(seconds);
-    }
 }
 
 void Application::drawMenus(int width, int height) {
     const bool briefing = inCampaign_ && campaign_->showingBriefing();
-    if (background_ && !briefing) {
-        background_->draw(width, height);
-    } else {
-        glViewport(0, 0, width, height);
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    }
+    glViewport(0, 0, width, height);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     auto& ui = interface_->renderer();
     ui.begin(width, height);
+    if (!briefing) background_->draw(ui);
     if (inCampaign_) {
         if (!briefing) ui.drawRect(0.0f, 0.0f, ui.canvasWidth(), render::kCanvasHeight, kMenuShade);
         campaign_->draw();

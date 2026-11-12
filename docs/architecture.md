@@ -9,7 +9,7 @@ listed before it below.
 |--------|--------|----------------|
 | `core`    | done    | Shared building blocks: `BinaryReader`, `IniFile`, path helpers, `VirtualFileSystem`. No dependencies. |
 | `content` | done    | Replaceable content: user config, content packs, language selection. Builds the virtual file system the rest of the game reads from. |
-| `formats` | done | Parsers for the original file formats: MAD/MTD archives, text tables and encoding (with accents), TIM textures, models (VTX/NO2/FAC), maps (PMG/POG/PTG), sounds (WAV, `.srl` banks), the hogs' skeleton (HIR) and animations (mcap), PlayStation disc images and raw pictures, BMP pictures and the bitmap fonts. See [formats/](formats/). |
+| `formats` | done | Parsers for the original file formats: MAD/MTD archives, text tables and encoding (with accents), TIM textures, models (VTX/NO2/FAC), maps (PMG/POG/PTG), sounds (WAV, `.srl` banks), the hogs' skeleton (HIR) and animations (mcap), PlayStation disc images and raw pictures, BMP pictures and the bitmap fonts, `.mgl` compressed pictures (`MglPicture`). See [formats/](formats/). |
 | `tools/text` | done | `openhogs-text`: converts text tables to editable UTF-8 listings and back. |
 | `tools/langpack` | done | `openhogs-langpack`: builds a language pack from the PlayStation disc (text alignment, overrides, briefing conversion). |
 | `tools/extractor` | done | `openhogs-extract`: unpacks archives, converts textures to PNG and text tables to text. |
@@ -23,7 +23,7 @@ listed before it below.
 | `video`   | in progress | The game's cutscenes, Bink 1 videos: the container (`BinkFile`), pictures (`BinkVideoDecoder`, YUV planes to RGBA) and sound (`BinkAudioDecoder`, the RDFT variant), written from FFmpeg's decoder. No window or sound device. Unit tested. |
 | `apps/soundtest` | done | `openhogs-soundtest`: plays or renders any sound of the game. |
 | `game`    | in progress | Match state and rules, with no drawing, sound or window code. Done: `FixedTimestep` (simulation at 50 steps per second whatever the display rate), `TerrainHeightField`, `MapCollision` (terrain rules and the objects' collision boxes), `Hog` and `spawnHogs`, `AnimationPlayer` and `IdleAnimator`, `HogMovement`, `TurnSystem`, `Weapons` (the weapon table and loadouts), `Combat` (damage, death, explosions, bullets), `Projectiles`, `World` (turn phases: playing, resolving the shot, match over), `ChaseCamera`, `FieldConditions` (multiplayer settings applied to the map's hogs), `ComputerPlayer` (the computer opponent: `ShotPlanner` weighs every weapon against every enemy with the real flight rules, then the turn is played through the same `PlayerInput` as a person's). `Ranks` and `Campaign` (missions, squad, points, losses, saving, putting the squad on a map). `Levels` (the numbered levels of the executable with their sky), `Cutscenes` (which videos play at start-up and between missions) and `MatchSounds` (which voice, music and background sound plays when). |
-| `apps/game` | in progress | `openhogs`, the game: `Application` owns the window, the sound and the interface and switches between the menus and a match; `CampaignSession` runs a campaign (pages, briefings, missions, saving); `Gamepads` reads game controllers; `Game` is one match; `OriginalHud` draws its HUD with the original instruments; `MatchAudio` plays its voices, music and background; `CutscenePlayer` plays the original's videos. Connects the `game` and `ui` modules to the input, the renderers and the sound. |
+| `apps/game` | in progress | `openhogs`, the game: `Application` owns the window, the sound and the interface and switches between the menus and a match; `CampaignSession` runs a campaign (pages, briefings, missions, saving); `Gamepads` reads game controllers; `Game` is one match; `OriginalHud` draws its HUD with the original instruments; `MatchAudio` plays its voices, music and background; `CutscenePlayer` plays the original's videos; `FrontEndPictures` loads the front end's `.mgl` pictures and `MenuBackground` draws the original menu background. Connects the `game` and `ui` modules to the input, the renderers and the sound. |
 
 ## How files are found
 
@@ -52,8 +52,8 @@ final refinement phase.
 
 ## The game loop
 
-Outside a match, `openhogs` shows the menus (`ui::FrontEnd`) over a map
-seen from a circling camera; picking a level creates a `Game`, and leaving
+Outside a match, `openhogs` shows the menus (`ui::FrontEnd`) over the
+original background picture; picking a level creates a `Game`, and leaving
 the match destroys it. During a match it runs three things each frame, in
 this order:
 

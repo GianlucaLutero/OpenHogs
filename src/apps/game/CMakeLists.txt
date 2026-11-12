@@ -4,11 +4,12 @@
 #   Application    - window, sound, interface; switches menus <-> match
 #   CampaignSession - a campaign: squad pages, briefings, missions, saving
 #   CutscenePlayer - the original's videos (Bink), full screen with sound
+#   FrontEndPictures - the original front end's .mgl pictures (FEBMP.MAD)
 #   Game           - one match: world, camera, drawing, HUD, pause menu
 #   Gamepads       - game controllers for the menus and the matches
 #   Interface      - fonts, icons, texts and shared drawing of the 2D interface
 #   MatchAudio     - voices, music and background sounds of a match
-#   MenuBackground - the map circling behind the menus
+#   MenuBackground - the original's picture behind the menus
 #   OriginalHud    - the original's HUD instruments: angle and power gauges, clock
 #   SoundPlayer    - mixer, sound device, sounds by name from the banks
 #   MenuControls   - menu keys and sounds
@@ -22,6 +23,7 @@ add_executable(openhogs
     Application.cpp
     CampaignSession.cpp
     CutscenePlayer.cpp
+    FrontEndPictures.cpp
     Game.cpp
     Gamepads.cpp
     Interface.cpp

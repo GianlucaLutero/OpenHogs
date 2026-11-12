@@ -32,7 +32,6 @@ answer.
 | 26 | Weapons | Are belt and back weapons (grenades, launchers) moved into the hands when used? | Drawn where their model's bones place them (belt, back). | `docs/formats/weapons.md` |
 | 27 | Combat | Does an explosion leave a crater in the terrain? | No. | – |
 | 13 | Collisions | The tile flags and object boxes are used as found; the meaning of the 16-bit field after the box (1 for some bridge parts) and of the bytes at POG offsets 56–58 is unknown. Objects' X/Z tilts are ignored for collisions. | Boxes are upright and flat-topped; low boxes are floors, tall ones obstacles. | `src/game/src/MapCollision.cpp` |
-| 32 | Menus | The original's menu backgrounds, title screens, newspapers and cards are the `.mgl` pictures of `FEBmps/FEBMP.MAD`, whose compression is only partly decoded (`docs/formats/fonts.md`). | The menus are drawn over the first map of the list, seen from a slowly circling camera and darkened. | `src/apps/game/MenuBackground.cpp` |
 | 33 | Menus | What are the levels called, and which belong to multiplayer? gtext has names such as PLAY PEN or THE LAKE (entries 1–62), but how they map to the map files is not known yet. | The level list shows the map file names (BOOM, BRIDGE, CAMP...), every map of the game. | `ui::FrontEnd` |
 | 34 | Fonts | How wide is a space? The font tables give it no size. | A third of the letter height (10 pixels in BIG, 4 in SMALL). | `kSpaceWidthDivisor` in `src/formats/src/BitmapFont.cpp` |
 | 35 | Text | Does `>2N` mean a number with two digits ("MISSION 03")? | Yes: a zero-padded number of that width. | `ui::fillPlaceholders` |
@@ -63,6 +62,8 @@ answer.
 | 75 | Sound | The executable's background counters count frames; at which rate (assumed 25 per second). | 25 ticks per second. | `AmbienceScheduler::kTickSeconds` |
 | 76 | Videos | How the 320 × 240 videos are scaled to the screen (the PC executable leaves it to its renderer). | As large as the screen allows, proportions kept, black bars at the sides; smoothed (bilinear). | `CutscenePlayer::draw` |
 | 77 | Videos | The volume of the videos' sound: music or effects? | The music volume. | `SoundPlayer::playMusicSound` |
+| 78 | Menus | How the 640 × 480 menu background fits a window of other proportions (the executable draws it at 640 × 480). | Scaled to cover the whole window, proportions kept, the overflow cut off evenly. | `MenuBackground::draw` |
+| 79 | Language pack | The PlayStation's 640 × 256 title screens and newspapers are resized to the PC pictures they replace (bilinear); the campaign cards (`CARTE`) are not converted yet. | Resized; cards left for the campaign map. | `LanguagePackBuilder.cpp` |
 ## Design: what do we want?
 
 | # | Area | Open question | What OpenHogs does now | Where |
@@ -99,3 +100,4 @@ answer.
 | – | Background sound of a match (decision 5, 61) | No continuous loop: occasional distant battles and sounds of nature, the day bank everywhere, as the executable (`docs/formats/audio.md`). |
 | – | Sounds for hurt, death, a new turn and victory (decision 30) | As the executable: voices, P_HMMM, the victory tune or the theme (`docs/formats/audio.md`). |
 | – | `fmv 02` and `fmv 09` are empty on PC (decision 62) | Skipped silently, as the PC plays nothing; a content pack can supply them. |
+| – | Menu background (decision 32) | The original's `pigbkpc1` picture, now that the `.mgl` compression is decoded (`docs/formats/mgl.md`); the menu panels follow in block `original-menus`. |

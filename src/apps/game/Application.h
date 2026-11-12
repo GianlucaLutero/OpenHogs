@@ -21,6 +21,7 @@
 #include "CutscenePlayer.h"
 #include "Game.h"
 #include "Interface.h"
+#include "FrontEndPictures.h"
 #include "MenuBackground.h"
 #include "SoundPlayer.h"
 
@@ -102,7 +103,8 @@ private:
     std::unique_ptr<SoundPlayer> sounds_;  // never null (silent without sound)
     std::unique_ptr<Gamepads> gamepads_;
     std::unique_ptr<Interface> interface_;
-    std::unique_ptr<MenuBackground> background_;  // empty if the map failed to load
+    std::unique_ptr<FrontEndPictures> pictures_;  // FEbmps/FEBMP.MAD
+    std::unique_ptr<MenuBackground> background_;
     std::unique_ptr<ui::FrontEnd> frontEnd_;
     std::unique_ptr<CampaignSession> campaign_;
     bool inCampaign_ = false;      // the campaign pages are shown (or its match played)

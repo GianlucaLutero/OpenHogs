@@ -9,6 +9,8 @@
 //   data/Language/Text/gtext.bin + .ofs     in-game text
 //   data/Language/Text/fetext.bin + .ofs    menus
 //   data/Language/Tims/Briefing/LevelN.BMP  mission briefings
+//   data/Language/Tims/Title/*.bmp          title screens
+//   data/Language/Tims/Papers/*.bmp         newspapers and their headlines
 //   pack.ini                                manifest (Type = language)
 //
 // Text is aligned onto the PC tables (TextAlignment), then the optional
@@ -47,6 +49,7 @@ struct LanguagePackReport {
     TableReport gameText;   // gtext
     TableReport menuText;   // fetext
     std::size_t briefings = 0;
+    std::size_t pictures = 0;  // title screens, newspapers and headlines
     std::vector<std::string> warnings;
 };
 
