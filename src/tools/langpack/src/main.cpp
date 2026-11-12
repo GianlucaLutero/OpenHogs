@@ -110,6 +110,7 @@ int main(int argc, char* argv[]) {
         printTableReport("Game text", report.gameText);
         printTableReport("Menu text", report.menuText);
         std::cout << "Briefings: " << report.briefings << "\n";
+        std::cout << "Title screens, newspapers and headlines: " << report.pictures << "\n";
         for (const auto& warning : report.warnings) {
             std::cout << "warning: " << warning << "\n";
         }

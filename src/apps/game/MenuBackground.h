@@ -1,39 +1,27 @@
 // MenuBackground.h
 //
-// What is behind the menus: a map seen from a camera that slowly circles
-// above it, darkened so the menu stands out.
-//
-// The original shows full-screen pictures here (FEBmps/*.mgl), but their
-// compression is not decoded yet (docs/open-decisions.md); a live map is a
-// fitting stand-in that needs nothing new.
+// What is behind the menus: the original front end's background picture,
+// "pigbkpc1" (a blurred view of brass machinery, 640 x 480) from
+// FEbmps/FEBMP.MAD, stretched to cover the screen.
 
 #pragma once
 
-#include "openhogs/core/VirtualFileSystem.h"
-#include "openhogs/render/MapRenderer.h"
+#include "FrontEndPictures.h"
 
-#include <glm/glm.hpp>
-
-#include <memory>
-#include <string>
+#include "openhogs/render/UiRenderer.h"
 
 namespace openhogs::gameapp {
 
 class MenuBackground {
 public:
-    // Loads the map; needs a current OpenGL context. Throws if the map
-    // cannot be loaded.
-    MenuBackground(const core::VirtualFileSystem& vfs, const std::string& mapName);
+    explicit MenuBackground(FrontEndPictures& pictures);
 
-    void update(double seconds);
-    void draw(int width, int height) const;
+    // Draws the picture over the whole canvas (cut at the top and bottom on
+    // screens wider than 4:3); black if it is missing.
+    void draw(render::UiRenderer& ui) const;
 
 private:
-    std::unique_ptr<render::MapRenderer> renderer_;
-    glm::vec3 centre_{0.0f};
-    float radius_ = 0.0f;
-    float height_ = 0.0f;
-    float angleDegrees_ = 0.0f;
+    const render::UiImage* picture_ = nullptr;
 };
 
 } // namespace openhogs::gameapp

@@ -14,6 +14,7 @@
 #   SoundBank       - .SRL lists that number the sound effects
 #   Skeleton        - .HIR skeleton of the hogs
 #   MotionCapture   - mcap.mad animations of the hogs
+#   MglPicture      - .mgl pictures: the game's LZ compression (menu pictures, PS1 screens)
 #   BitmapImage     - .BMP pictures (fonts, menu icons)
 #   BitmapFont      - FEText .tab + .BMP fonts
 #
@@ -22,6 +23,7 @@
 add_library(openhogs_formats STATIC
     src/BitmapFont.cpp
     src/BitmapImage.cpp
+    src/MglPicture.cpp
     src/GameText.cpp
     src/MapObjects.cpp
     src/MapTerrain.cpp

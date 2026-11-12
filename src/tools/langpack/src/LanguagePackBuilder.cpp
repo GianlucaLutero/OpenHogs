@@ -4,7 +4,9 @@
 
 #include "openhogs/core/PathUtils.h"
 #include "openhogs/core/VirtualFileSystem.h"
+#include "openhogs/formats/BitmapImage.h"
 #include "openhogs/formats/GameText.h"
+#include "openhogs/formats/MglPicture.h"
 #include "openhogs/formats/PsxDisc.h"
 #include "openhogs/formats/RawImage.h"
 #include "openhogs/formats/TextTable.h"
@@ -12,7 +14,9 @@
 #include "openhogs/langpack/TextAlignment.h"
 #include "openhogs/langpack/TranslationOverrides.h"
 
+#include <algorithm>
 #include <array>
+#include <cstdio>
 #include <fstream>
 #include <stdexcept>
 #include <utility>
@@ -150,6 +154,113 @@ std::size_t buildBriefings(const core::VirtualFileSystem& game, const formats::P
     return count;
 }
 
+// --- Title screens and newspapers -------------------------------------------
+//
+// The disc keeps these as .mgl files (docs/formats/mgl.md): the title
+// screens and newspapers as raw 15-bit pictures of 640 x 256 (a PAL screen,
+// shown stretched to 4:3), each headline as two 4-bit TIMs, its left and
+// right halves.
+
+constexpr std::uint32_t kDiscScreenWidth = 640;
+constexpr std::uint32_t kDiscScreenHeight = 256;
+constexpr int kHeadlines = 26;
+
+// A PC picture and where its translation is on the disc.
+struct PictureSource {
+    const char* pcFile;    // under Language/Tims
+    std::string discFile;  // .mgl holding a 640 x 256 raw picture
+};
+
+std::vector<PictureSource> screenSources(const std::string& discLanguage) {
+    const std::string code = discLanguage.substr(0, 3);  // ITA, FRE, GER, SPA
+    const std::string papers = "NEWS/" + discLanguage + "/PAPERS/DAILY";
+    return {
+        {"Title/title.bmp", "LOAD/SPLSH" + code + ".MGL"},     // the title, in colour
+        {"Title/titlemon.bmp", "LOAD/TIT" + code + ".MGL"},    // the same in sepia
+        {"Papers/British.bmp", papers + "ENG.MGL"},
+        {"Papers/American.bmp", papers + "YAN.MGL"},
+        {"Papers/French.bmp", papers + "FRG.MGL"},
+        {"Papers/German.bmp", papers + "GER.MGL"},
+        {"Papers/Russian.bmp", papers + "RUS.MGL"},
+        {"Papers/Japan.bmp", papers + "JAP.MGL"},
+        {"Papers/teamlard.bmp", papers + "LRD.MGL"},
+    };
+}
+
+// Writes `picture` in place of the PC file `key`: same size, same folder
+// and file name (with their letter case).
+void replacePicture(const core::VirtualFileSystem& game, const fs::path& gameDirectory, const std::string& key,
+                    const formats::RgbaImage& picture, const fs::path& dataDirectory) {
+    const auto pcSize = readBitmapSize(game.readFile(key));
+    const fs::path relative = game.resolve(key)->lexically_relative(gameDirectory);
+    writeFile(dataDirectory / relative, encodeBitmap24(resizeBilinear(picture, pcSize.width, pcSize.height)));
+}
+
+// The two halves of a headline side by side, on the PC headline's
+// background colour (the colour the game cuts out).
+formats::RgbaImage joinHeadline(const formats::RgbaImage& left, const formats::RgbaImage& right,
+                                const formats::RgbaImage& pcHeadline) {
+    formats::RgbaImage joined;
+    joined.width = left.width + right.width;
+    joined.height = std::max(left.height, right.height);
+    const std::array<std::uint8_t, 4> background{pcHeadline.pixels[0], pcHeadline.pixels[1], pcHeadline.pixels[2], 255};
+    joined.pixels.resize(static_cast<std::size_t>(joined.width) * joined.height * 4);
+    for (std::size_t i = 0; i < joined.pixels.size(); i += 4) {
+        std::copy(background.begin(), background.end(), joined.pixels.begin() + static_cast<std::ptrdiff_t>(i));
+    }
+    const auto paste = [&](const formats::RgbaImage& half, std::uint32_t atX) {
+        for (std::uint32_t y = 0; y < half.height; ++y) {
+            for (std::uint32_t x = 0; x < half.width; ++x) {
+                const std::size_t from = (static_cast<std::size_t>(y) * half.width + x) * 4;
+                if (half.pixels[from + 3] == 0) continue;  // transparent: keep the background
+                const std::size_t to = (static_cast<std::size_t>(y) * joined.width + atX + x) * 4;
+                std::copy_n(half.pixels.begin() + static_cast<std::ptrdiff_t>(from), 4,
+                            joined.pixels.begin() + static_cast<std::ptrdiff_t>(to));
+            }
+        }
+    };
+    paste(left, 0);
+    paste(right, left.width);
+    return joined;
+}
+
+std::size_t buildPictures(const core::VirtualFileSystem& game, const fs::path& gameDirectory,
+                          const formats::PsxDisc& disc, const std::string& discLanguage,
+                          const fs::path& dataDirectory, std::vector<std::string>& warnings) {
+    std::size_t count = 0;
+    for (const auto& source : screenSources(discLanguage)) {
+        const std::string key = core::toLower(std::string("language/tims/") + source.pcFile);
+        if (!game.exists(key)) continue;
+        if (!disc.exists(source.discFile)) {
+            warnings.push_back("No " + source.discFile + " on the disc: kept " + key);
+            continue;
+        }
+        const auto raw = formats::decompressMgl(disc.readFile(source.discFile));
+        replacePicture(game, gameDirectory, key, formats::decodeRaw15(raw, kDiscScreenWidth, kDiscScreenHeight),
+                       dataDirectory);
+        ++count;
+    }
+
+    for (int number = 1; number <= kHeadlines; ++number) {
+        const std::string key = "language/tims/papers/text" + std::to_string(number) + ".bmp";
+        char discName[48];
+        std::snprintf(discName, sizeof discName, "TEXT%03d", number);
+        const std::string left = "NEWS/" + discLanguage + "/TEXTA/" + discName + "A.MGL";
+        const std::string right = "NEWS/" + discLanguage + "/TEXTB/" + discName + "B.MGL";
+        if (!game.exists(key)) continue;
+        if (!disc.exists(left) || !disc.exists(right)) {
+            warnings.push_back("No " + discLanguage + " headline " + std::to_string(number) + " on the disc: kept " + key);
+            continue;
+        }
+        const auto pcHeadline = formats::decodeBitmap(game.readFile(key));
+        const auto joined = joinHeadline(formats::decodeTim(formats::decompressMgl(disc.readFile(left))),
+                                         formats::decodeTim(formats::decompressMgl(disc.readFile(right))), pcHeadline);
+        replacePicture(game, gameDirectory, key, joined, dataDirectory);
+        ++count;
+    }
+    return count;
+}
+
 void writeManifest(const LanguagePackOptions& options, const std::string& discLanguage) {
     std::string name = discLanguage.substr(0, 1) + core::toLower(discLanguage.substr(1));
     const std::string manifest =
@@ -161,7 +272,7 @@ void writeManifest(const LanguagePackOptions& options, const std::string& discLa
         "Type        = language\n"
         "Language    = " + options.language + "\n"
         "Priority    = 100\n"
-        "Description = Text, menus and briefings of the PlayStation release. Speech stays in English, "
+        "Description = Text, menus, briefings, title screens and newspapers of the PlayStation release. Speech stays in English, "
         "as on the PlayStation.\n";
     const auto bytes = std::as_bytes(std::span(manifest.data(), manifest.size()));
     writeFile(options.outputDirectory / "pack.ini", bytes);
@@ -205,6 +316,7 @@ LanguagePackReport buildLanguagePack(const LanguagePackOptions& options) {
     report.gameText = buildTextTable(gameText, game, disc, overridesPointer, data);
     report.menuText = buildTextTable(menuText, game, disc, overridesPointer, data);
     report.briefings = buildBriefings(game, disc, discLanguage, data, report.warnings);
+    report.pictures = buildPictures(game, options.gameDirectory, disc, discLanguage, data, report.warnings);
 
     writeManifest(options, discLanguage);
     return report;

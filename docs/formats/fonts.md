@@ -67,22 +67,12 @@ their text entry, the icon of weapon *id* is entry *id* − 96.
 The icons have a near-black background (palette entry 0 is `#000002`),
 drawn as it is: it frames the icon in the HUD.
 
-## Full-screen pictures: `FEBmps/FEBMP.MAD` (not decoded yet)
+## Full-screen pictures: `FEBmps/FEBMP.MAD`
 
-237 `.mgl` pictures: the menu backgrounds (`pigbkpc1`, 640 × 480),
-`fullmenu`, the title screens `title1`–`title6`, nations, uniforms, the
-newspapers and cards of the campaign. Each is a compressed BMP. What is
-known so far of the compression, a byte-oriented LZ scheme:
-
-| First byte | Meaning |
-|------------|---------|
-| `00`–`1F` | a run of literal bytes: the count, then that many bytes |
-| `60`–`7F` | repeat the previous byte `(byte & 0x1F) + 3` times (`61` → 4, `62` → 5) |
-| `80`–`9F` | copy 3 bytes from `byte & 0x1F` bytes back |
-| `C0`–`DF` | a longer form with one extra byte, not understood yet |
-
-Until it is decoded, the menus are drawn over a map seen from a slowly
-circling camera instead (`docs/open-decisions.md`).
+237 `.mgl` pictures: the menu background (`pigbkpc1`, 640 × 480),
+`fullmenu`, the title plates `title1`–`title6`, nations, uniforms, the
+newspapers and cards of the campaign. Each is a compressed BMP; the
+compression and the contents are described in [mgl.md](mgl.md).
 
 ## Menu sounds: `FESounds/Fesounds.srl`
 
