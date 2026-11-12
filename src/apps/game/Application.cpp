@@ -4,6 +4,7 @@
 
 #include "MenuControls.h"
 
+#include "openhogs/game/Cutscenes.h"
 #include "openhogs/game/FieldConditions.h"
 #include "openhogs/game/MatchSounds.h"
 
@@ -52,6 +53,10 @@ Application::Application(const core::VirtualFileSystem& vfs, ApplicationOptions 
     frontEnd_->setSavedCampaign(CampaignSession::hasSave(savePath_));
     campaign_ = std::make_unique<CampaignSession>(vfs, *interface_, savePath_);
 
+    if (options.intro) {
+        playCutscenes(game::introCutscenes());
+    }
+
     // The first map circles behind the menus (docs/open-decisions.md).
     if (!maps_.empty()) {
         try {
@@ -66,6 +71,7 @@ Application::~Application() {
     // Explicit order: the match and the GPU resources go before the
     // window's OpenGL context (members are destroyed in reverse order, this
     // only makes it obvious).
+    cutscenes_.reset();
     game_.reset();
     gamepads_.reset();
     campaign_.reset();
@@ -94,12 +100,27 @@ void Application::startMatch(const GameOptions& options) {
     game_ = std::make_unique<Game>(vfs_, options, *interface_, *sounds_, *gamepads_);
 }
 
+void Application::playCutscenes(std::vector<std::string> paths) {
+    cutscenes_ = std::make_unique<CutscenePlayer>(vfs_, *sounds_, std::move(paths));
+    if (cutscenes_->finished()) cutscenes_.reset();
+}
+
+void Application::advanceCutscenes(double seconds) {
+    // In steps of a frame, as a running game would.
+    constexpr double kStep = 1.0 / 25.0;
+    for (double done = 0.0; cutscenes_ && done < seconds; done += kStep) {
+        if (!cutscenes_->update(kStep)) cutscenes_.reset();
+    }
+}
+
 void Application::leaveMatch() {
     if (campaignMatch_) {
-        // Back to the campaign's results page.
-        campaign_->missionEnded(*game_);
+        // Back to the campaign's results page, after the video of a
+        // conquered island, as in the original.
+        const auto videos = campaign_->missionEnded(*game_);
         campaignMatch_ = false;
         game_.reset();
+        if (!videos.empty()) playCutscenes(videos);
         return;
     }
     game_.reset();
@@ -203,6 +224,15 @@ void Application::handleEvent(const SDL_Event& event, bool& running) {
     if (gamepads_->handleDeviceEvent(event)) {
         return;
     }
+    if (cutscenes_) {
+        // Any key, button or click skips the videos.
+        if (event.type == SDL_EVENT_KEY_DOWN || event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN ||
+            event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+            cutscenes_->skip();
+            cutscenes_.reset();
+        }
+        return;
+    }
     if (game_) {
         switch (game_->handleEvent(event)) {
         case GameRequest::LeaveMatch:
@@ -231,6 +261,10 @@ void Application::handleEvent(const SDL_Event& event, bool& running) {
 }
 
 void Application::update(double seconds) {
+    if (cutscenes_) {
+        if (!cutscenes_->update(seconds)) cutscenes_.reset();
+        return;
+    }
     if (game_) {
         game_->advance(seconds);
         return;
@@ -264,6 +298,16 @@ void Application::drawMenus(int width, int height) {
 }
 
 void Application::draw(int width, int height) {
+    if (cutscenes_) {
+        glViewport(0, 0, width, height);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        auto& ui = interface_->renderer();
+        ui.begin(width, height);
+        cutscenes_->draw(ui);
+        ui.end();
+        return;
+    }
     if (game_) {
         game_->draw(width, height);
     } else {

@@ -3,6 +3,7 @@
 #
 #   Application    - window, sound, interface; switches menus <-> match
 #   CampaignSession - a campaign: squad pages, briefings, missions, saving
+#   CutscenePlayer - the original's videos (Bink), full screen with sound
 #   Game           - one match: world, camera, drawing, HUD, pause menu
 #   Gamepads       - game controllers for the menus and the matches
 #   Interface      - fonts, icons, texts and shared drawing of the 2D interface
@@ -20,6 +21,7 @@ add_executable(openhogs
     main.cpp
     Application.cpp
     CampaignSession.cpp
+    CutscenePlayer.cpp
     Game.cpp
     Gamepads.cpp
     Interface.cpp
@@ -33,6 +35,7 @@ target_link_libraries(openhogs PRIVATE
     OpenHogs::game
     OpenHogs::render
     OpenHogs::ui
+    OpenHogs::video
     OpenHogs::audio
     OpenHogs::audio_device
     SDL3::SDL3)

@@ -16,7 +16,6 @@ answer.
 | 2 | Maps | Multiplayer maps (e.g. `BOOM`) place several hogs of different classes on the same spot. Which ones does the game keep? Probably chosen by the game mode, maybe via the type id (POG offset 46) or the flags (offset 88). | All of them are created; overlapping hogs can step apart. | `spawnHogs` in `src/game/src/Hog.cpp` |
 | 3 | Expressions | Which face does the original show in which situation? The code that picks it was not found. | Rules per animation based on the animation names; replaceable with `Chars/expressions.ini`. | `src/scene/src/CharacterExpressions.cpp` |
 | 4 | Idle | How does the original choose idle animations and how often? | Standing cycle, 20% chance of a fidget (animations 28, 31, 34–36) at the end of each cycle. | `src/game/src/IdleAnimator.cpp` |
-| 5 | Sound | Which ambient sound plays during a match, and does it depend on the map or time of day (`sfxday`/`sfxnight`)? | `AMB_1D.wav` (first sound of `sfxday.srl`) in a loop, at 60% volume. | `src/apps/game/Game.cpp` |
 | 6 | Movement | Turning speed, backward walking speed, swimming speed. | Turning 150°/s; backwards 180 units/s (measured from the walk-back stride); swimming at half speed. Running (480 units/s) is measured from the run cycle's stride and is not in question. | `src/game/include/openhogs/game/HogMovement.h` |
 | 7 | Movement | Jump height and length; does a standing jump go straight up? | Up at 900 units/s with gravity 2400 units/s² (about 170 units high); forward at running speed only if *forward* is held. | `HogMovement.h` |
 | 8 | Movement | Which slopes can a hog climb? What exactly does the tiles' wall flag mean (and the "slip" byte next to it)? | Wall tiles cannot be walked up (only down); other slopes up to 2:1; steps up to 96 units. The slip byte is ignored. | `src/game/include/openhogs/game/MapCollision.h` |
@@ -49,8 +48,6 @@ answer.
 | 52 | Campaign | The turn-time table has 99 for Boot Camp and missions 1–2: no limit, or 99 seconds? | 99 seconds. | `kMissions` in `src/game/src/Campaign.cpp` |
 | 56 | Multiplayer | The original's PIGS setting offers "-1 / NORMAL / +1" or numbers (fetext 314–329 are not labelled); its default "depends on the number of teams". Up to four teams in the original. | PIGS: NORMAL (as on the map) or 1 to 8 per team (fewer if the map has fewer); every team of the map can play (FINAL has six). | `FrontEnd` field conditions, `applyFieldConditions` |
 | 57 | Multiplayer | Sudden death "at a turn": counted in turns or in rounds? What does it do besides health 1? | In rounds (every team has played once more): when round 10, 20 or 30 begins every hog is left with 1 health; banner SUDDEN DEATH and the big explosion sound (E_1000P). | `World::turnBegan` |
-| 61 | Sound | The PC game loads `sfxnight.srl` on night and sunset levels, but it is a copy of `sfxday.srl`, so `AMB_1N`/`AMB_2N` are never heard; and there is no continuous ambience at all, only occasional sounds. | As the PC: the day bank everywhere, occasional `AMB_1D`/`AMB_2D` and distant battles (`AmbienceScheduler`). | `game::AmbienceScheduler` |
-| 62 | Videos | `fmv 02` (second intro film) and `fmv 09` (hard-mode ending) are 1-byte placeholders on PC. Skip them, or let a content pack supply them? | Listed in the schedule like the PlayStation; a missing or empty file is simply skipped. | `game::introCutscenes`, `game::campaignCutscenes` |
 | 63 | Levels | The level property records (0xD4010) have 14 more fields after the sky, apparently colours (fog, light). | Only the sky is used; the rest are decoded in block `original-hud`/`original-audio` when needed. | `src/game/src/Levels.cpp` |
 | 64 | HUD | How the instruments ease in and out (the executable computes the curve with floating point code not decoded yet). | From 200 pixels below in 19 ticks of 1/25 s, slowing down as they arrive: 200 × (1 − t/19)². | `HudSlide::offset` |
 | 65 | HUD | The clock lamp's glow (computed each frame from values not decoded) and when the power lamp `pcpie4` is lit (the executable: for all weapons but a few). | A steady glow (+97 on each colour channel); the power lamp lights while the power is being charged. | `lampColour`, `OriginalHud::drawPowerGauge` |
@@ -64,6 +61,8 @@ answer.
 | 73 | Music | The nation's tune is played when the turn of a team of type 2 starts, read as the computer (0 = a person at this computer, the type that gets the weapon menu). | The computer's turns get their nation's tune; people's turns get none. | `MatchAudio::turnStarted` |
 | 74 | Speech | Sergeant lines not used yet: crates and pick-ups (SGEN05-10), mission objects (SGEN11-12), extra campaign comments (SGEN02, SGEN04), the front end (SGEN22), Boot Camp (`Train1`). | Not played; with blocks `mission-scripts` and `original-menus`. | `docs/formats/audio.md` |
 | 75 | Sound | The executable's background counters count frames; at which rate (assumed 25 per second). | 25 ticks per second. | `AmbienceScheduler::kTickSeconds` |
+| 76 | Videos | How the 320 × 240 videos are scaled to the screen (the PC executable leaves it to its renderer). | As large as the screen allows, proportions kept, black bars at the sides; smoothed (bilinear). | `CutscenePlayer::draw` |
+| 77 | Videos | The volume of the videos' sound: music or effects? | The music volume. | `SoundPlayer::playMusicSound` |
 ## Design: what do we want?
 
 | # | Area | Open question | What OpenHogs does now | Where |
@@ -75,7 +74,6 @@ answer.
 | 18 | Damage | Fall damage: from which height, how much? | Falls up to 400 units are harmless, then 1 point per 10 units. | `src/game/include/openhogs/game/Combat.h` |
 | 28 | Controls | Weapon keys. | Q/E change weapon, R/F aim up/down, Ctrl or X fire (hold to throw further). | `src/apps/game/Game.cpp` |
 | 29 | Effects | Explosions, tracers and the aiming line are plain coloured shapes; the original's effect sprites are still to be found. | Yellow-to-red ball, yellow dots, white dots (always visible); health bars over the hogs. | `src/render/src/EffectsRenderer.cpp` |
-| 30 | Sound | Sounds for hurt, death, a new turn and victory. | From the executable (`docs/formats/audio.md`): hurt = the hog's cry of pain (P_OWW if it has no voice or someone is speaking), death `P_MOAN`, a new turn = the hog's "ready" line (or `P_HMMM` for the computer), the end = the victory tune or the theme. | `MatchAudio` |
 | 31 | Aiming | What should the aiming arc show when not charging? | The arc at full power; while charging, at the current power. | `World::aimPreview` |
 | 19 | CI | Re-enable the Linux jobs (GCC, Clang) once their package installation step no longer hangs. | Only Windows (MSVC) runs on pull requests; GCC and Clang are run locally before each PR. | `.github/workflows/build.yml` |
 | 39 | Menus | The multiplayer setup (game modes such as DEATH MATCH or SURVIVAL, turn time, health, number of players) and what ONE PLAYER offers besides the campaign. | ONE PLAYER → DEATH MATCH is a skirmish on any level: the team that plays first is the player's, the others the computer's. MULTI-PLAYER: the map's own teams, each PLAYER (default) or CPU on the PLAYERS page. | `ui::FrontEnd` |
@@ -98,3 +96,6 @@ answer.
 |---|----------|--------|
 | – | Animation speed | 25 frames per second, confirmed against the original game (Gianluca). |
 | – | When does CI run? | On pull requests only, not on every push (Gianluca). |
+| – | Background sound of a match (decision 5, 61) | No continuous loop: occasional distant battles and sounds of nature, the day bank everywhere, as the executable (`docs/formats/audio.md`). |
+| – | Sounds for hurt, death, a new turn and victory (decision 30) | As the executable: voices, P_HMMM, the victory tune or the theme (`docs/formats/audio.md`). |
+| – | `fmv 02` and `fmv 09` are empty on PC (decision 62) | Skipped silently, as the PC plays nothing; a content pack can supply them. |

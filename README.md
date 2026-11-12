@@ -59,8 +59,9 @@ animations.
 | `local-multiplayer`  | ✅ done | Nation and PLAYER/CPU/OFF for every team, field conditions (hogs per team, turn time, health, sudden death), gamepads in menus and matches |
 | `exe-analysis`       | ✅ done | The original executable studied with Ghidra: the exact level table (KEEP was missing, mission 1 is ESTU), skies and night sounds, the video schedule; `tools/ghidra` |
 | `original-hud`       | ✅ done | The original's brass instruments: angle gauge with the weapon icon and aim arrow, power gauge sliding up when charging, clock with rolling digits and warning lamp; turn messages in team colours; damage numbers above hurt hogs |
-| `original-audio`     | 🔍 in review | Sounds where the original plays them: hog voices (ready lines by health, battle cries, cries of pain) in each nation's accent, the sergeant's comments, the music of the CD tracks (menus, battle, the computer's nation tunes, victory), occasional distant battle noise instead of a loop |
-| fidelity blocks      | planned | `cutscenes`, `mgl-pictures`, `original-menus`, `mission-scripts`, `weapons-complete`, `version-variants`: videos, pictures, menus and missions exactly as in the original |
+| `original-audio`     | ✅ done | Sounds where the original plays them: hog voices (ready lines by health, battle cries, cries of pain) in each nation's accent, the sergeant's comments, the music of the CD tracks (menus, battle, the computer's nation tunes, victory), occasional distant battle noise instead of a loop |
+| `cutscenes`          | 🔍 in review | The original's Bink videos with their sound, decoded by OpenHogs' own player: the start-up films and the films between the campaign's islands; any key skips |
+| fidelity blocks      | planned | `mgl-pictures`, `original-menus`, `mission-scripts`, `weapons-complete`, `version-variants`: videos, pictures, menus and missions exactly as in the original |
 | `release`            | planned | Packaged builds for Windows and Linux |
 
 ## Requirements
@@ -149,7 +150,11 @@ Directory = C:\Program Files (x86)\Steam\steamapps\common\HogsofWar
 
 ### Starting the game
 
-`openhogs` is the game itself. It opens on the **main menu**:
+`openhogs` is the game itself. Like the original it first plays the
+start-up films (the Infogrames and Sheffield House logos, then the
+introduction); any key, button or click skips them, and `--no-intro`
+leaves them out. In the campaign, the films between the islands play
+after the mission that conquers one. Then the **main menu**:
 
 - **ONE PLAYER** → **NEW GAME** → **SELECT TEAM**: start the campaign for
   one of the six nations (see below); **LOAD GAME** continues it;
@@ -551,6 +556,7 @@ OpenHogs/
 │   ├── formats/          parsers: archives, text, fonts, textures, models, maps, sounds, skeleton,
 │   │                     animations, PlayStation disc
 │   ├── audio/            sound effects, speech, music: decoding, mixing, sound card
+│   ├── video/            the cutscenes: Bink video and sound decoding
 │   ├── scene/            maps and posed hogs turned into triangles (no GPU code)
 │   ├── game/             match state and rules: world, hogs, camera, fixed timestep
 │   ├── ui/               menus, HUD and text layout logic (no drawing code)
@@ -592,6 +598,7 @@ OpenHogs builds on the work of others. Thank you!
 | [Hogs of War walkthrough (SuperCheats)](https://www.supercheats.com/playstation/walkthroughs/hogsofwar-walkthrough02.txt) | its anonymous author | all rights reserved (consulted, not copied) | Reference for the ranks' health and weapons and the order and names of the 25 missions, checked against the tables in the game's executable. |
 | [Hogs of War (Wikipedia)](https://en.wikipedia.org/wiki/Hogs_of_War) | Wikipedia contributors | CC BY-SA 4.0 (consulted, not copied) | The islands and the medals for conquering a region. |
 | [Ghidra](https://github.com/NationalSecurityAgency/ghidra) | National Security Agency and contributors | Apache-2.0 | Used as a tool to study the original executable (`tools/ghidra`); nothing it produces is part of OpenHogs. |
+| [FFmpeg](https://ffmpeg.org) Bink decoders (`libavcodec/bink.c`, `binkdsp.c`, `binkaudio.c`, `binkdata.h`, `libavformat/bink.c`) | Konstantin Shishkov, Peter Ross, Daniel Verkamp and the FFmpeg developers | LGPL-2.1-or-later | The specification of the Bink video and audio formats: OpenHogs' decoder in `src/video` is written from them, and the codec's constant tables (`src/video/src/BinkTables.cpp`) are copied with their notice. |
 | [Catch2](https://github.com/catchorg/Catch2) | Catch2 authors (Martin Hořeňovský, Phil Nash and contributors) | BSL-1.0 | Unit test framework (downloaded at build time). |
 
 *Hogs of War* was developed by Infogrames Sheffield House (formerly Gremlin

@@ -52,8 +52,9 @@ public:
     GameOptions missionOptions();
 
     // A mission's match has ended (`game` is over or was aborted): records
-    // it and shows the results page.
-    void missionEnded(const Game& game);
+    // it and shows the results page. Returns the videos the original plays
+    // at that point (an island conquered, the campaign won), if any.
+    std::vector<std::string> missionEnded(const Game& game);
 
     // Draws the current page over whatever is behind (between
     // renderer().begin() and end()).

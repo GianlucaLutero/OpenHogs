@@ -122,6 +122,15 @@ void SoundPlayer::playMusic(int track, float volume, bool loop) {
     }
 }
 
+void SoundPlayer::playMusicSound(std::shared_ptr<const formats::PcmSound> sound, float volume) {
+    if (!mixer_) {
+        return;
+    }
+    stopMusic();
+    music_ = mixer_->play(std::move(sound), audio::SoundCategory::Music, volume);
+    musicTrack_ = -1;  // not a numbered track
+}
+
 void SoundPlayer::keepMusic(int track, float volume, bool loop) {
     if (mixer_ && music_ && musicTrack_ == track && mixer_->isPlaying(*music_)) {
         return;

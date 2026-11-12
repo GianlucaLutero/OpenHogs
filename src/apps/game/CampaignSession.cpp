@@ -2,6 +2,8 @@
 
 #include "CampaignSession.h"
 
+#include "openhogs/game/Cutscenes.h"
+
 #include "MenuControls.h"
 
 #include "openhogs/core/IniFile.h"
@@ -176,8 +178,9 @@ GameOptions CampaignSession::missionOptions() {
     return options;
 }
 
-void CampaignSession::missionEnded(const Game& game) {
-    if (!campaign_ || !played_) return;
+std::vector<std::string> CampaignSession::missionEnded(const Game& game) {
+    if (!campaign_ || !played_) return {};
+    std::vector<std::string> videos;
     const auto& world = game.world();
     ui::MissionSummary summary;
     summary.missionNumber = played_->number;
@@ -188,9 +191,11 @@ void CampaignSession::missionEnded(const Game& game) {
         report.deathOrder = game.squadDeaths();
         summary.outcome = campaign_->recordMission(report, *played_->deployed);
         save();
+        if (report.won) videos = game::campaignCutscenes(campaign_->nextMission());
     }
     played_.reset();
     menu_->showResults(*campaign_, summary);
+    return videos;
 }
 
 void CampaignSession::draw() {

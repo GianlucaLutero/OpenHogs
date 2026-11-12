@@ -59,6 +59,10 @@ public:
     void keepMusic(int track, float volume = 1.0f, bool loop = false);
     void stopMusic();
 
+    // Plays decoded sound (a video's soundtrack) as music, stopping the
+    // music playing; stopMusic() stops it too.
+    void playMusicSound(std::shared_ptr<const formats::PcmSound> sound, float volume = 1.0f);
+
     void setVolumes(const audio::Volumes& volumes);
     audio::Volumes volumes() const { return volumes_; }
 
