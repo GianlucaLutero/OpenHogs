@@ -2,6 +2,8 @@
 
 #include "openhogs/scene/ModelMesh.h"
 
+#include <glm/gtc/matrix_transform.hpp>
+
 #include <algorithm>
 #include <functional>
 #include <map>
@@ -97,6 +99,22 @@ Mesh buildPosedModelMesh(const formats::Model& model, const std::vector<glm::uve
             vertex.brightness = kAmbientLight + (1.0f - kAmbientLight) * std::max(0.0f, glm::dot(normal, kLightDirection));
         }
     });
+}
+
+Mesh buildCarriedModelMesh(const formats::Model& model, const std::vector<glm::uvec2>& textureSizes, const Pose& pose,
+                           std::size_t bone) {
+    if (bone >= pose.size()) {
+        throw std::invalid_argument("Cannot carry an object on bone " + std::to_string(bone) + ", the pose has only " +
+                                    std::to_string(pose.size()) + " bones");
+    }
+    // Half a turn around Y: X and Z change sign. Found by comparing the
+    // weapons with the original's poses: without it every gun points
+    // backwards and the jetpack's rocket sits on the hog's chest.
+    const glm::mat4 halfTurn = glm::scale(glm::mat4(1.0f), glm::vec3(-1.0f, 1.0f, -1.0f));
+    Pose carried(1, pose[bone] * halfTurn);
+    formats::Model rigid = model;
+    for (auto& vertex : rigid.vertices) vertex.bone = 0;
+    return buildPosedModelMesh(rigid, textureSizes, carried);
 }
 
 } // namespace openhogs::scene

@@ -115,6 +115,9 @@ public:
 private:
     void handleAiming(std::size_t hogIndex, const PlayerInput& input, double seconds, std::vector<GameEvent>& events);
     void fire(std::size_t hogIndex, float power, std::vector<GameEvent>& events);
+    void updateWeaponStance(Hog& hog) const;
+    void hurtSwimmers(double seconds, std::vector<GameEvent>& events);
+    std::optional<glm::vec3> nearestShore(const glm::vec3& from) const;
     void fireMelee(std::size_t hogIndex, const WeaponSpec& spec, std::vector<GameEvent>& events);
     void fireShot(std::vector<GameEvent>& events);
     void stepProjectiles(double seconds, std::vector<GameEvent>& events);

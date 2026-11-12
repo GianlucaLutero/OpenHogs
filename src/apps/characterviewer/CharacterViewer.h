@@ -52,6 +52,9 @@ struct ViewerState {
     float orbitYawDegrees = -60.0f;
     float orbitPitchDegrees = -10.0f;  // negative: looking down at the hog
     float orbitDistance = 650.0f;      // world units
+    // A model of Chars/WEAPONS.MAD (e.g. WE_RIF) to show in the hog's
+    // hand, as the game does for the drawn weapon; empty: none.
+    std::string weapon;
 };
 
 class CharacterViewer {
@@ -72,6 +75,7 @@ public:
 private:
     void loadModel();
     void loadTeam();
+    void loadWeapon();
     void handleEvent(const SDL_Event& event, bool& running);
     void changeAnimation(int step);
     void stepFrame(int step);
@@ -93,6 +97,9 @@ private:
     formats::Model model_;
     std::vector<glm::uvec2> textureSizes_;
     scene::FaceTextureSlots faceSlots_;
+    std::optional<formats::Model> weaponModel_;  // state_.weapon, if found
+    std::unique_ptr<render::CharacterTextureSet> weaponTextures_;
+    std::vector<glm::uvec2> weaponTextureSizes_;
     double clockSeconds_ = 0.0;  // drives blinking, runs even when paused
 };
 

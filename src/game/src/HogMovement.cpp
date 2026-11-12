@@ -48,12 +48,24 @@ bool hitsOtherHog(const std::vector<Hog>& hogs, std::size_t self, const glm::vec
 // `from` if the way is blocked: a slope too steep, an obstacle, another
 // hog. If the full step is blocked, each of its two components is tried
 // alone, so a hog walking at an angle into a wall slides along it.
+// Whether a point is inside the play area of the controlled hog
+// (kPlayAreaHalfSize around the centre of the map).
+bool insidePlayArea(const MapCollision& map, float x, float z) {
+    const auto& terrain = map.terrain();
+    const float centreX = (terrain.minX() + terrain.maxX()) / 2.0f;
+    const float centreZ = (terrain.minZ() + terrain.maxZ()) / 2.0f;
+    return std::abs(x - centreX) <= kPlayAreaHalfSize && std::abs(z - centreZ) <= kPlayAreaHalfSize;
+}
+
 glm::vec3 walk(const std::vector<Hog>& hogs, std::size_t self, const glm::vec3& from, const glm::vec3& step,
-               const MapCollision& map) {
+               const MapCollision& map, bool keepInPlayArea) {
     const auto tryStep = [&](const glm::vec3& move, glm::vec3& result) {
         glm::vec3 to = from + move;
         if (!map.terrain().contains(to.x, to.z)) {
             return false;  // the edge of the map
+        }
+        if (keepInPlayArea && !insidePlayArea(map, to.x, to.z)) {
+            return false;
         }
         const float ground = map.groundHeight(to.x, to.z, from.y);
         if (ground > from.y + kMaxStepHeight) {
@@ -91,14 +103,18 @@ void startFall(Hog& hog, const glm::vec3& horizontalVelocity) {
 }
 
 void moveInAir(std::vector<Hog>& hogs, std::size_t self, double seconds, const MapCollision& map,
-               MovementEvents& events) {
+               bool keepInPlayArea, MovementEvents& events) {
     Hog& hog = hogs[self];
     const auto dt = static_cast<float>(seconds);
     hog.motion.velocity.y -= kGravity * dt;
 
     // Horizontal part first: a wall stops the forward motion, not the fall.
     glm::vec3 next = hog.position + glm::vec3(hog.motion.velocity.x, 0.0f, hog.motion.velocity.z) * dt;
-    if (!map.terrain().contains(next.x, next.z) || map.hitsObstacle(next) || hitsOtherHog(hogs, self, next)) {
+    // The player's own jump stays in the play area; a hog thrown by a blast
+    // may fly anywhere (off the map, it falls to its death).
+    const bool outOfBounds = keepInPlayArea && hog.motion.jumped && !insidePlayArea(map, next.x, next.z);
+    if (!map.terrain().contains(next.x, next.z) || outOfBounds || map.hitsObstacle(next) ||
+        hitsOtherHog(hogs, self, next)) {
         next = hog.position;
         hog.motion.velocity.x = 0.0f;
         hog.motion.velocity.z = 0.0f;
@@ -122,9 +138,11 @@ void moveInAir(std::vector<Hog>& hogs, std::size_t self, double seconds, const M
             hog.motion.state = MotionState::Landing;
             hog.animation.play(kJumpEndAnimation, Repeat::Once);
         } else {
-            // Killed in the air: it dies where it lands.
+            // Killed in the air: it dies where it lands (sinking in water).
             hog.motion.state = MotionState::Dead;
-            hog.animation.play(kFirstDyingAnimation + self % 3, Repeat::Once);
+            hog.position = next;
+            const bool inWater = isInWater(hog, map);
+            hog.animation.play(inWater ? kDrowningAnimation : kFirstDyingAnimation + self % 3, Repeat::Once);
         }
     }
     hog.position = next;
@@ -167,7 +185,7 @@ MovementEvents moveHog(std::vector<Hog>& hogs, std::size_t hogIndex, const Movem
     if (hog.motion.state == MotionState::Dead) {
         // Lies still once its dying animation has played.
     } else if (hog.motion.state == MotionState::Airborne) {
-        moveInAir(hogs, hogIndex, seconds, map, events);
+        moveInAir(hogs, hogIndex, seconds, map, input.keepInPlayArea, events);
     } else if (hog.motion.state == MotionState::Landing) {
         if (hog.animation.finished()) {
             hog.motion.state = MotionState::Standing;
@@ -181,7 +199,10 @@ MovementEvents moveHog(std::vector<Hog>& hogs, std::size_t hogIndex, const Movem
         const bool inWater = wasInWater;
         const int direction = canMove ? (input.forward ? 1 : 0) - (input.backward ? 1 : 0) : 0;
 
-        if (canMove && input.jump && !inWater) {
+        // No jump out of water, nor off a wall tile (the executable: "Can't
+        // jump from this tile type").
+        const bool onWall = map.terrain().tileAt(hog.position.x, hog.position.z).isWall;
+        if (canMove && input.jump && !inWater && !onWall) {
             hog.motion.state = MotionState::Airborne;
             hog.motion.jumped = true;
             hog.motion.highestPoint = hog.position.y;
@@ -194,7 +215,7 @@ MovementEvents moveHog(std::vector<Hog>& hogs, std::size_t hogIndex, const Movem
             if (inWater) speed *= kSwimSpeedFactor;
             const glm::vec3 step = hogFacing(hog) * (speed * dt * static_cast<float>(direction));
             const glm::vec3 before = hog.position;
-            hog.position = walk(hogs, hogIndex, before, step, map);
+            hog.position = walk(hogs, hogIndex, before, step, map, input.keepInPlayArea);
             events.distanceMoved = glm::length(glm::vec2(hog.position.x - before.x, hog.position.z - before.z));
 
             const bool blocked = events.distanceMoved < 0.01f;
@@ -230,7 +251,9 @@ MovementEvents moveHog(std::vector<Hog>& hogs, std::size_t hogIndex, const Movem
     // Standing still: the held animation (aiming, firing) if there is one,
     // otherwise the idle behaviour chooses.
     if (hog.motion.state == MotionState::Standing) {
-        if (hog.held) {
+        if (hog.held && hog.held->repeat == Repeat::Hold) {
+            hog.animation.hold(hog.held->animation, hog.held->frame);
+        } else if (hog.held) {
             hog.animation.play(hog.held->animation, hog.held->repeat);
         } else {
             hog.idle.update(hog.animation, animations);

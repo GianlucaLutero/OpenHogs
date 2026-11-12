@@ -32,8 +32,10 @@ namespace openhogs::game {
 inline constexpr float kHogRadius = 70.0f;
 inline constexpr float kHogHeight = 300.0f;
 
-// Highest step a hog can walk up (or down without falling), world units.
-inline constexpr float kMaxStepHeight = 96.0f;
+// Highest step a hog can walk up (or down without falling), world units:
+// the executable tries to lift a blocked hog by up to 128 units, in steps
+// of 32, before it gives up (FUN_00478ca0, "Trying step up").
+inline constexpr float kMaxStepHeight = 128.0f;
 
 // Steepest terrain a hog can walk up: 2 units up per unit forward (about
 // 63 degrees). Tiles marked as walls in the map cannot be walked up at all.

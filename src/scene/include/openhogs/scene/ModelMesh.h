@@ -32,4 +32,19 @@ Mesh buildModelMesh(const formats::Model& model, const std::vector<glm::uvec2>& 
 // not have.
 Mesh buildPosedModelMesh(const formats::Model& model, const std::vector<glm::uvec2>& textureSizes, const Pose& pose);
 
+// The bones the original renderer (Data/_d3d.dll, afDrawAnimModel) hangs
+// separate objects from: the weapon in hand, a hat, a pack on the back.
+inline constexpr std::size_t kHandBone = 5;  // what the hog holds (weapons)
+inline constexpr std::size_t kHeadBone = 2;  // hats
+inline constexpr std::size_t kBackBone = 1;  // the jetpack's rocket
+
+// An object carried by a hog (a weapon, a hat), moved as one rigid piece
+// with `bone` of `pose`, as the original renderer draws them: the bones
+// stored in the object's vertices are ignored, and the object is turned
+// half a turn around the bone's vertical axis (the renderer's objects face
+// the other way from the hogs' body parts). Throws std::invalid_argument
+// if the pose has no such bone.
+Mesh buildCarriedModelMesh(const formats::Model& model, const std::vector<glm::uvec2>& textureSizes, const Pose& pose,
+                           std::size_t bone);
+
 } // namespace openhogs::scene

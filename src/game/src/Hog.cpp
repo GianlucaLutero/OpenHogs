@@ -102,6 +102,17 @@ glm::vec3 hogFacing(const Hog& hog) {
     return {std::cos(hog.yawRadians), 0.0f, -std::sin(hog.yawRadians)};
 }
 
+float yawFacing(const glm::vec3& direction) {
+    // The inverse of hogFacing: facing = (cos yaw, 0, -sin yaw).
+    return std::atan2(-direction.z, direction.x);
+}
+
+bool swimsSafely(const Hog& hog) {
+    if (hog.characterClass == nullptr) return false;
+    const std::string_view id = hog.characterClass->id;
+    return id == "ace" || id == "legend";
+}
+
 glm::vec3 hogCentre(const Hog& hog) {
     return hog.position + glm::vec3(0.0f, kHogBodyHeight / 2.0f, 0.0f);
 }
