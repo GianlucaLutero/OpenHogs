@@ -38,10 +38,11 @@ inline constexpr float kLowestAimDegrees = -30.0f;
 inline constexpr float kHighestAimDegrees = 80.0f;
 
 // An animation the hog holds while it stands still instead of its idle
-// behaviour: the aiming pose of its weapon, or the firing animation.
+// behaviour: taking out its weapon, the aiming pose, the firing animation.
 struct HeldAnimation {
     std::size_t animation = 0;
     AnimationPlayer::Repeat repeat = AnimationPlayer::Repeat::Loop;
+    float frame = 0.0f;  // Repeat::Hold: the frame shown (the aiming angle)
 };
 
 struct Hog {
@@ -55,6 +56,8 @@ struct Hog {
     HogMotion motion;               // walking, jumping, swimming...
     std::optional<HeldAnimation> held;  // overrides the idle behaviour when set
 
+    float secondsInWater = 0.0f;    // swimming time not yet charged as damage
+
     float health = kMaxHealth;
     float maxHealth = kMaxHealth;   // unhurt health (campaign ranks differ)
     bool alive = true;
@@ -63,6 +66,10 @@ struct Hog {
     std::string name;
     std::optional<RankId> rank;
     std::optional<std::size_t> squadIndex;  // its place in the campaign squad
+
+    // The weapon in its hand, shown with its model: taken out when the hog
+    // stands still in its turn, put away when it moves (as the original).
+    std::optional<WeaponId> drawnWeapon;
 
     std::vector<WeaponId> weapons;  // what it carries (from its class)
     std::size_t weaponSlot = 0;     // the selected one
@@ -91,6 +98,18 @@ std::string_view teamNation(int team);
 
 // Unit vector of the direction the hog faces, parallel to the ground.
 glm::vec3 hogFacing(const Hog& hog);
+
+// The yaw (Hog::yawRadians) that faces along `direction` (its height is
+// ignored).
+float yawFacing(const glm::vec3& direction);
+
+// Swimming hurts every hog except the two officer ranks, Commando (the
+// "ace" class) and Hero ("legend"), as the game's guides say: they swim
+// without harm. The others lose kSwimDamagePerSecond health every second
+// spent in the water ("even a full health pig drowns very quickly"; the
+// exact rate is not known, see docs/open-decisions.md).
+bool swimsSafely(const Hog& hog);
+inline constexpr float kSwimDamagePerSecond = 10.0f;
 
 // The centre of the hog's body (half way up), the point explosions and
 // bullets aim at.

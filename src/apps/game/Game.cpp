@@ -436,13 +436,18 @@ void Game::drawHog(const render::Camera& camera, int width, int height, const ga
 
     hogRenderer_->drawHog(camera, width, height, mesh, *look.textures, game::hogModelToWorld(hog));
 
-    // The active hog shows its selected weapon. Like the body, weapon
-    // models say which bone each vertex follows: pistols the right hand,
-    // rifles the right forearm, grenades and launchers the hips (worn at
-    // the belt or on the back). See docs/formats/characters.md.
-    if (world_.activeHog() == index && hog.alive && world_.phase() != game::MatchPhase::Over && weaponTextures_) {
-        if (const auto* weapon = weaponModel(game::weaponSpec(hog.selectedWeapon()).model)) {
-            const auto weaponMesh = scene::buildPosedModelMesh(*weapon, weaponTextureSizes_, pose);
+    // The weapon in the hog's hand, drawn as the original's renderer does:
+    // one rigid piece following the hand (scene::buildCarriedModelMesh).
+    // A grenade, a mine or TNT leaves the hand once it is thrown or put
+    // down.
+    if (hog.drawnWeapon && hog.alive && world_.phase() != game::MatchPhase::Over && weaponTextures_) {
+        const auto& spec = game::weaponSpec(*hog.drawnWeapon);
+        const bool released = (spec.kind == game::WeaponKind::Thrown || spec.kind == game::WeaponKind::Placed) &&
+                              world_.phase() != game::MatchPhase::Playing &&
+                              hog.animation.animation() == spec.useAnimation && hog.animation.finished();
+        const auto* weapon = released ? nullptr : weaponModel(spec.model);
+        if (weapon) {
+            const auto weaponMesh = scene::buildCarriedModelMesh(*weapon, weaponTextureSizes_, pose, scene::kHandBone);
             hogRenderer_->drawHog(camera, width, height, weaponMesh, *weaponTextures_, game::hogModelToWorld(hog));
         }
     }

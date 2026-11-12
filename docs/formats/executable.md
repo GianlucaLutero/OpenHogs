@@ -128,6 +128,27 @@ during the start-up videos skips the rest of them. OpenHogs:
 
 Their positions on screen and how they move: `docs/formats/hud.md`.
 
+## Hogs: weapons, movement, water
+
+- The weapon in a hog's hand, its aiming pose and its "getting out"
+  animation come from the weapon table at 0x4D7300; the renderer carries
+  the weapon rigidly on bone 5. See [weapons.md](weapons.md).
+- `FUN_0046b1e0` moves a hog. The hog the player controls is kept within
+  ±0x3000 (12288 units) of the map's centre, one block short of each edge
+  ("Blocked by world limits"). `FUN_00478ca0` tries a blocked step again
+  up to 128 units higher, in steps of 32 ("Trying step up"), then sideways
+  ("Trying sidestep").
+- `FUN_0046afc0`: no jump from wall triangles or from water ("Can't jump
+  from this tile type").
+- A point is water when its tile has surface 4 (water) or 11 (lava) and
+  the renderer's `afIsPointWatery` says its texture is water there (the
+  textures are analysed for water colours). The hog enters the swimming
+  state (`FUN_00470190`, the `FT_WATER` splash) with animation 5 if it holds
+  a weapon, 6 otherwise. A hog dying in water plays animation 74 with
+  `P_DROWN`; elsewhere one of 57-73 at random.
+- `FUN_00472dd0` finds the direction of the nearest shore for a hog in
+  the water that swims back by itself.
+
 ## Front end
 
 The menus are a table of 52 screens drawn by screen type, with springs and

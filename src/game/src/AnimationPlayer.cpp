@@ -38,6 +38,12 @@ void AnimationPlayer::play(std::size_t animation, Repeat repeat, bool restart) {
     wrapped_ = false;
 }
 
+void AnimationPlayer::hold(std::size_t animation, float frame) {
+    play(animation, Repeat::Hold);
+    frame_ = std::max(0.0f, frame);
+    previousFrame_ = frame_;
+}
+
 void AnimationPlayer::update(double seconds, const std::vector<formats::Animation>& animations) {
     completedCycle_ = false;
     wrapped_ = false;
@@ -52,6 +58,10 @@ void AnimationPlayer::update(double seconds, const std::vector<formats::Animatio
 
     const auto& current = animations[existingOrFirst(animation_, animations)];
     const auto lastFrame = static_cast<float>(current.frames.size() - 1);
+    if (repeat_ == Repeat::Hold) {
+        frame_ = std::min(frame_, lastFrame);
+        return;
+    }
     frame_ += static_cast<float>(seconds) * scene::kAnimationFramesPerSecond;
 
     if (repeat_ == Repeat::Once) {

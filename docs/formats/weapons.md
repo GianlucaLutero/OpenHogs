@@ -45,21 +45,66 @@ airstrikes, vehicles...) are listed in `docs/open-decisions.md`.
 
 ## Models: `Chars/WEAPONS.MAD` and `.MTD`
 
-29 models (`WE_RIF`, `WE_PIS`, `WE_GREN`, `WE_TNT`, `bazookr`, `mortr`...)
-in the usual VTX/NO2/FAC format, textured from `WEAPONS.MTD` (126 TIMs).
+29 models in the usual VTX/NO2/FAC format, textured from `WEAPONS.MTD`
+(126 TIMs), in this order (the executable numbers them from 1):
 
-Like the hogs' bodies, every vertex names a bone of the hogs' skeleton and
-is stored relative to it, which tells where the weapon is carried:
+```
+1 WE_KNIFE  2 WE_SWORD  3 WE_PROD  4 WE_PIS  5 WE_AUTP  6 WE_RIF  7 WE_TELR
+8 WE_MGUN  9 WE_LEWIS  10 WE_BLUND  11 WE_FLAME  12 WE_GREN  13 WE_HEG
+14 WE_ROLL  15 WE_TNT  16 WE_SMOKE  17 bazookr  18 mortr  19 airbrst
+20 WE_MINE  21 WE_SPADE  22 WE_RADIO  23 WE_TELE  24 WE_PARA  25 RPACK
+26 WE_BANG  27 WE_BALL  28 grenlau  29 rocklau
+```
 
-| Bone | Weapons | Meaning |
-|------|---------|---------|
-| 8 (right hand) | `WE_PIS`, `WE_AUTP` | held in the hand |
-| 7 (right elbow) | `WE_RIF`, `WE_KNIFE`, part of `WE_TELR` | held along the forearm |
-| 0 (pelvis) | grenades, TNT, mines, launchers, `RPACK`... | worn at the belt or on the back |
+### How a hog holds its weapon
 
-OpenHogs draws the selected weapon of the active hog this way, posed with
-the hog. Whether the original moves belt and back items into the hands
-when they are used is not known yet.
+The renderer (`Data/_d3d.dll`, `afDrawAnimModel`) draws a hog, then up to
+three separate objects with the matrices of its bones: the weapon in hand
+(hog field +0x40) with **bone 5**, a hat (+0x44) with bone 2 (the head)
+and a pack (+0x48, only `RPACK`, the jetpack's rocket) with bone 1. They
+are drawn as rigid objects (`afDrawObj`): the bone numbers stored in the
+weapons' vertices (8, 7 or 0) are **not** used. Compared with the hogs'
+body parts the objects face the other way: OpenHogs turns them half a
+turn around the bone's Y axis (X and Z change sign,
+`scene::buildCarriedModelMesh`). Without it every gun points backwards
+and the rocket sits on the hog's chest.
+
+### The weapon table (executable)
+
+80-byte rows at 0x4D7300, one per text entry from 96 (row = entry − 96):
+
+| Offset | Meaning |
+|--------|---------|
+| +0x0C | model in hand (1-based, above; 0 = none) |
+| +0x14 | 1 for thrown or launched projectiles |
+| +0x15 | 1 if the weapon has an aiming pose |
+| +0x20 | animation when used (−1: none, guns fire from the aiming pose) |
+| +0x50 | aiming animation (23 handgun, 24 rifle, 25 machine gun, 26 heavy) |
+| +0x54 | "getting out" animation (12 handgun ... 18 sword/knife) |
+
+| Weapon | Model | Out | Aim | Use |
+|--------|-------|-----|-----|-----|
+| TROTTER | – | 17 | – | 21 |
+| KNIFE, SWORD | `WE_KNIFE`, `WE_SWORD` | 18 | – | 21 |
+| BAYONET | `WE_RIF` | 14 | 25 | 22 |
+| PISTOL | `WE_PIS` | 12 | 23 | – |
+| RIFLE, RIFLE BURST | `WE_RIF` | 13 | 24 | – |
+| MACHINE GUN, HEAVY M-GUN | `WE_MGUN`, `WE_LEWIS` | 14 | 25 | – |
+| SNIPER RIFLE | `WE_TELR` | 13 | 24 | – |
+| SHOTGUN, SUPER SHOTGUN | `WE_BLUND` | 13 | 24 | – |
+| FLAME THROWER | `WE_FLAME` | 14 | 25 | – |
+| ROCKET LAUNCHER, GUIDED and HOMING MISSILE | `rocklau` | 15 | 26 | – |
+| grenades (all kinds) | `WE_GREN` (`WE_ROLL` roller, `WE_SMOKE` gases) | 17 | – | 19 |
+| MORTAR, BAZOOKA, GRENADE LAUNCHER | `mortr`, `bazookr`, `grenlau` | 15 | 26 | – |
+| AIRBURST | `airbrst` | 15 | 26 | – |
+| MINE, ANTI-P MINE, TNT, SUPER TNT | `WE_MINE`, `WE_TNT`, `WE_BANG` | 17 | – | 77 |
+
+The **aiming animations** have 65 frames, one pose per angle: frame 0
+points straight up, 32 level, 64 straight down. The executable keeps the
+hog on the frame of its aim (`FUN_00469360`: frame = (0x400 − pitch) × 2,
+in 1/64ths of a frame, with 0x400 = 90°). When the hog stands still the
+weapon is taken out with its "getting out" animation (`FUN_00469090`,
+"Started normal holstering") and it is put away while the hog moves.
 
 ## Sounds: `Audio/sfxday.srl`
 

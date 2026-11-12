@@ -27,6 +27,7 @@ public:
     enum class Repeat {
         Loop,  // starts again after the last frame (running, standing)
         Once,  // stops on the last frame (a jump, a fidget)
+        Hold,  // stays on the frame given to hold() (an aiming pose)
     };
 
     // Starts `animation`, cross-fading from the current pose. Asking for
@@ -34,6 +35,11 @@ public:
     // changes nothing, so callers can ask every step; `restart` forces it
     // to start again from the first frame.
     void play(std::size_t animation, Repeat repeat, bool restart = false);
+
+    // Shows one frame of `animation` and stays on it, cross-fading from the
+    // current pose if the animation changes. The aiming animations work
+    // this way: each frame is the pose for one aiming angle.
+    void hold(std::size_t animation, float frame);
 
     // Jumps to a frame without cross-fading (e.g. to desynchronise hogs).
     void setFrame(float frame) { frame_ = frame; }

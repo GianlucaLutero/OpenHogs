@@ -149,12 +149,85 @@ void World::handleAiming(std::size_t hogIndex, const PlayerInput& input, double 
     }
 }
 
+void World::updateWeaponStance(Hog& hog) const {
+    // As the original: the weapon is put away while the hog moves...
+    const auto state = hog.motion.state;
+    if (state != MotionState::Standing && state != MotionState::Turning) {
+        hog.drawnWeapon.reset();
+        hog.held.reset();
+        return;
+    }
+    // ...and taken out again (with its "getting out" animation) when it
+    // stands still, or when another weapon is chosen.
+    const WeaponSpec& spec = weaponSpec(hog.selectedWeapon());
+    if (hog.drawnWeapon != spec.id) {
+        hog.drawnWeapon = spec.id;
+        hog.held = HeldAnimation{spec.drawAnimation, AnimationPlayer::Repeat::Once};
+        hog.animation.play(spec.drawAnimation, AnimationPlayer::Repeat::Once, true);
+        return;
+    }
+    const bool drawing = hog.held && hog.held->animation == spec.drawAnimation &&
+                         hog.held->repeat == AnimationPlayer::Repeat::Once &&
+                         !(hog.animation.animation() == spec.drawAnimation && hog.animation.finished());
+    if (drawing) return;
+    // Then the aiming pose follows the aim (weapons without one keep the
+    // last frame of taking the weapon out).
+    if (spec.aimAnimation != kNoAnimation) {
+        hog.held = HeldAnimation{spec.aimAnimation, AnimationPlayer::Repeat::Hold, aimPoseFrame(hog.aimDegrees)};
+    }
+}
+
+void World::hurtSwimmers(double seconds, std::vector<GameEvent>& events) {
+    for (std::size_t i = 0; i < hogs_.size(); ++i) {
+        Hog& hog = hogs_[i];
+        if (!hog.alive || hog.motion.state != MotionState::Swimming || swimsSafely(hog)) {
+            hog.secondsInWater = 0.0f;
+            continue;
+        }
+        // Charged once a second, so the damage shows as whole numbers.
+        hog.secondsInWater += static_cast<float>(seconds);
+        while (hog.secondsInWater >= 1.0f && hog.alive) {
+            hog.secondsInWater -= 1.0f;
+            damageHog(hogs_, i, kSwimDamagePerSecond, events);
+        }
+    }
+}
+
+std::optional<glm::vec3> World::nearestShore(const glm::vec3& from) const {
+    // Rings of tiles around the hog, nearest first.
+    const auto& terrain = map_.terrain();
+    constexpr int kSearchTiles = 32;
+    constexpr float kTile = static_cast<float>(formats::kTileSize);
+    for (int ring = 1; ring <= kSearchTiles; ++ring) {
+        std::optional<glm::vec3> best;
+        float bestDistance = 0.0f;
+        for (int dz = -ring; dz <= ring; ++dz) {
+            for (int dx = -ring; dx <= ring; ++dx) {
+                if (std::max(std::abs(dx), std::abs(dz)) != ring) continue;
+                const float x = from.x + static_cast<float>(dx) * kTile;
+                const float z = from.z + static_cast<float>(dz) * kTile;
+                if (!terrain.contains(x, z) || terrain.tileAt(x, z).isWater) continue;
+                const float distance = glm::length(glm::vec2(x - from.x, z - from.z));
+                if (!best || distance < bestDistance) {
+                    best = glm::vec3(x, from.y, z);
+                    bestDistance = distance;
+                }
+            }
+        }
+        if (best) return best;
+    }
+    return std::nullopt;
+}
+
 void World::fire(std::size_t hogIndex, float power, std::vector<GameEvent>& events) {
     Hog& hog = hogs_[hogIndex];
     const WeaponSpec& spec = weaponSpec(hog.selectedWeapon());
 
-    hog.held = HeldAnimation{spec.useAnimation, AnimationPlayer::Repeat::Once};
-    hog.animation.play(spec.useAnimation, AnimationPlayer::Repeat::Once, true);
+    // Guns fire from the aiming pose; other weapons have their own motion.
+    if (spec.useAnimation != kNoAnimation) {
+        hog.held = HeldAnimation{spec.useAnimation, AnimationPlayer::Repeat::Once};
+        hog.animation.play(spec.useAnimation, AnimationPlayer::Repeat::Once, true);
+    }
     phase_ = MatchPhase::Resolving;
     settleSecondsLeft_ = kSettleSeconds;
 
@@ -369,6 +442,7 @@ void World::finishMatch(std::vector<GameEvent>& events) {
 void World::startNextTurn(std::vector<GameEvent>& events) {
     for (auto& hog : hogs_) {
         hog.held.reset();
+        hog.drawnWeapon.reset();
         hog.charging = false;
     }
     if (matchIsDecided()) {
@@ -414,15 +488,7 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
     if (playing) {
         handleAiming(*active, input, seconds, events);
         Hog& hog = hogs_[*active];
-        // While still aiming, the hog holds its weapon's aiming pose.
-        if (phase_ == MatchPhase::Playing && hog.alive) {
-            const auto& spec = weaponSpec(hog.selectedWeapon());
-            if (spec.aimAnimation != kStandingAnimation) {
-                hog.held = HeldAnimation{spec.aimAnimation, AnimationPlayer::Repeat::Loop};
-            } else {
-                hog.held.reset();
-            }
-        }
+        if (phase_ == MatchPhase::Playing && hog.alive) updateWeaponStance(hog);
     }
 
     float distanceMoved = 0.0f;
@@ -431,10 +497,20 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
         bool canMove = false;
         if (active && i == *active && phase_ == MatchPhase::Playing) {
             movement = input.movement;
+            movement.keepInPlayArea = true;
             canMove = turns_->canMove();
             if (hogs_[i].charging) {
                 // Charging a throw: the hog may turn to aim, not walk away.
                 movement.forward = movement.backward = movement.jump = false;
+            }
+        } else if (hogs_[i].alive && hogs_[i].motion.state == MotionState::Swimming) {
+            // A hog nobody controls swims to the nearest shore by itself, as
+            // in the original (FUN_00472dd0 looks for the nearest dry tile).
+            if (const auto shore = nearestShore(hogs_[i].position)) {
+                const glm::vec3 way = *shore - hogs_[i].position;
+                hogs_[i].yawRadians = yawFacing(way);
+                movement.forward = true;
+                canMove = true;
             }
         }
         const auto moved = moveHog(hogs_, i, movement, canMove, seconds, map_, animations);
@@ -446,6 +522,8 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
             distanceMoved = moved.distanceMoved;
         }
     }
+
+    hurtSwimmers(seconds, events);
 
     if (burst_) {
         burst_->secondsToNextShot -= static_cast<float>(seconds);

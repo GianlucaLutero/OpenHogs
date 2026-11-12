@@ -13,6 +13,7 @@
 //                          japanese, russian, teamlard (default: british)
 //   --detail <level>       high, medium or low (default: high)
 //   --animation <n>        animation number (default: 0)
+//   --weapon <model>       also show a weapon model posed with the hog (e.g. WE_RIF)
 //   --frame <n>            start frame (default: 0)
 //   --fps <n>              playback speed in frames per second (default: 25)
 //   --expression <name>    face: auto (follows the animation, the default),
@@ -58,6 +59,7 @@ struct Options {
     float frame = 0.0f;
     float framesPerSecond = 25.0f;
     std::string expression = "auto";
+    std::string weapon;
     bool blink = true;
     std::optional<std::pair<float, float>> view;  // yaw, pitch
     std::optional<float> distance;
@@ -76,6 +78,7 @@ void printUsage() {
                  "  --team <name>        british, american, french, german, japanese, russian, teamlard\n"
                  "  --detail <level>     high, medium or low\n"
                  "  --animation <n>      animation number (see --list)\n"
+                 "  --weapon <model>     show a weapon of Chars/WEAPONS.MAD with the hog (e.g. WE_RIF)\n"
                  "  --frame <n>          start frame\n"
                  "  --fps <n>            playback speed (default 25 frames per second)\n"
                  "  --expression <name>  auto, neutral, happy, sad, shocked, angry, eyes-closed, dying, gormless\n"
@@ -135,6 +138,8 @@ std::optional<Options> parseArguments(const std::vector<std::string>& args) {
                 options.animation = static_cast<std::size_t>(std::stoul(value));
             } else if (arg == "--frame") {
                 options.frame = std::stof(value);
+            } else if (arg == "--weapon") {
+                options.weapon = value;
             } else if (arg == "--expression") {
                 options.expression = core::toLower(value);
             } else if (arg == "--fps") {
@@ -207,6 +212,7 @@ characterviewer::ViewerState makeStartState(const Options& options, const scene:
                                  " animations (0 to " + std::to_string(library.animations().size() - 1) + ")");
     }
     state.animation = options.animation;
+    state.weapon = options.weapon;
     state.frame = options.frame;
     state.framesPerSecond = options.framesPerSecond;
     state.blinking = options.blink;

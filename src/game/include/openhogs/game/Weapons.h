@@ -93,15 +93,31 @@ struct WeaponSpec {
     // How hard a hit throws a hog (world units per second at the centre).
     float knockback = 0.0f;
 
-    // Presentation: the hog's animation while aiming and when firing
-    // (numbers as in scene::animationName), the launch sound in the bank
-    // Audio/sfxday.srl, and the model of the weapon in Chars/WEAPONS.MAD
-    // (empty: none).
+    // Presentation, as the original's weapon table (warhogs_.exe at
+    // 0x4D7300, see docs/formats/weapons.md); animation numbers as in
+    // scene::animationName:
+    //   - drawAnimation: the hog takes the weapon out ("Getting out Rifle");
+    //   - aimAnimation: the aiming pose, whose frames go from straight up
+    //     (0) to straight down (the last), see aimPoseFrame(); kNoAnimation
+    //     for weapons without one (the hog keeps the end of drawAnimation);
+    //   - useAnimation: played when it is used (a punch, a throw);
+    //     kNoAnimation for guns, which fire from the aiming pose;
+    //   - model: the weapon in the hog's hand, in Chars/WEAPONS.MAD (empty:
+    //     none), and the launch sound in the bank Audio/sfxday.srl.
+    std::size_t drawAnimation = 0;
     std::size_t aimAnimation = 0;
     std::size_t useAnimation = 0;
     std::string_view launchSound;
     std::string_view model;
 };
+
+// "No animation" in WeaponSpec.
+inline constexpr std::size_t kNoAnimation = static_cast<std::size_t>(-1);
+
+// The frame of an aiming animation for an aim `degrees` above the horizon:
+// the original's 65-frame aiming animations hold one pose per angle, from
+// straight up (frame 0) through level (32) to straight down (64).
+float aimPoseFrame(float degrees);
 
 // The specification of a weapon.
 const WeaponSpec& weaponSpec(WeaponId id);

@@ -63,8 +63,9 @@ animations.
 | `original-audio`     | ✅ done | Sounds where the original plays them: hog voices (ready lines by health, battle cries, cries of pain) in each nation's accent, the sergeant's comments, the music of the CD tracks (menus, battle, the computer's nation tunes, victory), occasional distant battle noise instead of a loop |
 | `cutscenes`          | ✅ done | The original's Bink videos with their sound, decoded by OpenHogs' own player: the start-up films and the films between the campaign's islands; any key skips |
 | `mgl-pictures`       | ✅ done | The original's compressed `.mgl` pictures decoded: the menus over the game's own background; translated title screens, newspapers and headlines in the language pack |
-| `original-menus`     | 🔍 in review | The original's brass list menu (main menu, ONE PLAYER, ARE YOU SURE?) read from the executable: panel, bars, lamps, dial, racks, its spring animations and its font |
-| fidelity blocks      | planned | the other original screens, `mission-scripts`, `weapons-complete`, `version-variants`: videos, pictures, menus and missions exactly as in the original |
+| `original-menus`     | ✅ done | The original's brass list menu (main menu, ONE PLAYER, ARE YOU SURE?) read from the executable: panel, bars, lamps, dial, racks, its spring animations and its font |
+| `hog-handling`       | 🔍 in review | Weapons held as in the original (in the hand, aiming pose following the angle, taken out standing and put away moving, the right model for each weapon); the play area's limits, higher steps, no jumping off walls; swimming that hurts all but Commandos and Heroes, drowning, swimming back to the shore |
+| fidelity blocks      | planned | `original-screens`, `mission-scripts`, `weapons-complete`, `version-variants`: videos, pictures, menus and missions exactly as in the original |
 | `release`            | planned | Packaged builds for Windows and Linux |
 
 ## Requirements
@@ -444,6 +445,7 @@ build\bin\Release\openhogs-characterviewer.exe --class ace --team american
 | `--team <name>` | `british`, `american`, `french`, `german`, `japanese`, `russian`, `teamlard` |
 | `--detail <level>` | `high`, `medium` or `low` |
 | `--animation <n>` / `--frame <n>` | animation and frame to start from |
+| `--weapon <model>` | a weapon of `Chars/WEAPONS.MAD` in the hog's hand, as in the game (e.g. `WE_RIF` with animation 24, the rifle's aiming pose; frame 0 aims straight up, 32 level, 64 straight down) |
 | `--fps <n>` | playback speed (default 25 frames per second) |
 | `--expression <name>` | force a face: `neutral`, `happy`, `sad`, `shocked`, `angry`, `eyes-closed`, `dying`, `gormless` (default `auto`: follows the animation) |
 | `--no-blink` | do not blink |

@@ -31,12 +31,13 @@ namespace openhogs::game {
 inline constexpr std::size_t kRunAnimation = 0;           // "Run cycle (normal)", 17 frames
 inline constexpr std::size_t kWalkBackAnimation = 3;      // "Walk cycle (backwards)"
 inline constexpr std::size_t kTurnAnimation = 4;          // "Turning on Spot"
-inline constexpr std::size_t kSwimAnimation = 5;          // "Swimming"
+inline constexpr std::size_t kSwimAnimation = 6;          // "Swimming like Rick": with nothing in hand (the executable uses 5 only with a weapon out)
 inline constexpr std::size_t kJumpStartAnimation = 8;     // "Jumping - Start"
 inline constexpr std::size_t kJumpMiddleAnimation = 9;    // "Jumping - Middle"
 inline constexpr std::size_t kJumpEndAnimation = 10;      // "Jumping - End"
 inline constexpr std::size_t kFallAnimation = 38;         // "Flying through air/falling"
 inline constexpr std::size_t kFirstDyingAnimation = 47;   // "Dying #1", #2 and #3 follow
+inline constexpr std::size_t kDrowningAnimation = 74;     // sinking: the executable's death in water
 
 // Speeds in world units per second.
 // The run cycle's feet travel 326 model units (163 world units) per step,
@@ -57,7 +58,15 @@ struct MovementInput {
     bool turnLeft = false;
     bool turnRight = false;
     bool jump = false;  // only acted on when the hog stands on the ground
+    // The hog the player controls stays inside the play area: the
+    // executable stops it kPlayAreaHalfSize from the centre of the map,
+    // one block short of the edge ("Blocked by world limits").
+    bool keepInPlayArea = false;
 };
+
+// Half the side of the square the controlled hog may move in, centred on
+// the map (world units; the map itself is 16 blocks of 2048 = 32768 wide).
+inline constexpr float kPlayAreaHalfSize = 12288.0f;
 
 // What happened during the step, for sounds and the turn rules.
 struct MovementEvents {

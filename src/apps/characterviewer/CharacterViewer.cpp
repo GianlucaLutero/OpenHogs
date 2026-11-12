@@ -6,6 +6,7 @@
 #include "openhogs/scene/ModelMesh.h"
 
 #include <SDL3/SDL.h>
+#include <glm/gtc/matrix_transform.hpp>
 #include <glad/gl.h>
 
 #include <algorithm>
@@ -59,12 +60,27 @@ CharacterViewer::CharacterViewer(const scene::CharacterLibrary& library, const V
     renderer_ = std::make_unique<render::CharacterRenderer>();
     loadModel();
     loadTeam();
+    loadWeapon();
     updateCamera();
     updateTitle();
 }
 
 CharacterViewer::~CharacterViewer() {
-    renderer_.reset();  // GPU resources must go before the window's context
+    weaponTextures_.reset();  // GPU resources must go before the window's context
+    renderer_.reset();
+}
+
+void CharacterViewer::loadWeapon() {
+    if (state_.weapon.empty()) return;
+    try {
+        const auto textures = library_.loadWeaponTextures();
+        weaponTextures_ = std::make_unique<render::CharacterTextureSet>(textures);
+        weaponTextureSizes_ = scene::textureSizes(textures);
+        weaponModel_ = library_.loadWeaponModel(state_.weapon);
+    } catch (const std::exception& error) {
+        std::cerr << "Warning: no weapon " << state_.weapon << " (" << error.what() << ")\n";
+        weaponModel_.reset();
+    }
 }
 
 void CharacterViewer::loadModel() {
@@ -202,6 +218,16 @@ void CharacterViewer::draw(int width, int height) {
     const bool masked = scene::characterClasses()[state_.classIndex].masked;
     scene::applyExpression(mesh, faceSlots_, currentExpression(), eyesClosed, masked);
     renderer_->draw(camera_, width, height, mesh, scene::kStandingFeetDepth);
+    if (weaponModel_ && weaponTextures_) {
+        // Placed like the hog in CharacterRenderer::draw: feet on the grid,
+        // half size, Y mirrored.
+        const float scale = formats::kModelToWorldScale;
+        const glm::mat4 modelToWorld =
+            glm::translate(glm::mat4(1.0f), {0.0f, scene::kStandingFeetDepth * scale, 0.0f}) *
+            glm::scale(glm::mat4(1.0f), {scale, -scale, scale});
+        const auto weaponMesh = scene::buildCarriedModelMesh(*weaponModel_, weaponTextureSizes_, pose, scene::kHandBone);
+        renderer_->drawHog(camera_, width, height, weaponMesh, *weaponTextures_, modelToWorld);
+    }
 }
 
 void CharacterViewer::run() {

@@ -60,8 +60,11 @@ void damageHog(std::vector<Hog>& hogs, std::size_t index, float amount, std::vec
     events.push_back(died);
 
     if (hog.motion.state != MotionState::Airborne) {
+        // A hog that dies in the water sinks (the executable's animation 74).
+        const bool inWater = hog.motion.state == MotionState::Swimming;
         hog.motion.state = MotionState::Dead;
-        hog.animation.play(kFirstDyingAnimation + index % 3, AnimationPlayer::Repeat::Once);
+        hog.animation.play(inWater ? kDrowningAnimation : kFirstDyingAnimation + index % 3,
+                           AnimationPlayer::Repeat::Once);
     }
 }
 
