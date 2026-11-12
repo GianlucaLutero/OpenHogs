@@ -23,6 +23,7 @@
 #include "Interface.h"
 #include "FrontEndPictures.h"
 #include "MenuBackground.h"
+#include "OriginalMenuView.h"
 #include "SoundPlayer.h"
 
 #include "openhogs/apps/GlWindow.h"
@@ -78,6 +79,9 @@ public:
     // screenshots of a menu page). Returns false if one asked to quit.
     bool sendMenuInputs(const std::vector<ui::MenuInput>& inputs);
 
+    // Lets the menus' animations run for `seconds` (for screenshots).
+    void advanceMenus(double seconds);
+
     // Renders the current frame off-screen and writes it as a PNG file.
     void saveScreenshot(const std::filesystem::path& path);
 
@@ -105,6 +109,7 @@ private:
     std::unique_ptr<Interface> interface_;
     std::unique_ptr<FrontEndPictures> pictures_;  // FEbmps/FEBMP.MAD
     std::unique_ptr<MenuBackground> background_;
+    std::unique_ptr<OriginalMenuView> originalMenu_;  // the short menus, as the original
     std::unique_ptr<ui::FrontEnd> frontEnd_;
     std::unique_ptr<CampaignSession> campaign_;
     bool inCampaign_ = false;      // the campaign pages are shown (or its match played)

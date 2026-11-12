@@ -22,9 +22,9 @@ namespace openhogs::formats {
 // or would grow beyond 16 MB.
 std::vector<std::byte> decompressMgl(std::span<const std::byte> mgl);
 
-// A PC menu picture (an .mgl holding a BMP) as RGBA. Pure magenta
-// (255, 0, 255), the colour the front end draws as see-through, becomes
-// transparent.
+// A PC menu picture (an .mgl holding a BMP) as RGBA. Magenta, the colour
+// the front end draws as see-through, becomes transparent: (255, 0, 255)
+// and the 15-bit form (248, 0, 248) most pictures use.
 RgbaImage decodeMglPicture(std::span<const std::byte> mgl);
 
 } // namespace openhogs::formats

@@ -128,6 +128,11 @@ during the start-up videos skips the rest of them. OpenHogs:
 
 Their positions on screen and how they move: `docs/formats/hud.md`.
 
+## Front end
+
+The menus are a table of 52 screens drawn by screen type, with springs and
+frame sequences for their moving parts: see [front-end.md](front-end.md).
+
 ## Differences between versions
 
 Collected from guides, reviews and fan sites (see the README's Credits);

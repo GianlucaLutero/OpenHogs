@@ -60,6 +60,7 @@ Application::Application(const core::VirtualFileSystem& vfs, ApplicationOptions 
     // The original front end's pictures; its background is behind the menus.
     pictures_ = std::make_unique<FrontEndPictures>(vfs);
     background_ = std::make_unique<MenuBackground>(*pictures_);
+    originalMenu_ = std::make_unique<OriginalMenuView>(*pictures_, interface_->menuFont());
 }
 
 Application::~Application() {
@@ -71,6 +72,7 @@ Application::~Application() {
     gamepads_.reset();
     campaign_.reset();
     frontEnd_.reset();
+    originalMenu_.reset();
     background_.reset();
     pictures_.reset();
     interface_.reset();
@@ -94,6 +96,7 @@ void Application::startMatch(const GameOptions& options) {
     drawLoading();
     game_.reset();  // free the previous match first
     game_ = std::make_unique<Game>(vfs_, options, *interface_, *sounds_, *gamepads_);
+    originalMenu_->reset();  // back in the menus, the panel drops in again
 }
 
 void Application::playCutscenes(std::vector<std::string> paths) {
@@ -265,8 +268,17 @@ void Application::update(double seconds) {
         game_->advance(seconds);
         return;
     }
+    if (!inCampaign_ && OriginalMenuView::suits(frontEnd_->menu())) {
+        originalMenu_->show(frontEnd_->menu());
+        originalMenu_->update(seconds);
+    }
     // The menus play the long theme in a loop, as the original's front end.
     sounds_->keepMusic(game::kThemeTrack, 1.0f, true);
+}
+
+void Application::advanceMenus(double seconds) {
+    constexpr double kStep = 1.0 / 50.0;
+    for (double done = 0.0; done < seconds; done += kStep) update(kStep);
 }
 
 void Application::drawMenus(int width, int height) {
@@ -278,9 +290,13 @@ void Application::drawMenus(int width, int height) {
     ui.begin(width, height);
     if (!briefing) background_->draw(ui);
     if (inCampaign_) {
+        originalMenu_->reset();
         if (!briefing) ui.drawRect(0.0f, 0.0f, ui.canvasWidth(), render::kCanvasHeight, kMenuShade);
         campaign_->draw();
+    } else if (OriginalMenuView::suits(frontEnd_->menu())) {
+        originalMenu_->draw(ui, frontEnd_->menu());
     } else {
+        originalMenu_->reset();
         ui.drawRect(0.0f, 0.0f, ui.canvasWidth(), render::kCanvasHeight, kMenuShade);
         interface_->drawMenu(frontEnd_->menu(), kMapListRows);
     }

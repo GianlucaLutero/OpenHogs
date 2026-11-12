@@ -62,6 +62,14 @@ std::vector<std::string> loadTextTable(const core::VirtualFileSystem& vfs, const
 Interface::Interface(const core::VirtualFileSystem& vfs) {
     bigFont_ = loadFont(vfs, "BIG");
     smallFont_ = loadFont(vfs, "SMALL");
+    try {
+        menuFont_ = loadFont(vfs, "chars3");
+        // Drawn at about 0.6 of its size, as the original: smoothed, or the
+        // thinnest letters (I is two pixels wide) would drop out.
+        menuFont_->texture().setSmooth(true);
+    } catch (const std::exception& error) {
+        std::cerr << "Warning: " << error.what() << "; the menus use BIG instead\n";
+    }
     gameText_ = loadTextTable(vfs, "gtext");
     strings_ = ui::loadUiStrings(loadTextTable(vfs, "fetext"), gameText_);
     loadWeaponIcons(vfs);

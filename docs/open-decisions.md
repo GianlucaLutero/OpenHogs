@@ -64,6 +64,13 @@ answer.
 | 77 | Videos | The volume of the videos' sound: music or effects? | The music volume. | `SoundPlayer::playMusicSound` |
 | 78 | Menus | How the 640 × 480 menu background fits a window of other proportions (the executable draws it at 640 × 480). | Scaled to cover the whole window, proportions kept, the overflow cut off evenly. | `MenuBackground::draw` |
 | 79 | Language pack | The PlayStation's 640 × 256 title screens and newspapers are resized to the PC pictures they replace (bilinear); the campaign cards (`CARTE`) are not converted yet. | Resized; cards left for the campaign map. | `LanguagePackBuilder.cpp` |
+| 80 | Menus | The width the executable's panels stretch by (`DAT_004c0c5c`) is 50 in the file, but the text boxes only line up with the panels when it is 0. | 0: the panels at their pictures' size. | `docs/formats/front-end.md` |
+| 81 | Menus | The rate of the front end's animation ticks (the executable counts frames). | 25 per second. | `ui::kFrontEndTicksPerSecond` |
+| 82 | Menus | While the plates flip, the executable moves the words with offsets not decoded (font fields 0x1C and 0x20). | The words are hidden until the plates face the front again. | `ui::OriginalMenu::showsText` |
+| 83 | Menus | The executable writes chars3 in a 1024 × 820 space (× 0.625 across, × 0.585 down on a 640 × 480 screen). | One scale, 0.6, smoothed. | `OriginalMenuView` |
+| 84 | Menus | Which menus get the original list menu, and the other screens: the original has its own level choice (`lselpc`), volume screen (`vol*`), team pages (`sq*`), yes/no dial (`yesno*`). | The menus of four entries or fewer that are all actions (main menu, ONE PLAYER, ARE YOU SURE?) use the list menu; the others keep the plain panel for now. | `OriginalMenuView::suits` |
+| 85 | Menus | Not done yet in the list menu: the leaving animation, the steam puffs, the dial's click. Going from one list menu to another only flips the plates. | As described. | `ui::OriginalMenu` |
+| 86 | Menus | On screens wider than 4:3 the original had no layout. | The 640 × 480 layout in the middle, the background covering the screen. | `OriginalMenuView::draw` |
 ## Design: what do we want?
 
 | # | Area | Open question | What OpenHogs does now | Where |

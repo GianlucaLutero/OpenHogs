@@ -37,7 +37,8 @@ start of the output or grows above 16 MB (`core::FormatError`).
 
 A MAD archive ([mad-mtd.md](mad-mtd.md)) of 237 `.mgl` entries. Each
 decompresses to a complete Windows BMP (8 or 24 bits per pixel). Pure
-magenta (255, 0, 255) marks transparent pixels; `decodeMglPicture` turns
+magenta marks transparent pixels: (255, 0, 255) or, in most pictures, its
+15-bit form (248, 0, 248); `decodeMglPicture` turns
 it into alpha 0.
 
 | Entries | What they are |

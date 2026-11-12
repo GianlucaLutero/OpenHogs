@@ -55,6 +55,7 @@ add_executable(openhogs_tests
     video/BinkTests.cpp
     ui/MenuTests.cpp
     ui/HudLayoutTests.cpp
+    ui/OriginalMenuTests.cpp
     ui/HudTests.cpp
     ui/CampaignMenuTests.cpp
     langpack/LangpackTests.cpp)

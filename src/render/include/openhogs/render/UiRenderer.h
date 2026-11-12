@@ -35,6 +35,7 @@ public:
 
     const formats::BitmapFont& font() const { return font_; }
     const GlTexture& texture() const { return texture_; }
+    GlTexture& texture() { return texture_; }
 
 private:
     formats::BitmapFont font_;
