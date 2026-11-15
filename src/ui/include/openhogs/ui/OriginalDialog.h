@@ -26,6 +26,18 @@
 
 namespace openhogs::ui {
 
+// Parts of the "settings machine" that the yes/no question shares with the
+// longer list (screen type 2, ui::OriginalSelectList); each appends its
+// pieces to `pieces`, top one first.
+//  - the name plate that holds the title, its arms, `plateY` pixels from
+//    its place;
+//  - the closed tray (`info1`), with the box `box` pixels from its place;
+//  - the box (`yesno01`-`06` while it opens, `yes` at `kOpenBoxFrame`)
+//    and its pipes.
+void addNamePlate(std::vector<MenuPiece>& pieces, float plateY);
+void addTray(std::vector<MenuPiece>& pieces, float box);
+void addBox(std::vector<MenuPiece>& pieces, float box, int boxFrame);
+
 class OriginalDialog {
 public:
     // Starts the opening animation with `selected` (0 = YES, 1 = NO).

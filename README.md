@@ -66,7 +66,8 @@ animations.
 | `original-menus`     | ✅ done | The original's brass list menu (main menu, ONE PLAYER, ARE YOU SURE?) read from the executable: panel, bars, lamps, dial, racks, its spring animations and its font |
 | `hog-handling`       | ✅ done | Weapons held as in the original (in the hand, aiming pose following the angle, taken out standing and put away moving, the right model for each weapon); the play area's limits, higher steps, no jumping off walls; swimming that hurts all but Commandos and Heroes, drowning, swimming back to the shore |
 | `original-screens`   | ✅ done | The original's yes/no question (REALLY QUIT APP?): the plate, the box that unfolds with its YES and NO windows and dial; the list of the original's screens read from the executable |
-| `original-screens-2` | 🔍 in review | OPTIONS as the original (AUDIO, CONTROLS, CREDITS) and its VOLUME CONTROL: the list rises, the volume panel comes up with its MASTER and SFX knobs, MODE (mono mixes both channels) and VOICES on/off |
+| `original-screens-2` | ✅ done | OPTIONS as the original (AUDIO, CONTROLS, CREDITS) and its VOLUME CONTROL: the list rises, the volume panel comes up with its MASTER and SFX knobs, MODE (mono mixes both channels) and VOICES on/off |
+| `original-screens-3` | 🔍 in review | The original's longer list for SELECT TEAM: the monitor showing the teams, the selector bar with its turning knob and lamp, the name plate with the title |
 | fidelity blocks      | planned | the other original screens, `mission-scripts`, `weapons-complete`, `version-variants`: videos, pictures, menus and missions exactly as in the original |
 | `release`            | planned | Packaged builds for Windows and Linux |
 

@@ -95,57 +95,72 @@ float OriginalDialog::boxOffsetX() const { return static_cast<float>(boxX_ * 640
 
 float OriginalDialog::plateOffsetY() const { return static_cast<float>(2 * (plateY_ * 480 / 820)); }
 
-std::vector<MenuPiece> OriginalDialog::pieces() const {
-    const float plateY = plateOffsetY();
-    const float box = boxOffsetX() + kBoxShift;
-    std::vector<MenuPiece> result;
-    const auto add = [&](std::string picture, float x, float y) -> MenuPiece& {
-        MenuPiece piece;
-        piece.picture = std::move(picture);
-        piece.x = x;
-        piece.y = y;
-        result.push_back(piece);
-        return result.back();
-    };
+namespace {
 
-    add("namarm1", kLeftArmX, plateY);
-    add("namarm2", kRightArmX, plateY);
-    add("name0", kPlateX, plateY + kPlateDrop);
-    add("info1.mgl1", box + kTrayX, kTrayY);  // not info1.mgl, another picture
-    if (boxFrame_ == kOpenBoxFrame) {
-        const float turned = dialFrame_ > 1 ? kTurnedDialShift : 0.0f;
-        add(numbered("yesdial%d", dialFrame_ + 1), box + kDialX + turned, kDialY);
-    }
-    if (boxFrame_ == kOpenBoxFrame) {
-        add("yes", box + kBoxX + kOpenBoxShift, kBoxY);
+MenuPiece& addPiece(std::vector<MenuPiece>& pieces, std::string picture, float x, float y) {
+    MenuPiece piece;
+    piece.picture = std::move(picture);
+    piece.x = x;
+    piece.y = y;
+    pieces.push_back(piece);
+    return pieces.back();
+}
+
+} // namespace
+
+void addNamePlate(std::vector<MenuPiece>& pieces, float plateY) {
+    addPiece(pieces, "namarm1", kLeftArmX, plateY);
+    addPiece(pieces, "namarm2", kRightArmX, plateY);
+    addPiece(pieces, "name0", kPlateX, plateY + kPlateDrop);
+}
+
+void addTray(std::vector<MenuPiece>& pieces, float box) {
+    addPiece(pieces, "info1.mgl1", box + kTrayX, kTrayY);  // not info1.mgl, another picture
+}
+
+void addBox(std::vector<MenuPiece>& pieces, float box, int boxFrame) {
+    if (boxFrame == OriginalDialog::kOpenBoxFrame) {
+        addPiece(pieces, "yes", box + kBoxX + kOpenBoxShift, kBoxY);
     } else {
-        add(numbered("yesno%02d", boxFrame_ + 1), box + kBoxX, kBoxY);
+        addPiece(pieces, numbered("yesno%02d", boxFrame + 1), box + kBoxX, kBoxY);
     }
 
     // The pipe from the tray down to the box: its upper part, its right
     // edge at full height, and its foot.
-    MenuPiece& pipe = add("mainbar0", box + kPipeX, kPipeY);
+    MenuPiece& pipe = addPiece(pieces, "mainbar0", box + kPipeX, kPipeY);
     pipe.sourceWidth = 48;
     pipe.sourceHeight = 160;
-    MenuPiece& side = add("mainbar0", box + kPipeSideX, kPipeY);
+    MenuPiece& side = addPiece(pieces, "mainbar0", box + kPipeSideX, kPipeY);
     side.sourceX = kPipeSideColumn;
     side.sourceWidth = 48 - kPipeSideColumn;
     side.sourceHeight = 176;
-    MenuPiece& foot = add("mainbar0", box + kPipeX, kPipeFootY);
+    MenuPiece& foot = addPiece(pieces, "mainbar0", box + kPipeX, kPipeFootY);
     foot.sourceY = 100;
     foot.sourceWidth = 48;
     foot.sourceHeight = 60;
 
     // The riser on the right: its end, and its first rows stretched up to
     // the top of the screen.
-    MenuPiece& riser = add("mainbar1", box + kRiserX, kRiserY);
+    MenuPiece& riser = addPiece(pieces, "mainbar1", box + kRiserX, kRiserY);
     riser.sourceWidth = 32;
     riser.sourceHeight = kRiserTopRows;
-    MenuPiece& riserTop = add("mainbar1", box + kRiserX, 0.0f);
+    MenuPiece& riserTop = addPiece(pieces, "mainbar1", box + kRiserX, 0.0f);
     riserTop.sourceWidth = 32;
     riserTop.sourceHeight = 2;
     riserTop.width = 32.0f;
     riserTop.height = kRiserY;
+}
+
+std::vector<MenuPiece> OriginalDialog::pieces() const {
+    const float box = boxOffsetX() + kBoxShift;
+    std::vector<MenuPiece> result;
+    addNamePlate(result, plateOffsetY());
+    addTray(result, box);
+    if (boxFrame_ == kOpenBoxFrame) {
+        const float turned = dialFrame_ > 1 ? kTurnedDialShift : 0.0f;
+        addPiece(result, numbered("yesdial%d", dialFrame_ + 1), box + kDialX + turned, kDialY);
+    }
+    addBox(result, box, boxFrame_);
     return result;
 }
 
