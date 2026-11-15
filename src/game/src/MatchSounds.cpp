@@ -154,6 +154,14 @@ std::optional<std::string> Sergeant::hurryUp(double secondsLeft, double turnSeco
     return line;
 }
 
+std::string Sergeant::objective(int section) {
+    // The original asks for one of lines 1 to 8 of the section
+    // (FUN_0043b850(section, 1, 8, ...)); they are said in turn here.
+    int& last = objectiveLines_[section];
+    last = last % 8 + 1;
+    return sargeSpeechPath(section, last);
+}
+
 int MusicDirector::matchStarted(std::mt19937& random) const {
     return kFirstBattleTrack + static_cast<int>(random() % 4);
 }

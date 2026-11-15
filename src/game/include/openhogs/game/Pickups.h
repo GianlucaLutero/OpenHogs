@@ -21,6 +21,7 @@
 
 #include <cstddef>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace openhogs::game {
@@ -35,6 +36,13 @@ struct Pickup {
     int item = 0;  // weapons: the text entry minus 96 (WeaponId - 96)
     int amount = 0;
     bool taken = false;
+    // The model drawn for it: "CRATE1" (weapons), "CRATE2" (health) or
+    // "PROPOINT" (promotion points).
+    std::string model;
+    // A reward dropped by an objective during the match (Objectives.h)
+    // rather than one of the map's crates; `object` is then a number
+    // after the map's objects, so it can be shown and hidden the same way.
+    bool dropped = false;
 
     // The weapon a weapon crate holds, if OpenHogs has it.
     std::optional<WeaponId> weapon() const;

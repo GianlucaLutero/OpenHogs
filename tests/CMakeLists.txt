@@ -46,6 +46,7 @@ add_executable(openhogs_tests
     game/GameTests.cpp
     game/MovementTests.cpp
     game/HogHandlingTests.cpp
+    game/ObjectiveTests.cpp
     game/PickupTests.cpp
     game/WeaponTests.cpp
     game/ComputerPlayerTests.cpp

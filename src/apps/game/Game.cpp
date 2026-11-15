@@ -374,6 +374,7 @@ void Game::handleEvents(const std::vector<game::GameEvent>& events) {
             playSound(kPickupSound);
             pickedUp(event);
             break;
+        case GameEventType::ObjectiveDone: objectiveDone(event); break;
         case GameEventType::Hurt:         // voices and music: MatchAudio
         case GameEventType::TurnStarted:
         case GameEventType::MatchOver: break;
@@ -389,6 +390,21 @@ void Game::pickedUp(const game::GameEvent& event) {
     if (pickup.kind == game::PickupKind::PromotionPoints) {
         promotionPoints_ += static_cast<int>(event.amount);
     }
+}
+
+void Game::objectiveDone(const game::GameEvent& event) {
+    // A reward crate appears where the objective put it (the sergeant's
+    // comment is MatchAudio's); lost points come off the campaign's.
+    promotionPoints_ -= static_cast<int>(event.amount);
+    if (!event.dropped || event.pickup >= world_.pickups().size()) return;
+    const auto& crate = world_.pickups()[event.pickup];
+    // Placed like a map object, which is centred on its position.
+    formats::MapObject placed;
+    placed.modelName = crate.model;
+    placed.x = static_cast<std::int16_t>(crate.centre.x);
+    placed.y = static_cast<std::int16_t>(crate.centre.y);
+    placed.z = static_cast<std::int16_t>(crate.centre.z);
+    mapRenderer_->addObject({crate.model, scene::objectTransform(placed), crate.object});
 }
 
 void Game::step(double seconds) {

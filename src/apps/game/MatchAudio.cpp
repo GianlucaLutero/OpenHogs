@@ -107,6 +107,9 @@ void MatchAudio::handle(const game::GameEvent& event) {
             }
         }
         break;
+    case GameEventType::ObjectiveDone:
+        if (event.sergeantSection >= 0) sounds_.say(sergeant_.objective(event.sergeantSection));
+        break;
     case GameEventType::MatchOver: {
         const bool personWon = event.team >= 0 && isPerson(event.team);
         sounds_.playMusic(music_.matchOver(personWon), personWon ? kVictoryTuneVolume : 1.0f);

@@ -38,6 +38,11 @@ public:
     // that was picked up.
     void hideObject(std::size_t object) { hidden_.insert(object); }
 
+    // Draws one more model, such as a reward crate that appeared during
+    // the match. Ignored if the scene did not load that model (MapScene
+    // always loads the crate models the map's archive has).
+    void addObject(const scene::ModelInstance& instance);
+
 private:
     // One textured group of triangles on the GPU.
     struct GpuPart {

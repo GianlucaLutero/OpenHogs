@@ -114,15 +114,64 @@ map loader (`FUN_004a5250`) turns most of them into objectives (a list
 built by `FUN_004a7130`: type, group, parameters 0 and 1, and the cell of
 the script position). Counted on the PC maps:
 
-| Script | Objects | Role (as far as read) |
-|--------|---------|-----------------------|
-| 1 | `S1W01PPP`, `PILLBOX`, `CO_ME`, `SW2ARM` | objective (parameter 0 through the item table) |
-| 2 | `LE_ME`, `BOG`, `BIG_GUN` | objective; when done a crate drops in |
-| 7, 8 | hogs (`GR_ME`, `HV_ME`) | objectives on hogs |
-| 13 | `BRIDGE_C`, `TENT_S` | objective |
-| 14 | `M_TENT1`, `TANK`, `CARRY` | objective |
+| Script | Objects | Role |
+|--------|---------|------|
+| 1 | `S1W01PPP`, `PILLBOX`, `CO_ME`, `SW2ARM` | destroy: a crate |
+| 2 | `LE_ME`, `BOG`, `BIG_GUN` | destroy: a promotion point |
+| 4 | `W1R06PPP` | destroy: the player *loses* parameter 0 points |
+| 7, 8 | hogs (`GR_ME`, `HV_ME`) | reach: a crate (7) or a promotion point (8) |
+| 13 | `BRIDGE_C`, `TENT_S` | destroy the whole group: a crate |
+| 14 | `M_TENT1`, `TANK`, `CARRY` | destroy the whole group: a promotion point |
 | 19 | `CRATE1`, `CRATE2`, `PROPOINT`, `SIGN` | pickup; in the campaign a crate with a group is also an objective (type 21) |
 | 20-23 | `DUMMY`, trees, bridges in `CAMP` | Boot Camp |
+
+### Objectives
+
+Each objective is a 20-byte node hung on its object (object + 0x48),
+made by `FUN_004a7130`:
+
+| Offset | Size | Content |
+|--------|------|---------|
+| 0 | 2 | type (the script type; 21 for campaign crates with a group) |
+| 2 | 1 | group (offset 62) |
+| 3 | 1 | parameter 0; for types 1, 7 and 13 already through the item table (255 kept) |
+| 4 | 1 | parameter 1 |
+| 8 | 4 | target cell X: `(script X + 0x4000) >> 9` |
+| 12 | 4 | target cell Z, the same way |
+| 16 | 4 | next node |
+
+The script position (offsets 82-87) is a point on the ground: its Y is
+the terrain height there, in the same axes as the object positions. The
+original compares positions as cells of a 32 x 32 grid (512 units).
+
+**Reaching** (`FUN_004a7730`, called as objects move): types 7 to 10 are
+done when their own object stands in the target cell; for a hog it has
+to be the player's current hog. The reward appears at the hog's feet:
+
+- 7: a crate, health (parameter 0 = 255, sergeant section 5) or weapon
+  (sergeant section 8);
+- 8: a promotion point (sergeant section 9);
+- 10: the hog's promotion points (hog + 0x1de) go down by parameter 0.
+
+**Destroying** (`FUN_004aa170`, called when an object is destroyed or a
+hog dies). The reward appears at the centre of the target cell
+(`cell * 0x200 + 0xC100` as a 16-bit number), on the ground:
+
+- 1: a crate, health (sergeant section 5) or weapon (section 4);
+- 2: a promotion point (section 6);
+- 4: promotion points go down by parameter 0 (section 7);
+- 13 to 18: only when no other object with a node of the same group is
+  left; then 13 acts as 1, 14 as 2 and 16 as 4 (15, 17, 18: nothing);
+- 20, 21: the objects whose group is this node's parameter 0 appear
+  (crates fall from 0xC00 above, others become visible); 22, 23: the
+  same, once the last of the node's group is gone. Objects with script
+  21 or 23 start hidden (Boot Camp).
+
+A node of any other type (a hog with somewhere to go that dies) is simply
+dropped. Promotion-point pickups (`FUN_00464150` kind 0x17) add 1 to the
+hog's points whatever their parameters; objective crates are dropped
+with a parachute (`WE_PARA` in `Chars/WEAPONS.MAD`). The sergeant line
+is one of lines 1-8 of the section (`FUN_0043b850(section, 1, 8)`).
 
 **Crates (script 19).** Parameter 0 (offset 63) says what the crate
 holds and parameter 1 (offset 64) how many:

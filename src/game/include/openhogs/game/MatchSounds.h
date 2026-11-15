@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <map>
 #include <optional>
 #include <random>
 #include <string>
@@ -100,6 +101,10 @@ public:
     // (only for turns of more than 15 seconds).
     std::optional<std::string> hurryUp(double secondsLeft, double turnSeconds, bool attacked, bool severalPeople);
 
+    // His comment on an objective done (Objectives.h): a line of
+    // `section`, the next of its eight each time.
+    std::string objective(int section);
+
     // A new turn: the dawdling warning may be given again.
     void turnStarted() { warnedThisTurn_ = false; }
 
@@ -110,6 +115,7 @@ private:
     int nationScorn_ = 5;     // several players: 5 .. 8
     int hurry_ = 1;           // sections 12-13, sixteen lines
     bool warnedThisTurn_ = false;
+    std::map<int, int> objectiveLines_;  // section -> last variant said
 };
 
 // --- Music -----------------------------------------------------------------

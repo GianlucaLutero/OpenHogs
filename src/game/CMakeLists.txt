@@ -44,6 +44,7 @@ add_library(openhogs_game STATIC
     src/Ranks.cpp
     src/TerrainHeightField.cpp
     src/TurnSystem.cpp
+    src/Objectives.cpp
     src/Pickups.cpp
     src/Weapons.cpp
     src/World.cpp)

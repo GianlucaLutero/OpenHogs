@@ -57,6 +57,12 @@ MapRenderer::MapRenderer(const scene::MapScene& scene) {
     markers_ = scene.markers;
 }
 
+void MapRenderer::addObject(const scene::ModelInstance& instance) {
+    if (models_.contains(instance.modelName)) {
+        objects_.push_back(instance);
+    }
+}
+
 std::vector<MapRenderer::GpuPart> MapRenderer::uploadMesh(const scene::Mesh& mesh) const {
     std::vector<GpuPart> parts;
     for (const auto& part : mesh) {
