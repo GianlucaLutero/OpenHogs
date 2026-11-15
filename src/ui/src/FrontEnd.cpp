@@ -19,6 +19,7 @@ enum OnePlayerItem { kNewGame, kLoadGame, kSkirmish, kOnePlayerBack };
 constexpr int kTeamBack = -1;  // nation items use the nation index as id
 enum OptionsItem { kAudio, kControls, kCredits, kOptionsBack };
 enum VolumeItem { kMode, kMaster, kEffects, kVoices };
+constexpr int kPageBack = -1;  // BACK on CONTROLS and CREDITS
 constexpr int kVoicesOff = 0, kVoicesOn = 1;
 enum ConfirmItem { kYes, kNo };
 constexpr int kLevelBack = -1;  // map items use their index as id
@@ -124,9 +125,28 @@ FrontEnd::FrontEnd(UiStrings strings, std::vector<std::string> maps, VolumeLevel
     levels.push_back(action(kLevelBack, strings_.back));
     selectLevel_ = Menu(strings_.selectLevel, std::move(levels));
 
-    // OPTIONS as the original (screen 2); only AUDIO leads somewhere yet.
-    options_ = Menu(strings_.options, {action(kAudio, strings_.audio), action(kControls, strings_.controls, false),
-                                       action(kCredits, strings_.credits, false), action(kOptionsBack, strings_.back)});
+    // OPTIONS as the original (screen 2).
+    options_ = Menu(strings_.options, {action(kAudio, strings_.audio), action(kControls, strings_.controls),
+                                       action(kCredits, strings_.credits), action(kOptionsBack, strings_.back)});
+
+    // CONTROLS: what each key does (the game's keys are fixed for now).
+    // The names are the original's (fetext 349-360) where it has one.
+    const auto& names = strings_.controlNames;
+    const std::vector<std::pair<std::string, std::string>> keys{
+        {names[0], "W / UP"},         {names[1], "S / DOWN"},  {names[2], "A / LEFT"}, {names[3], "D / RIGHT"},
+        {names[5], "CTRL / X"},       {names[6], "SPACE"},     {names[7], "Q / E"},    {names[9], "F"},
+        {names[10], "R"},             {strings_.nextHog, "TAB"}, {strings_.endTurn, "ENTER"}, {names[11], "ESC / P"}};
+    std::vector<MenuItem> controlItems;
+    for (std::size_t i = 0; i < keys.size(); ++i) {
+        MenuItem item = action(static_cast<int>(i), keys[i].first);
+        item.detail = keys[i].second;
+        controlItems.push_back(item);
+    }
+    controlItems.push_back(action(kPageBack, strings_.back));
+    controls_ = Menu(strings_.controls, std::move(controlItems));
+
+    // CREDITS: the rows themselves are drawn by the view (UiStrings::creditRows).
+    credits_ = Menu(strings_.credits, {action(kPageBack, strings_.back)});
 
     // VOLUME CONTROL as the original (screen 20): no BACK entry, Esc leaves.
     if (volumes_.speech > 0) speechWhenOn_ = volumes_.speech;
@@ -167,17 +187,33 @@ const Menu& FrontEnd::menu() const {
     case FrontEndScreen::FieldConditions: return fieldConditions_;
     case FrontEndScreen::Options: return options_;
     case FrontEndScreen::Volume: return volume_;
+    case FrontEndScreen::Controls: return controls_;
+    case FrontEndScreen::Credits: return credits_;
     case FrontEndScreen::ConfirmQuit: return confirmQuit_;
     }
     return main_;
 }
 
 const Menu* FrontEnd::menuUnder() const {
-    return screen_ == FrontEndScreen::Volume ? &options_ : nullptr;
+    // As the original: VOLUME CONTROL over OPTIONS, FIELD CONDITIONS on the
+    // level panel.
+    if (screen_ == FrontEndScreen::Volume) return &options_;
+    if (screen_ == FrontEndScreen::FieldConditions) return &selectLevel_;
+    return nullptr;
+}
+
+std::vector<int> FrontEnd::teamControls() const {
+    std::vector<int> controls;
+    if (screen_ != FrontEndScreen::Players && screen_ != FrontEndScreen::FieldConditions) return controls;
+    for (std::size_t i = 0; i < levelTeams_.size(); ++i) {
+        controls.push_back(players_.item(controlItem(i)).value);
+    }
+    return controls;
 }
 
 void FrontEnd::open(FrontEndScreen screen) {
     screen_ = screen;
+    if (screen == FrontEndScreen::Controls) controls_.select(0);
     if (screen == FrontEndScreen::ConfirmQuit) {
         confirmQuit_.select(kNo);
     }
@@ -197,6 +233,8 @@ FrontEndResult FrontEnd::handle(MenuInput input) {
     case FrontEndScreen::FieldConditions: return handleFieldConditions(fieldConditions_.handle(input));
     case FrontEndScreen::Options: return handleOptions(options_.handle(input));
     case FrontEndScreen::Volume: return handleVolume(volume_.handle(input));
+    case FrontEndScreen::Controls: return handleOptionPage(controls_.handle(input));
+    case FrontEndScreen::Credits: return handleOptionPage(credits_.handle(input));
     case FrontEndScreen::ConfirmQuit: return handleConfirmQuit(confirmQuit_.handle(input));
     }
     return {};
@@ -378,8 +416,20 @@ FrontEndResult FrontEnd::handleOptions(const MenuResponse& response) {
     if (response.type == Type::Back || (response.type == Type::Activated && response.itemId == kOptionsBack)) {
         open(FrontEndScreen::Main);
         result.sound = MenuSound::Back;
-    } else if (response.type == Type::Activated && response.itemId == kAudio) {
-        open(FrontEndScreen::Volume);
+    } else if (response.type == Type::Activated) {
+        if (response.itemId == kAudio) open(FrontEndScreen::Volume);
+        if (response.itemId == kControls) open(FrontEndScreen::Controls);
+        if (response.itemId == kCredits) open(FrontEndScreen::Credits);
+    }
+    return result;
+}
+
+FrontEndResult FrontEnd::handleOptionPage(const MenuResponse& response) {
+    FrontEndResult result;
+    result.sound = soundFor(response);
+    if (response.type == Type::Back || (response.type == Type::Activated && response.itemId == kPageBack)) {
+        open(FrontEndScreen::Options);
+        result.sound = MenuSound::Back;
     }
     return result;
 }

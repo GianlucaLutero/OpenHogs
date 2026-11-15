@@ -7,7 +7,9 @@
 // the words sitting inside their bars.
 
 #include "openhogs/ui/OriginalDialog.h"
+#include "openhogs/ui/OriginalLevelPanel.h"
 #include "openhogs/ui/OriginalMenu.h"
+#include "openhogs/ui/OriginalOptionPages.h"
 #include "openhogs/ui/OriginalSelectList.h"
 #include "openhogs/ui/OriginalVolume.h"
 
@@ -382,4 +384,100 @@ TEST_CASE("The selector slides to the chosen entry, its knob turning", "[ui][ori
     // The bar (64 pixels tall) is centred within a few pixels of the words.
     const auto line = list.entryLine(2);
     CHECK(std::abs((bar + 32.0f) - (line.top + 9.0f)) < 8.0f);
+}
+
+// --- The level panel, team holders, credits and controls ----------------------
+
+TEST_CASE("The level panel keeps BACK in its last slot and scrolls the maps", "[ui][originallevelpanel]") {
+    // The original's panel has five slots and a sixth one apart (LEVEL
+    // SETUP); OpenHogs puts the maps in the five and BACK in the sixth, so
+    // the way back is always on screen whatever the number of maps.
+    const std::size_t items = 12;  // eleven maps and BACK
+    auto layout = levelSlotLayout(items, 0);
+    CHECK(layout.items[0] == 0);
+    CHECK(layout.items[4] == 4);
+    CHECK(layout.items[5] == 11);
+    CHECK(layout.selectedSlot == 0);
+    layout = levelSlotLayout(items, 7);  // scrolled: the chosen map in view
+    CHECK(layout.items[4] == 7);
+    CHECK(layout.selectedSlot == 4);
+    layout = levelSlotLayout(items, 11);  // BACK
+    CHECK(layout.selectedSlot == 5);
+    CHECK(layout.items[4] == 10);
+    layout = levelSlotLayout(3, 1);  // fewer maps than slots
+    CHECK(layout.items[2] == -1);
+    CHECK(layout.items[5] == 2);
+}
+
+TEST_CASE("The level panel rises into place with its words in the slots", "[ui][originallevelpanel]") {
+    // lselpc rests at (8, 53); each slot's words must sit in its dark
+    // window, between its two lamps.
+    OriginalLevelPanel panel;
+    panel.open(2);
+    CHECK_FALSE(panel.showsText());
+    for (int tick = 0; tick < 300 && !panel.settled(); ++tick) panel.tick();
+    REQUIRE(panel.settled());
+    const auto pieces = panel.pieces();
+    const auto found = std::find_if(pieces.begin(), pieces.end(), [](const MenuPiece& p) { return p.picture == "lselpc"; });
+    REQUIRE(found != pieces.end());
+    CHECK(found->x == Approx(8.0f));
+    CHECK(found->y == Approx(53.0f));
+    std::vector<float> lamps;
+    for (const auto& piece : pieces) {
+        if (piece.picture == "lit3.mgl1") lamps.push_back(piece.y);
+    }
+    REQUIRE(lamps.size() == 2);  // the chosen slot's two lamps are lit
+    const auto line = panel.slotLine(2);
+    CHECK(line.centreX > 101.0f + 24.0f);
+    CHECK(line.centreX < 288.0f);
+    CHECK(line.top + 9.0f == Approx(lamps[0] + 24.0f).margin(6.0f));
+}
+
+TEST_CASE("A team holder slides in when its team plays and out when it is off", "[ui][originallevelpanel]") {
+    // The holders say who plays each team at a glance: a joypad for a
+    // person, a chip for the computer, nothing for a team switched off.
+    using Player = OriginalTeamHolders::Player;
+    OriginalTeamHolders holders;
+    holders.open();
+    holders.setPlayers({Player::Person, Player::Computer, Player::Off});
+    for (int tick = 0; tick < 300 && !holders.settled(); ++tick) holders.tick();
+    REQUIRE(holders.settled());
+    CHECK(holders.offset(0) == 0);
+    CHECK(holders.offset(2) == -250);
+    const auto pieces = holders.pieces();
+    CHECK(std::count_if(pieces.begin(), pieces.end(), [](const MenuPiece& p) { return p.picture == "com_man"; }) == 2);
+    CHECK(std::any_of(pieces.begin(), pieces.end(), [](const MenuPiece& p) { return p.picture == "pcpad"; }));
+    CHECK(std::any_of(pieces.begin(), pieces.end(), [](const MenuPiece& p) { return p.picture == "pcchip"; }));
+}
+
+TEST_CASE("The credits roll up at the original's pace and start again", "[ui][credits]") {
+    // 100 text units a second (about 58 pixels); a row is 80 units, so a
+    // row moves up by one row in 0.8 seconds, and after the last row has
+    // gone the roll begins again from below the screen.
+    CreditsRoll roll;
+    roll.open();
+    CHECK(roll.visibleRows(10).empty());  // starts below the screen
+    roll.advance(2.0);
+    auto rows = roll.visibleRows(10);
+    REQUIRE_FALSE(rows.empty());
+    CHECK(rows.front().index == 0);
+    const float top = rows.front().name.top;
+    roll.advance(0.8);
+    rows = roll.visibleRows(10);
+    CHECK(rows.front().name.top == Approx(top - 80.0f * 480.0f / 820.0f).margin(0.5f));
+    roll.advance(60.0);  // long after the tenth row has gone
+    for (const auto& row : roll.visibleRows(10)) CHECK(row.name.top > -40.0f);
+}
+
+TEST_CASE("The controls board turns before showing the keys", "[ui][controls]") {
+    // The words belong on the board's windows, which only exist once it
+    // faces the player (pckey006).
+    OriginalControlsBoard board;
+    board.open();
+    CHECK(board.pieces().front().picture == "pckey000");
+    CHECK_FALSE(board.showsText());
+    for (int tick = 0; tick < 6; ++tick) board.tick();
+    CHECK(board.pieces().front().picture == "pckey006");
+    CHECK(board.showsText());
+    CHECK(board.keyLine(1).top - board.keyLine(0).top == Approx(41.5f));
 }

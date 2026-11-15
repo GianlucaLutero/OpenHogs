@@ -315,3 +315,36 @@ TEST_CASE("Messages disappear after their time; a new one replaces the old", "[u
     banner.update(2.5);
     CHECK_FALSE(banner.current());
 }
+
+TEST_CASE("CONTROLS and CREDITS open from OPTIONS and lead back to it", "[ui][frontend]") {
+    // The original's OPTIONS has three pages; each must return to OPTIONS
+    // with Esc, as the original, and CONTROLS must list the keys.
+    auto frontEnd = makeFrontEnd();
+    press(frontEnd, {MenuInput::Down, MenuInput::Down, MenuInput::Confirm});  // OPTIONS
+    press(frontEnd, {MenuInput::Down, MenuInput::Confirm});                   // CONTROLS
+    CHECK(frontEnd.screen() == FrontEndScreen::Controls);
+    CHECK(frontEnd.menu().items().front().detail == "W / UP");
+    press(frontEnd, {MenuInput::Back});
+    CHECK(frontEnd.screen() == FrontEndScreen::Options);
+    press(frontEnd, {MenuInput::Down, MenuInput::Confirm});                   // CREDITS
+    CHECK(frontEnd.screen() == FrontEndScreen::Credits);
+    press(frontEnd, {MenuInput::Back});
+    CHECK(frontEnd.screen() == FrontEndScreen::Options);
+}
+
+TEST_CASE("FIELD CONDITIONS is shown over the level list and the team holders follow the choices", "[ui][frontend]") {
+    // The original writes FIELD CONDITIONS on the level panel, so the level
+    // list must be known while it is open; the MULTI-PLAYER page reports
+    // who plays each team for its holders.
+    auto frontEnd = makeFrontEnd();
+    press(frontEnd, {MenuInput::Down, MenuInput::Confirm, MenuInput::Confirm});  // MULTI-PLAYER, first map
+    frontEnd.setLevelTeams({0, 1});
+    CHECK(frontEnd.screen() == FrontEndScreen::Players);
+    CHECK(frontEnd.teamControls() == std::vector<int>{0, 0});
+    press(frontEnd, {MenuInput::Up, MenuInput::Right});  // the second team's control: CPU
+    CHECK(frontEnd.teamControls() == std::vector<int>{0, 1});
+    press(frontEnd, {MenuInput::Down, MenuInput::Down, MenuInput::Confirm});  // FIELD CONDITIONS
+    CHECK(frontEnd.screen() == FrontEndScreen::FieldConditions);
+    REQUIRE(frontEnd.menuUnder() != nullptr);
+    CHECK(frontEnd.menuUnder()->title() == UiStrings{}.selectLevel);
+}
