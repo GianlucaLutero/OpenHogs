@@ -241,6 +241,31 @@ the screen's offset, while −51 < y < 901, in (120, 120, 120). The update
 opened) / 10, starting again below −9440. The PC's credits are fetext
 503-652.
 
+### Types 5 and 6: the campaign's squad and a hog's page
+
+Type 5 (screens 12 and 34; `FUN_0041bef0` at 0x41D285, foreground at
+0x41EC55). With *X* the horizontal offset − 10:
+
+| Sprite | Picture | Position |
+|--------|---------|----------|
+| boards | element 0: `sqpics00`-`sqpics10` while turning, `sqpic` (300 × 480) at frame 6 | (*X* − 22, 20; −12 for `sqpic`), and mirrored, ending at 672 − *X* |
+| faces (frame 6) | a picture per hog (slots 0x5128E4 on), `backgr~1` behind | x 57 (+ 462 for the right board), y 74 + 74 × row (the fifth row at 368); the right board holds only three |
+| class and rank | `pcHweap`, `snipr`, `sappr`, `pcmedic`, `cmndo` (0x5119B0), pips and stripes (0x5119CC), flags | beside each face |
+| selectors | `sqdial01`-`06` (element 1; the right one mirrored at 662 − *X*), lamps `lit1`-`lit3` (elements 12 and 13) | left: (*X* − 22, 2*y* + 28), lamps (*X* + 40, 2*y* + 48) and (*X* + 121, 2*y* + 49); right: lamps (491 − *X*, 572 − *X*); *y* = 37*v* / 5 + 18, *v* elements 4 and 5, five steps a row |
+| options | `sqoptsF` (200 × 101) with two lamps, one per option | (428, 2*r* − 91), lamps (429 and 601, 2*r* − 75), *r* = 187, 215, 243 or 324 (− 120 past two options) + the slide (from 1020: spring 12, 20, 40) + 27 |
+| monitor | `pigpro` (200 × 191) | (232, 2 × (slide + 156) − 8): from 400, spring 5, 14, 40 |
+| plate | `sqname01` | (120, 2 × (drop − 7)) |
+
+Type 6 (screens 19 and 32: PROMOTE, SWAP POSITION, RENAME) is drawn over
+the squad: `swap.mgl1` (320 × 256) at (180, 2 × (slide + 130)), rows
+0-245 and then rows 212-256 below them, with the arrow `swap01` / `swap02`
+(element 17) at (230, 2 × (slide + 130 + 8 × element 16) + 87); the slide
+springs from 500 (12, 20, 40). Its words are in boxes 32-34 (x 412,
+y 611, 666, 721).
+
+Type 10 (screens 22 and 36: the results between missions) draws no
+picture.
+
 ### Type 7: VOLUME CONTROL
 
 A screen whose pointer at +0x2C is set is drawn over that screen
@@ -268,8 +293,7 @@ only once `DAT_00512958` is 400 again.
   fetext 306 + on (OFF, ON); the selected one's value blinks (tint 20 for
   31 ticks, then 200, out of every 101).
 
-Still to read: the campaign's screen types (team pages, type 4: `sq*`;
-squad, type 5; a hog's page, type 6; career path, type 13; loading and
-saving, types 8 and 9: `pcsav`; level choice, type 20; field conditions, type 21; saving
+Still to read: the campaign's other screen types (team pages, type 4;
+career path, types 0 and 13; loading and saving, types 8 and 9: `pcsav`; level choice, type 20; field conditions, type 21; saving
 `pcsav`; the keys `pckey*`), the steam puffs (`FUN_00419fa0`) and the
 leaving animations.

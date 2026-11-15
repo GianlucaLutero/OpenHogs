@@ -272,6 +272,14 @@ void Application::update(double seconds) {
         game_->advance(seconds);
         return;
     }
+    if (inCampaign_ && !campaign_->showingBriefing() && campaignScreen()) {
+        const auto* pages = campaign_->menu();
+        originalMenu_->setSquadInfo(
+            pages->screen() == ui::CampaignScreen::Results ? pages->lines() : pages->squadLines(), pages->hogIndex());
+        const auto screen = *campaignScreen();
+        originalMenu_->show(campaignMenuShown(), screen, screen == OriginalScreen::HogPage ? &pages->squadMenu() : nullptr);
+        originalMenu_->update(seconds);
+    }
     if (!inCampaign_ && showsOriginalScreen()) {
         if (originalScreen() == OriginalScreen::Players) originalMenu_->setTeamPlayers(teamPlayers());
         originalMenu_->show(frontEnd_->menu(), originalScreen(), frontEnd_->menuUnder());
@@ -288,6 +296,37 @@ std::vector<ui::OriginalTeamHolders::Player> Application::teamPlayers() const {
         players.push_back(control == 0 ? Player::Person : control == 1 ? Player::Computer : Player::Off);
     }
     return players;
+}
+
+const ui::Menu& Application::campaignMenuShown() {
+    const auto* pages = campaign_->menu();
+    if (pages->screen() != ui::CampaignScreen::Swap) return pages->menu();
+    // SWAP POSITION: the squad page with the hog to swap with chosen (the
+    // swap list leaves out the hog being moved; ids are the hogs' places).
+    swapView_ = pages->squadMenu();
+    swapView_.setTitle(pages->menu().title());
+    swapView_.select(pages->menu().selectedItem().id);
+    return swapView_;
+}
+
+std::optional<OriginalScreen> Application::campaignScreen() const {
+    const auto* pages = campaign_ ? campaign_->menu() : nullptr;
+    if (!pages) return std::nullopt;
+    switch (pages->screen()) {
+    case ui::CampaignScreen::Squad:
+        // The original's squad page has room for eight hogs.
+        if (pages->menu().items().size() == ui::kSquadHogs + ui::kSquadOptions) return OriginalScreen::Squad;
+        return std::nullopt;
+    case ui::CampaignScreen::Hog:
+        if (pages->squadMenu().items().size() == ui::kSquadHogs + ui::kSquadOptions) return OriginalScreen::HogPage;
+        return std::nullopt;
+    case ui::CampaignScreen::Swap:
+        // Chosen on the squad page itself (see campaignMenuShown()).
+        if (pages->squadMenu().items().size() == ui::kSquadHogs + ui::kSquadOptions) return OriginalScreen::Squad;
+        return std::nullopt;
+    case ui::CampaignScreen::Results: return OriginalScreen::Results;
+    default: return std::nullopt;
+    }
 }
 
 OriginalScreen Application::originalScreen() const {
@@ -333,7 +372,14 @@ void Application::drawMenus(int width, int height) {
     auto& ui = interface_->renderer();
     ui.begin(width, height);
     if (!briefing) background_->draw(ui);
-    if (inCampaign_) {
+    if (inCampaign_ && !briefing && campaignScreen()) {
+        const auto* pages = campaign_->menu();
+        originalMenu_->setSquadInfo(
+            pages->screen() == ui::CampaignScreen::Results ? pages->lines() : pages->squadLines(), pages->hogIndex());
+        const auto screen = *campaignScreen();
+        originalMenu_->draw(ui, campaignMenuShown(), screen,
+                            screen == OriginalScreen::HogPage ? &pages->squadMenu() : nullptr);
+    } else if (inCampaign_) {
         originalMenu_->reset();
         if (!briefing) ui.drawRect(0.0f, 0.0f, ui.canvasWidth(), render::kCanvasHeight, kMenuShade);
         campaign_->draw();

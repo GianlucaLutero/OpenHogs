@@ -68,7 +68,8 @@ animations.
 | `original-screens`   | ✅ done | The original's yes/no question (REALLY QUIT APP?): the plate, the box that unfolds with its YES and NO windows and dial; the list of the original's screens read from the executable |
 | `original-screens-2` | ✅ done | OPTIONS as the original (AUDIO, CONTROLS, CREDITS) and its VOLUME CONTROL: the list rises, the volume panel comes up with its MASTER and SFX knobs, MODE (mono mixes both channels) and VOICES on/off |
 | `original-screens-3` | ✅ done | The original's longer list for SELECT TEAM: the monitor showing the teams, the selector bar with its turning knob and lamp, the name plate with the title |
-| `original-screens-4` | 🔍 in review | The rest of the original front end: the level panel (SELECT LEVEL) with FIELD CONDITIONS on its monitor, MULTI-PLAYER with the team holders (joypad or chip), CONTROLS on the turning board, the original's CREDITS rolling up |
+| `original-screens-4` | ✅ done | The rest of the original front end: the level panel (SELECT LEVEL) with FIELD CONDITIONS on its monitor, MULTI-PLAYER with the team holders (joypad or chip), CONTROLS on the turning board, the original's CREDITS rolling up |
+| `original-campaign-screens` | 🔍 in review | The campaign's squad page as the original (two boards of portraits, selectors, START MISSION / BACK panels, monitor), a hog's page rising over it, SWAP POSITION on the squad, the results written over the background |
 | fidelity blocks      | planned | the other original screens, `mission-scripts`, `weapons-complete`, `version-variants`: videos, pictures, menus and missions exactly as in the original |
 | `release`            | planned | Packaged builds for Windows and Linux |
 

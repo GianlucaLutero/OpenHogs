@@ -93,6 +93,8 @@ private:
     void update(double seconds);
     void draw(int width, int height);
     OriginalScreen originalScreen() const;  // how the current menu is drawn
+    std::optional<OriginalScreen> campaignScreen() const;  // ...and a campaign page, if drawn as the original
+    const ui::Menu& campaignMenuShown();  // the campaign page's menu as the original screen shows it
     bool showsOriginalScreen() const;       // ...if it can be drawn as the original
     std::vector<ui::OriginalTeamHolders::Player> teamPlayers() const;  // for the MULTI-PLAYER page
     void drawMenus(int width, int height);
@@ -115,6 +117,7 @@ private:
     std::unique_ptr<OriginalMenuView> originalMenu_;  // the short menus, as the original
     std::unique_ptr<ui::FrontEnd> frontEnd_;
     std::unique_ptr<CampaignSession> campaign_;
+    ui::Menu swapView_;  // SWAP POSITION drawn as the squad page
     bool inCampaign_ = false;      // the campaign pages are shown (or its match played)
     bool campaignMatch_ = false;   // the match being played is a campaign mission
     std::filesystem::path savePath_;

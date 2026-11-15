@@ -68,6 +68,12 @@ public:
     const Menu& menu() const { return menu_; }
     // Information shown under the page's title (mission, points...).
     const std::vector<std::string>& lines() const { return lines_; }
+    // The squad page as last shown, and its lines: the original draws a
+    // hog's page over it.
+    const Menu& squadMenu() const { return squad_; }
+    const std::vector<std::string>& squadLines() const { return squadLines_; }
+    // The hog whose page is open (or being promoted or swapped).
+    std::size_t hogIndex() const { return hog_; }
 
 private:
     CampaignMenuResult handleSquad(const MenuResponse& response, game::Campaign& campaign);
@@ -84,6 +90,8 @@ private:
     CampaignScreen screen_ = CampaignScreen::Squad;
     Menu menu_;
     std::vector<std::string> lines_;
+    Menu squad_;
+    std::vector<std::string> squadLines_;
     DeploymentRule deployment_;
     std::size_t deployed_ = 0;
     std::size_t hog_ = 0;  // the hog being promoted or swapped

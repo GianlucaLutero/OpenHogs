@@ -11,6 +11,7 @@
 #include "openhogs/ui/OriginalMenu.h"
 #include "openhogs/ui/OriginalOptionPages.h"
 #include "openhogs/ui/OriginalSelectList.h"
+#include "openhogs/ui/OriginalSquad.h"
 #include "openhogs/ui/OriginalVolume.h"
 
 #include <catch2/catch_approx.hpp>
@@ -480,4 +481,78 @@ TEST_CASE("The controls board turns before showing the keys", "[ui][controls]") 
     CHECK(board.pieces().front().picture == "pckey006");
     CHECK(board.showsText());
     CHECK(board.keyLine(1).top - board.keyLine(0).top == Approx(41.5f));
+}
+
+// --- The campaign's squad page (ui::OriginalSquad) ----------------------------
+
+namespace {
+
+std::vector<MenuPiece> squadPieces(const OriginalSquad& squad, const std::string& picture) {
+    std::vector<MenuPiece> found;
+    for (const auto& piece : squad.pieces(kSquadHogs)) {
+        if (piece.picture == picture) found.push_back(piece);
+    }
+    return found;
+}
+
+void settle(OriginalSquad& squad) {
+    for (int tick = 0; tick < 500 && !squad.settled(); ++tick) squad.tick();
+    REQUIRE(squad.settled());
+}
+
+} // namespace
+
+TEST_CASE("The squad boards turn in, then show the eight faces in their windows", "[ui][originalsquad]") {
+    // Five hogs on the left board, three on the mirrored right one, each
+    // face in a window of sqpic (left windows x 53-128, right 512-587).
+    OriginalSquad squad;
+    squad.open(0);
+    CHECK_FALSE(squad.showsText());
+    CHECK_FALSE(squadPieces(squad, "sqpics00").empty());
+    settle(squad);
+    const auto boards = squadPieces(squad, "sqpic");
+    REQUIRE(boards.size() == 2);
+    CHECK(boards[1].mirrored);
+    int left = 0, right = 0;
+    for (const auto& piece : squad.pieces(kSquadHogs)) {
+        if (piece.picture.rfind("face", 0) != 0) continue;
+        if (piece.x > 50.0f && piece.x + 70.0f < 135.0f) ++left;
+        if (piece.x > 505.0f && piece.x + 70.0f < 595.0f) ++right;
+    }
+    CHECK(left == 5);
+    CHECK(right == 3);
+}
+
+TEST_CASE("The squad's selector follows the chosen hog on its own board", "[ui][originalsquad]") {
+    // A row is 74 pixels and five selector steps; the lamps of the board
+    // holding the chosen hog light up, the other board's go dark.
+    OriginalSquad squad;
+    squad.open(0);
+    settle(squad);
+    const float firstRow = squadPieces(squad, "sqdial01").back().y;
+    squad.select(3);
+    settle(squad);
+    CHECK(squadPieces(squad, "sqdial01").back().y - firstRow == Approx(3.0f * 74.0f).margin(2.0f));
+    CHECK(squadPieces(squad, "lit3").size() == 2);  // the left board's
+    squad.select(6);  // the right board's second hog
+    settle(squad);
+    const auto lit = squadPieces(squad, "lit3");
+    REQUIRE(lit.size() == 2);
+    CHECK(lit[0].x > 400.0f);
+}
+
+TEST_CASE("A hog's page rises over the squad and goes away again", "[ui][originalsquad]") {
+    // The page's words must only be written once its panel is in place.
+    OriginalSquad squad;
+    squad.open(0);
+    settle(squad);
+    CHECK(squadPieces(squad, "swap.mgl1").empty());
+    squad.openHogPage(1);
+    CHECK_FALSE(squad.showsHogPage());
+    settle(squad);
+    CHECK(squad.showsHogPage());
+    CHECK(squadPieces(squad, "swap.mgl1").front().y == Approx(260.0f));
+    squad.closeHogPage();
+    settle(squad);
+    CHECK(squadPieces(squad, "swap.mgl1").empty());
 }

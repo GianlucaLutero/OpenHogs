@@ -30,6 +30,10 @@ const glm::vec4 kQuestionColour{120 * kTint, 120 * kTint, 80 * kTint, 1.0f};
 const glm::vec4 kLevelSelectedColour{120 * kTint, 120 * kTint, 100 * kTint, 1.0f};
 const glm::vec4 kLevelColour{90 * kTint, 90 * kTint, 70 * kTint, 1.0f};
 const glm::vec4 kInactiveLevelColour{45 * kTint, 45 * kTint, 40 * kTint, 1.0f};
+// MISSION RESULTS: the layout of words alone (decision 106).
+constexpr float kResultsScale = 0.8f;
+constexpr float kResultsTitleTop = 60.0f, kResultsLinesTop = 130.0f, kResultsChoicesTop = 360.0f;
+constexpr float kResultsLineStep = 30.0f;
 // The credits, written in grey (tint 120 on every channel).
 const glm::vec4 kCreditsColour{120 * kTint, 120 * kTint, 120 * kTint, 1.0f};
 // The blinking value of VOLUME CONTROL (tint 200, brighter than the
@@ -96,6 +100,10 @@ void OriginalMenuView::update(double seconds) {
         credits_.advance(seconds);
         return;
     }
+    if (screen_ == OriginalScreen::Squad || screen_ == OriginalScreen::HogPage) {
+        squad_.advance(seconds);
+        return;
+    }
     animation_.advance(seconds);
     if (screen_ == OriginalScreen::Volume || volumeLeaving_) volume_.advance(seconds);
     if (volumeLeaving_ && volume_.closed()) {
@@ -123,6 +131,26 @@ void OriginalMenuView::show(const ui::Menu& menu, OriginalScreen screen, const u
     }
     case OriginalScreen::Controls:
         if (changed) controlsBoard_.open();
+        break;
+    case OriginalScreen::Results: break;  // words only, nothing to animate
+    case OriginalScreen::Squad:
+        if (screen_ == OriginalScreen::HogPage) {
+            squad_.closeHogPage();  // back from a hog's page: the squad stays
+            squad_.select(selected);
+        } else if (changed) {
+            squad_.open(selected);
+        } else {
+            squad_.select(selected);
+        }
+        break;
+    case OriginalScreen::HogPage:
+        if (screen_ != OriginalScreen::Squad && screen_ != OriginalScreen::HogPage) squad_.open(squadHog_);
+        if (screen_ != OriginalScreen::HogPage) {
+            squad_.select(squadHog_);
+            squad_.openHogPage(selected);
+        } else {
+            squad_.selectHogLine(selected);
+        }
         break;
     case OriginalScreen::Credits:
         if (changed) credits_.open();
@@ -229,6 +257,12 @@ void OriginalMenuView::draw(render::UiRenderer& ui, const ui::Menu& menu, Origin
     case OriginalScreen::LevelList: drawLevelPanel(ui, menu, originX, true); break;
     case OriginalScreen::Controls: drawControls(ui, menu, originX); break;
     case OriginalScreen::Credits: drawCredits(ui, originX); break;
+    case OriginalScreen::Squad: drawSquad(ui, menu, originX, true); break;
+    case OriginalScreen::Results: drawResults(ui, menu, originX); break;
+    case OriginalScreen::HogPage:
+        if (under) drawSquad(ui, *under, originX, false);
+        drawHogPage(ui, menu, originX);
+        break;
     case OriginalScreen::FieldConditions:
         if (under) drawLevelPanel(ui, *under, originX, false);
         drawFieldConditions(ui, menu, originX);
@@ -300,6 +334,80 @@ void OriginalMenuView::drawCredits(render::UiRenderer& ui, float originX) {
         const auto& [name, job] = creditRows_[row.index];
         ui.drawText(questionFont_, name, originX + row.name.centreX, row.name.top, style);
         ui.drawText(questionFont_, job, originX + row.job.centreX, row.job.top, style);
+    }
+}
+
+void OriginalMenuView::drawSquad(render::UiRenderer& ui, const ui::Menu& squad, float originX, bool active) {
+    const auto& items = squad.items();
+    const std::size_t hogs = items.size() >= ui::kSquadOptions ? items.size() - ui::kSquadOptions : 0;
+    drawPieces(ui, squad_.pieces(hogs), originX);
+    render::TextStyle style;
+    style.scale = kTextScale;
+    style.align = render::TextAlign::Centre;
+    style.shadow = false;
+    style.colour = kTitleColour;
+    const auto title = squad_.titleLine();
+    ui.drawText(font_, squad.title(), originX + title.centreX, title.top, style);
+    if (!squad_.showsText()) return;
+    const float half = static_cast<float>(font_.font().lineHeight) * kTextScale / 2.0f;
+    const std::size_t selected = active ? squad.selectedIndex() : squadHog_;
+    for (std::size_t i = 0; i < items.size(); ++i) {
+        glm::vec4 colour = i == selected ? kSelectedColour : kEntryColour;
+        if (!items[i].enabled) colour = glm::vec4(glm::vec3(colour) * kDisabledDimming, 1.0f);
+        style.colour = colour;
+        const auto line = i < hogs ? squad_.nameLine(i) : squad_.optionLine(i - hogs);
+        ui.drawText(font_, items[i].label, originX + line.centreX, line.top - half, style);
+    }
+    // The monitor: the chosen hog's rank, then the page's lines (hidden by
+    // a hog's page).
+    if (!active) return;
+    std::vector<std::string> monitor;
+    if (selected < hogs) monitor.push_back(items[selected].detail);
+    monitor.insert(monitor.end(), squadLines_.begin(), squadLines_.end());
+    style.colour = kLevelColour;
+    for (std::size_t i = 0; i < monitor.size(); ++i) {
+        const auto line = squad_.monitorLine(i);
+        ui.drawText(font_, monitor[i], originX + line.centreX, line.top, style);
+    }
+}
+
+void OriginalMenuView::drawResults(render::UiRenderer& ui, const ui::Menu& menu, float originX) {
+    // The executable's results screens (type 10) draw no picture: the title,
+    // the lines and the choices are written over the background.
+    render::TextStyle style;
+    style.scale = kResultsScale;
+    style.align = render::TextAlign::Centre;
+    style.colour = kTitleColour;
+    const float centre = originX + ui::kOriginalScreenWidth / 2.0f;
+    ui.drawText(questionFont_, menu.title(), centre, kResultsTitleTop, style);
+    style.colour = kCreditsColour;
+    float y = kResultsLinesTop;
+    for (const auto& line : squadLines_) {
+        ui.drawText(questionFont_, line, centre, y, style);
+        y += kResultsLineStep;
+    }
+    const auto& items = menu.items();
+    y = kResultsChoicesTop;
+    for (std::size_t i = 0; i < items.size(); ++i) {
+        style.colour = i == menu.selectedIndex() ? kSelectedColour : kEntryColour;
+        ui.drawText(questionFont_, items[i].label, centre, y, style);
+        y += kResultsLineStep;
+    }
+}
+
+void OriginalMenuView::drawHogPage(render::UiRenderer& ui, const ui::Menu& menu, float originX) {
+    if (!squad_.showsHogPage()) return;
+    render::TextStyle style;
+    style.scale = kTextScale;
+    style.align = render::TextAlign::Centre;
+    style.shadow = false;
+    const auto& items = menu.items();
+    for (std::size_t i = 0; i < items.size(); ++i) {
+        glm::vec4 colour = i == menu.selectedIndex() ? kSelectedColour : kEntryColour;
+        if (!items[i].enabled) colour = glm::vec4(glm::vec3(colour) * kDisabledDimming, 1.0f);
+        style.colour = colour;
+        const auto line = squad_.hogPageLine(i);
+        ui.drawText(font_, items[i].label, originX + line.centreX, line.top, style);
     }
 }
 
