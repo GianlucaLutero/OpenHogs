@@ -6,6 +6,7 @@
 // its place, the dial pointing at the chosen entry, the blinking lamp, and
 // the words sitting inside their bars.
 
+#include "openhogs/ui/OriginalDialog.h"
 #include "openhogs/ui/OriginalMenu.h"
 
 #include <catch2/catch_approx.hpp>
@@ -149,4 +150,76 @@ TEST_CASE("The words of the menu sit inside the title plate and the bars", "[ui]
         CHECK(line.top + kLetterHeight < bars[i].y + 35.0f);
         CHECK(std::abs(line.centreX - (bars[i].x + 80.0f)) < 12.0f);
     }
+}
+
+// --- The yes/no question (ui::OriginalDialog) --------------------------------
+
+namespace {
+
+MenuPiece dialogPiece(const OriginalDialog& dialog, const std::string& picture) {
+    const auto pieces = dialog.pieces();
+    const auto found = std::find_if(pieces.begin(), pieces.end(),
+                                    [&](const MenuPiece& piece) { return piece.picture == picture; });
+    REQUIRE(found != pieces.end());
+    return *found;
+}
+
+int ticksToSettle(OriginalDialog& dialog, int limit = 500) {
+    int ticks = 0;
+    while (!dialog.settled() && ticks < limit) {
+        dialog.tick();
+        ++ticks;
+    }
+    return ticks;
+}
+
+} // namespace
+
+TEST_CASE("The question slides in, unfolds and rests where the original draws it", "[ui][originaldialog]") {
+    // The plate drops from the top and the box comes in from the right,
+    // then opens; at rest they must be at the executable's positions or the
+    // answers would not sit in the windows.
+    OriginalDialog dialog;
+    dialog.open(1);
+    CHECK(dialogPiece(dialog, "name0").y < 0.0f);
+    CHECK(dialogPiece(dialog, "yesno01").x > 640.0f);
+    CHECK_FALSE(dialog.showsAnswers());
+
+    CHECK(ticksToSettle(dialog) < 100);
+    CHECK(dialogPiece(dialog, "name0").x == Approx(123.0f));
+    CHECK(dialogPiece(dialog, "name0").y == Approx(16.0f));
+    const auto box = dialogPiece(dialog, "yes");
+    CHECK(box.x == Approx(319.0f));
+    CHECK(box.y == Approx(345.0f));
+    CHECK(dialog.showsAnswers());
+}
+
+TEST_CASE("The question's dial points at the chosen answer", "[ui][originaldialog]") {
+    // yesdial1 points at YES and yesdial7 at NO; the arrow turns one picture
+    // per tick between them.
+    OriginalDialog dialog;
+    dialog.open(1);
+    ticksToSettle(dialog);
+    CHECK(dialog.dialFrame() == 6);
+    CHECK_NOTHROW(dialogPiece(dialog, "yesdial7"));
+    dialog.select(0);
+    dialog.tick();
+    CHECK(dialog.dialFrame() == 5);
+    ticksToSettle(dialog);
+    CHECK_NOTHROW(dialogPiece(dialog, "yesdial1"));
+}
+
+TEST_CASE("The answers are written inside the box's windows", "[ui][originaldialog]") {
+    // The windows of `yes` run from column 53 to 115 and 123 to 185, rows
+    // 36 to 58: YES and NO must be centred in them.
+    OriginalDialog dialog;
+    dialog.open(0);
+    ticksToSettle(dialog);
+    const auto box = dialogPiece(dialog, "yes");
+    const auto yes = dialog.answerLine(0);
+    const auto no = dialog.answerLine(1);
+    CHECK(yes.centreX == Approx(box.x + 84.0f));
+    CHECK(no.centreX == Approx(box.x + 154.0f));
+    CHECK(yes.top > box.y + 36.0f);
+    CHECK(yes.top + 18.0f < box.y + 58.0f + 2.0f);
 }

@@ -27,8 +27,9 @@ public:
     // A missing archive only causes a warning: picture() then finds nothing.
     explicit FrontEndPictures(const core::VirtualFileSystem& vfs);
 
-    // The picture named `name` (without ".mgl", any letter case), or null
-    // if there is none or it cannot be decoded.
+    // The picture named `name` (without ".mgl", or the full entry name for
+    // the few that end otherwise, such as "info1.mgl1"; any letter case),
+    // or null if there is none or it cannot be decoded.
     const render::UiImage* picture(std::string_view name);
 
 private:

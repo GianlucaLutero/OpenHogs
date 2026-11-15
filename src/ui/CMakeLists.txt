@@ -12,6 +12,7 @@
 #   Hud           - what the HUD shows; messages for game events
 #   HudLayout     - the original HUD's layout and moving parts (from the executable)
 #   OriginalMenu  - the original list menu's layout and animation (from the executable)
+#   OriginalDialog - the original yes/no question's layout and animation
 #   CampaignMenu  - the campaign pages: squad, promotions, mission results
 
 add_library(openhogs_ui STATIC
@@ -21,6 +22,7 @@ add_library(openhogs_ui STATIC
     src/Hud.cpp
     src/HudLayout.cpp
     src/Menu.cpp
+    src/OriginalDialog.cpp
     src/OriginalMenu.cpp
     src/MessageBanner.cpp
     src/PauseMenu.cpp

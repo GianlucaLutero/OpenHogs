@@ -17,10 +17,30 @@ entry. The types of the 52 screens are at 0x4C1470:
 12 1 1 2 4 4 4 4 4 4 8 0 5 0 1 0 2 21 0 6 7 9 10 2 12 13 2 2 20 21 12 21 6 8 5 3 10 3 14 12 13 15 19 12 2 16 21 18 18 22 18 18
 ```
 
-and the number of entries of each at 0x4C0EE8. Screen 1 is the main menu
-(type 1, four entries: fetext 8 MAIN MENU, then 13-16 ONE PLAYER,
-MULTI-PLAYER, OPTIONS, QUIT APPLICATION; the PC replaces the console's
-entries 9-12).
+and the number of entries of each at 0x4C0EE8. The text numbers follow
+from those two tables (`FUN_0042f120`); worked out, the screens are:
+
+| Screen | Type | Title (fetext) | Entries |
+|--------|------|----------------|---------|
+| 0 | 12 | ARE YOU SURE YOU WANT TO QUIT? | YES, NO |
+| 1 | 1 | MAIN MENU | ONE PLAYER, MULTI-PLAYER, OPTIONS, QUIT APPLICATION (fetext 13-16; the PC replaces the console's 9-12) |
+| 2 | 1 | OPTIONS | AUDIO, CONTROLS, CREDITS |
+| 3 | 2 | SELECT TEAM | the six teams |
+| 4-9 | 4 | (the team pages) | |
+| 10, 21, 33 | 8, 9, 8 | LOAD, SAVE ARMY, LOAD ARMY | |
+| 14 | 1 | ONE PLAYER | NEW GAME, LOAD GAME |
+| 16 | 2 | MULTI-PLAYER | TEAM A-D, DONE, NETWORK |
+| 17 | 21 | FIELD CONDITIONS | |
+| 19, 32 | 6 | (a pig's page) | PROMOTE, SWAP POSITION, RENAME |
+| 20 | 7 | VOLUME CONTROL | MODE, MASTER, SFX, VOICES |
+| 24, 39, 43 | 12 | REALLY QUIT?, PLAY TRAINING MISSION?, REALLY QUIT APP? (fetext 148) | YES, NO |
+| 25 | 13 | CAREER PATH | HEAVY WEAPONS, ENGINEER, ESPIONAGE, MEDIC |
+| 28 | 20 | MULTI-PLAYER SELECT LEVEL | SURVIVAL-NOVICE ... LEVEL SETUP |
+| 29 | 21 | RANDOM GENERATED LEVEL | |
+| 38 | 14 | SCREEN POS | OKAY |
+| 41 | 15 | CONTROLLER SETUP | |
+| 45 | 16 | CREDITS | |
+| 47-51 | 18, 22 | NETWORK: ... | |
 
 ## Pictures
 
@@ -67,6 +87,32 @@ steps of two), from the top sprite down:
 | panel top | `fullmenu`, 340 × 50 from its top | (ox + 60, oy − 48) |
 | panel | `fullmenu` | (ox + 60, oy) |
 
+### Types 3, 4, 11 and 12: the settings machine (here the yes/no question)
+
+Drawn by the same code (0x41C492). With *box* = the slide of the box
+(`DAT_00512cdc`, 1024-wide units, converted) + 7, and *y1* = twice the
+plate's drop (`DAT_00512954`) in pixels, from the top sprite down:
+
+| Sprite | Picture | Position |
+|--------|---------|----------|
+| arms of the plate | `namarm1`, `namarm2` | (80, y1), (435, y1) |
+| name plate | `name0`-`name5` (flip frames) | (123, y1 + 16; + 32 at frame 3) |
+| tray | `info1.mgl1`-`info6.mgl1` (opening frames) | (box + 368, 98) |
+| dial (box open) | `yesdial1` (YES) - `yesdial7` (NO) | (box + 392, + 16 past frame 1; 393) |
+| box | `yesno01`-`yesno06`, then `yes` | (box + 280, + 32 for `yes`; 345) |
+| pipe | `mainbar0`: rows 0-160; columns 35-48; rows 100-160 | (box + 312, 130); (box + 359, 130); (box + 312, 290) |
+| riser | `mainbar1`: rows 0-39, and rows 0-2 repeated from the top | (box + 608, 72); (box + 608, 0 to 72) |
+| rack | `track`, mirrored | leaves the screen in type 12 |
+
+For type 12, the update (`FUN_00423e70`) springs the plate down from
+−150 (gain 3, damping 30, top speed 6) and the box in from 0x4C8 (gain
+10, damping 40, top speed 20), unfolds the box to frame 6 (`yes`), closes
+the tray to `info1` and turns the dial to frame 6 × *selected*. The title
+is centred in the box (299, 77, width 400) and the answers in boxes at
+x 600 and 710, y 658 (1024 × 820 units), which do not line up with the
+pictures as composed here: OpenHogs centres them on the plate's glass and
+the box's windows (`docs/open-decisions.md`).
+
 ## Text
 
 The menus write with `FEText/chars3` (types 0, 1, 2, 4 and 5) or the
@@ -110,7 +156,12 @@ For type 1 (`FUN_00423e70`, `FUN_00427c90`):
 - element 4 is the dial: it turns to frame 4 × *selected* (minus 1 past 4:
   0, 4, 7, 11) and clicks when it gets there.
 
-Still to read: the other screen types (level choice `lselpc`, volume
-`vol00`-`vol06`, the team pages `sq*`, the yes/no dial `yesno01`-`06`,
-saving `pcsav`, the keys `pckey*`), the steam puffs (`FUN_00419fa0`) and
-the leaving animations.
+Type 7, VOLUME CONTROL, draws only its own panel: `vol00`-`vol06`
+(368 × 240, opening frames) at (100, 240 + twice the drop of
+`DAT_00512958`), then, once open, two knobs (`vollit01`-`03`) on its
+rails at x 230 + level × 12.5, y 320 and 351 (`FUN_0041e780`).
+
+Still to read: the other screen types (team lists and pages, type 2 and
+4: `sq*`; level choice, type 20; field conditions, type 21; saving
+`pcsav`; the keys `pckey*`), the steam puffs (`FUN_00419fa0`) and the
+leaving animations.

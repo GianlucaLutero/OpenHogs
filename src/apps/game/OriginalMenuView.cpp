@@ -23,11 +23,14 @@ const glm::vec4 kTitleColour{100 * kTint, 100 * kTint, 60 * kTint, 1.0f};
 const glm::vec4 kEntryColour{80 * kTint, 80 * kTint, 45 * kTint, 1.0f};
 const glm::vec4 kSelectedColour{120 * kTint, 120 * kTint, 75 * kTint, 1.0f};
 constexpr float kDisabledDimming = 1.0f / 3.0f;
+// The question's title, set by the executable for these screens.
+const glm::vec4 kQuestionColour{120 * kTint, 120 * kTint, 80 * kTint, 1.0f};
 
 } // namespace
 
-OriginalMenuView::OriginalMenuView(FrontEndPictures& pictures, const render::UiFont& font)
-    : pictures_(pictures), font_(font) {}
+OriginalMenuView::OriginalMenuView(FrontEndPictures& pictures, const render::UiFont& font,
+                                   const render::UiFont& questionFont)
+    : pictures_(pictures), font_(font), questionFont_(questionFont) {}
 
 bool OriginalMenuView::suits(const ui::Menu& menu) {
     const auto& items = menu.items();
@@ -37,19 +40,33 @@ bool OriginalMenuView::suits(const ui::Menu& menu) {
 }
 
 void OriginalMenuView::update(double seconds) {
-    if (shown_) animation_.advance(seconds);
+    if (!shown_) return;
+    if (question_) {
+        dialog_.advance(seconds);
+    } else {
+        animation_.advance(seconds);
+    }
 }
 
-void OriginalMenuView::show(const ui::Menu& menu) {
-    if (shown_ == nullptr) {
-        animation_.open(menu.selectedIndex());
+void OriginalMenuView::show(const ui::Menu& menu, bool question) {
+    const std::size_t selected = menu.selectedIndex();
+    if (question) {
+        // The question has its own machine: it opens whenever it appears.
+        if (shown_ != &menu || !question_) {
+            dialog_.open(selected);
+        } else if (selected_ != selected) {
+            dialog_.select(selected);
+        }
+    } else if (shown_ == nullptr || question_) {
+        animation_.open(selected);
     } else if (shown_ != &menu) {
-        animation_.replaceContents(menu.selectedIndex());
-    } else if (selected_ != menu.selectedIndex()) {
-        animation_.select(menu.selectedIndex());
+        animation_.replaceContents(selected);
+    } else if (selected_ != selected) {
+        animation_.select(selected);
     }
     shown_ = &menu;
-    selected_ = menu.selectedIndex();
+    question_ = question;
+    selected_ = selected;
 }
 
 void OriginalMenuView::drawPiece(render::UiRenderer& ui, const ui::MenuPiece& piece, float originX) {
@@ -71,17 +88,45 @@ void OriginalMenuView::drawPiece(render::UiRenderer& ui, const ui::MenuPiece& pi
     ui.drawImageRegion(*image, x, piece.y, width, height, u0, v0, u1, v1);
 }
 
-void OriginalMenuView::draw(render::UiRenderer& ui, const ui::Menu& menu) {
-    show(menu);
+void OriginalMenuView::drawPieces(render::UiRenderer& ui, const std::vector<ui::MenuPiece>& pieces,
+                                  float originX) {
+    // The executable lists the pieces from the top one down: draw them the
+    // other way round so the first one ends up on top.
+    for (auto piece = pieces.rbegin(); piece != pieces.rend(); ++piece) drawPiece(ui, *piece, originX);
+}
+
+void OriginalMenuView::draw(render::UiRenderer& ui, const ui::Menu& menu, bool question) {
+    show(menu, question);
     // The original screen is 640 pixels wide; wider canvases get the same
     // layout in the middle (the canvas is 480 units high, like the screen).
     const float originX = (ui.canvasWidth() - ui::kOriginalScreenWidth) / 2.0f;
+    if (question) {
+        drawQuestion(ui, menu, originX);
+    } else {
+        drawList(ui, menu, originX);
+    }
+}
 
-    // The executable lists the pieces from the top one down: draw them the
-    // other way round so the first one ends up on top.
-    const auto pieces = animation_.pieces();
-    for (auto piece = pieces.rbegin(); piece != pieces.rend(); ++piece) drawPiece(ui, *piece, originX);
+void OriginalMenuView::drawQuestion(render::UiRenderer& ui, const ui::Menu& menu, float originX) {
+    drawPieces(ui, dialog_.pieces(), originX);
+    render::TextStyle style;
+    style.scale = kTextScale;
+    style.align = render::TextAlign::Centre;
+    style.shadow = false;
+    style.colour = kQuestionColour;
+    const auto title = dialog_.titleLine();
+    ui.drawText(questionFont_, menu.title(), originX + title.centreX, title.top, style);
+    if (!dialog_.showsAnswers()) return;
+    const auto& items = menu.items();
+    for (std::size_t i = 0; i < items.size() && i < 2; ++i) {
+        style.colour = i == menu.selectedIndex() ? kSelectedColour : kEntryColour;
+        const auto line = dialog_.answerLine(i);
+        ui.drawText(questionFont_, items[i].label, originX + line.centreX, line.top, style);
+    }
+}
 
+void OriginalMenuView::drawList(render::UiRenderer& ui, const ui::Menu& menu, float originX) {
+    drawPieces(ui, animation_.pieces(), originX);
     if (!animation_.showsText()) return;
     render::TextStyle style;
     style.scale = kTextScale;

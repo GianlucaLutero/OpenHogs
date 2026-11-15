@@ -64,8 +64,9 @@ animations.
 | `cutscenes`          | ✅ done | The original's Bink videos with their sound, decoded by OpenHogs' own player: the start-up films and the films between the campaign's islands; any key skips |
 | `mgl-pictures`       | ✅ done | The original's compressed `.mgl` pictures decoded: the menus over the game's own background; translated title screens, newspapers and headlines in the language pack |
 | `original-menus`     | ✅ done | The original's brass list menu (main menu, ONE PLAYER, ARE YOU SURE?) read from the executable: panel, bars, lamps, dial, racks, its spring animations and its font |
-| `hog-handling`       | 🔍 in review | Weapons held as in the original (in the hand, aiming pose following the angle, taken out standing and put away moving, the right model for each weapon); the play area's limits, higher steps, no jumping off walls; swimming that hurts all but Commandos and Heroes, drowning, swimming back to the shore |
-| fidelity blocks      | planned | `original-screens`, `mission-scripts`, `weapons-complete`, `version-variants`: videos, pictures, menus and missions exactly as in the original |
+| `hog-handling`       | ✅ done | Weapons held as in the original (in the hand, aiming pose following the angle, taken out standing and put away moving, the right model for each weapon); the play area's limits, higher steps, no jumping off walls; swimming that hurts all but Commandos and Heroes, drowning, swimming back to the shore |
+| `original-screens`   | 🔍 in review | The original's yes/no question (REALLY QUIT APP?): the plate, the box that unfolds with its YES and NO windows and dial; the list of the original's screens read from the executable |
+| fidelity blocks      | planned | the other original screens, `mission-scripts`, `weapons-complete`, `version-variants`: videos, pictures, menus and missions exactly as in the original |
 | `release`            | planned | Packaged builds for Windows and Linux |
 
 ## Requirements
