@@ -2,6 +2,7 @@
 
 #include "OriginalMenuView.h"
 
+#include "openhogs/game/Ranks.h"
 #include "openhogs/ui/HudLayout.h"
 
 #include <algorithm>
@@ -100,6 +101,10 @@ void OriginalMenuView::update(double seconds) {
         credits_.advance(seconds);
         return;
     }
+    if (screen_ == OriginalScreen::Promotion) {
+        career_.advance(seconds);
+        return;
+    }
     if (screen_ == OriginalScreen::Squad || screen_ == OriginalScreen::HogPage) {
         squad_.advance(seconds);
         return;
@@ -133,6 +138,13 @@ void OriginalMenuView::show(const ui::Menu& menu, OriginalScreen screen, const u
         if (changed) controlsBoard_.open();
         break;
     case OriginalScreen::Results: break;  // words only, nothing to animate
+    case OriginalScreen::Promotion:
+        if (changed) {
+            career_.open(selected);
+        } else {
+            career_.select(selected);
+        }
+        break;
     case OriginalScreen::Squad:
         if (screen_ == OriginalScreen::HogPage) {
             squad_.closeHogPage();  // back from a hog's page: the squad stays
@@ -259,6 +271,7 @@ void OriginalMenuView::draw(render::UiRenderer& ui, const ui::Menu& menu, Origin
     case OriginalScreen::Credits: drawCredits(ui, originX); break;
     case OriginalScreen::Squad: drawSquad(ui, menu, originX, true); break;
     case OriginalScreen::Results: drawResults(ui, menu, originX); break;
+    case OriginalScreen::Promotion: drawPromotion(ui, menu, originX); break;
     case OriginalScreen::HogPage:
         if (under) drawSquad(ui, *under, originX, false);
         drawHogPage(ui, menu, originX);
@@ -368,6 +381,56 @@ void OriginalMenuView::drawSquad(render::UiRenderer& ui, const ui::Menu& squad, 
     for (std::size_t i = 0; i < monitor.size(); ++i) {
         const auto line = squad_.monitorLine(i);
         ui.drawText(font_, monitor[i], originX + line.centreX, line.top, style);
+    }
+}
+
+namespace {
+
+// The icon of the career a CAREER PATH entry leads to (the executable's
+// order: heavy weapons, engineer, espionage, medic), or -1.
+int careerIcon(const ui::MenuItem& item) {
+    if (item.id < 0) return -1;
+    switch (game::rankSpec(static_cast<game::RankId>(item.id)).career) {
+    case game::Career::HeavyWeapons: return 0;
+    case game::Career::Engineer: return 1;
+    case game::Career::Espionage: return 2;
+    case game::Career::Medic: return 3;
+    default: return -1;
+    }
+}
+
+} // namespace
+
+void OriginalMenuView::drawPromotion(render::UiRenderer& ui, const ui::Menu& menu, float originX) {
+    const auto& items = menu.items();
+    // CAREER PATH shows the careers' icons, the chosen one blinking.
+    const int icon = careerIcon(menu.selectedItem());
+    const bool careers = std::any_of(items.begin(), items.end(), [](const ui::MenuItem& item) { return careerIcon(item) >= 0; });
+    career_.select(icon >= 0 ? static_cast<std::size_t>(icon) : ui::kCareerIcons);
+    drawPieces(ui, career_.pieces(careers), originX);
+    render::TextStyle style;
+    style.scale = kTextScale;
+    style.align = render::TextAlign::Centre;
+    style.shadow = false;
+    style.colour = kTitleColour;
+    const auto title = career_.titleLine();
+    ui.drawText(font_, menu.title(), originX + title.centreX, title.top, style);
+    if (!career_.showsText()) return;
+    std::size_t line = 0;
+    style.colour = kLevelColour;
+    for (const auto& text : squadLines_) {
+        const auto at = career_.monitorLine(line++);
+        ui.drawText(font_, text, originX + at.centreX, at.top, style);
+    }
+    ++line;  // a gap before the choices
+    for (std::size_t i = 0; i < items.size(); ++i) {
+        glm::vec4 colour = i == menu.selectedIndex() ? kSelectedColour : kEntryColour;
+        if (!items[i].enabled) colour = glm::vec4(glm::vec3(colour) * kDisabledDimming, 1.0f);
+        style.colour = colour;
+        std::string text = items[i].label;
+        if (!items[i].detail.empty()) text += "  " + items[i].detail;
+        const auto at = career_.monitorLine(line++);
+        ui.drawText(font_, text, originX + at.centreX, at.top, style);
     }
 }
 

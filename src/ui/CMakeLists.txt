@@ -18,6 +18,7 @@
 #   OriginalLevelPanel - the original level panel (SELECT LEVEL, FIELD CONDITIONS) and team holders
 #   OriginalOptionPages - the original CREDITS roll and CONTROLS board
 #   OriginalSquad - the original campaign squad page and a hog's page
+#   OriginalCareer - the original career and promotion board
 #   CampaignMenu  - the campaign pages: squad, promotions, mission results
 
 add_library(openhogs_ui STATIC
@@ -33,6 +34,7 @@ add_library(openhogs_ui STATIC
     src/OriginalLevelPanel.cpp
     src/OriginalOptionPages.cpp
     src/OriginalSquad.cpp
+    src/OriginalCareer.cpp
     src/OriginalMenu.cpp
     src/MessageBanner.cpp
     src/PauseMenu.cpp

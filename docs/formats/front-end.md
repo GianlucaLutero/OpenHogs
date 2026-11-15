@@ -266,6 +266,25 @@ y 611, 666, 721).
 Type 10 (screens 22 and 36: the results between missions) draws no
 picture.
 
+### Types 0 and 13: the information board (CAREER PATH)
+
+`FUN_0041bef0` at 0x41DC69 (types 0, 9 and 13) draws element 18's picture,
+`alpha02`-`alpha08` (the board unfolding; `alpha08` is 304 × 352), at
+(horizontal slide + 165 + a shift per picture: 51, 35, 35, 3, 3, 3, 3;
+2 × drop − 48), with its rows 2-30 drawn again 26 and 54 pixels higher.
+The slide (`DAT_00512CE4`) springs from −800 to 0 and the drop
+(`DAT_00512964`) from −250 to 70 (both gain 15, damping 30, top speed
+30). Above hangs a bar of `propoint` (60 × 60): its left 20 columns at
+x 184, its middle 20 columns from x 204 every 20 pixels up to 444, its
+right 20 at 432, at y slide + 4 (`DAT_0051296C`, from −700: 10, 17, 50),
+with a pole of its first row stretched 100 pixels up at each end. Type 13
+then draws (`FUN_0041e780`, case 13) the careers' icons in a row at
+(260 + 30 × *i*, 408): `pcHweap`, `sappr`, `snipr`, `pcmedic` (heavy
+weapons, engineer, espionage, medic, the order of screen 25); the chosen
+one is hidden while a counter running from 5 down to −5 is above 0. It
+also draws a pedestal (`standpc`), on which the hog stands, and writes
+only the chosen entry, in box 61 (335, 638).
+
 ### Type 7: VOLUME CONTROL
 
 A screen whose pointer at +0x2C is set is drawn over that screen
@@ -293,7 +312,7 @@ only once `DAT_00512958` is 400 again.
   fetext 306 + on (OFF, ON); the selected one's value blinks (tint 20 for
   31 ticks, then 200, out of every 101).
 
-Still to read: the campaign's other screen types (team pages, type 4;
-career path, types 0 and 13; loading and saving, types 8 and 9: `pcsav`; level choice, type 20; field conditions, type 21; saving
+Still to read: the campaign's team pages (type 4) and loading and saving
+(types 8 and 9: `pcsav`), which OpenHogs does not have; level choice, type 20; field conditions, type 21; saving
 `pcsav`; the keys `pckey*`), the steam puffs (`FUN_00419fa0`) and the
 leaving animations.
