@@ -6,6 +6,7 @@
 // its place, the dial pointing at the chosen entry, the blinking lamp, and
 // the words sitting inside their bars.
 
+#include "openhogs/ui/OriginalCareer.h"
 #include "openhogs/ui/OriginalDialog.h"
 #include "openhogs/ui/OriginalLevelPanel.h"
 #include "openhogs/ui/OriginalMenu.h"
@@ -555,4 +556,48 @@ TEST_CASE("A hog's page rises over the squad and goes away again", "[ui][origina
     squad.closeHogPage();
     settle(squad);
     CHECK(squadPieces(squad, "swap.mgl1").empty());
+}
+
+// --- The career board (ui::OriginalCareerBoard) --------------------------------
+
+TEST_CASE("The career board slides in, unfolds and rests at the executable's place", "[ui][originalcareer]") {
+    // The board comes in from the left and from above and settles with
+    // alpha08 at (168, 32); only then are the words written.
+    OriginalCareerBoard board;
+    board.open(0);
+    CHECK_FALSE(board.showsText());
+    for (int tick = 0; tick < 500 && !board.settled(); ++tick) board.tick();
+    REQUIRE(board.settled());
+    CHECK(board.showsText());
+    const auto pieces = board.pieces(false);
+    const auto found = std::find_if(pieces.begin(), pieces.end(),
+                                    [](const MenuPiece& p) { return p.picture == "alpha08" && p.sourceHeight == 0; });
+    REQUIRE(found != pieces.end());
+    CHECK(found->x == Approx(168.0f));
+    CHECK(found->y == Approx(32.0f));
+    // The monitor's first line is inside its dark screen.
+    CHECK(board.monitorLine(0).top > 140.0f);
+    CHECK(board.monitorLine(0).top < 360.0f);
+}
+
+TEST_CASE("CAREER PATH shows the four careers' icons, the chosen one blinking", "[ui][originalcareer]") {
+    // The icons say which career is chosen even before the words are read;
+    // the chosen one disappears for part of each blink.
+    OriginalCareerBoard board;
+    board.open(2);
+    for (int tick = 0; tick < 500 && !board.settled(); ++tick) board.tick();
+    int shown = 0, hidden = 4;
+    for (int tick = 0; tick < 11; ++tick) {
+        board.tick();
+        const auto pieces = board.pieces(true);
+        const auto icons = std::count_if(pieces.begin(), pieces.end(), [](const MenuPiece& p) {
+            return p.picture == "pcHweap" || p.picture == "sappr" || p.picture == "snipr" || p.picture == "pcmedic";
+        });
+        shown = std::max(shown, static_cast<int>(icons));
+        hidden = std::min(hidden, static_cast<int>(icons));
+        const bool espionage = std::any_of(pieces.begin(), pieces.end(), [](const MenuPiece& p) { return p.picture == "snipr"; });
+        if (icons == 3) CHECK_FALSE(espionage);  // the chosen one is the one that blinks
+    }
+    CHECK(shown == 4);
+    CHECK(hidden == 3);
 }

@@ -36,6 +36,7 @@
 
 #include "openhogs/render/UiRenderer.h"
 #include "openhogs/ui/Menu.h"
+#include "openhogs/ui/OriginalCareer.h"
 #include "openhogs/ui/OriginalDialog.h"
 #include "openhogs/ui/OriginalLevelPanel.h"
 #include "openhogs/ui/OriginalMenu.h"
@@ -65,6 +66,7 @@ enum class OriginalScreen {
     Squad,       // the campaign's squad page: eight hogs, START MISSION, BACK
     HogPage,     // a hog's page over the squad (`under` is the squad page)
     Results,     // MISSION RESULTS: words only, over the background
+    Promotion,   // PROMOTE / CAREER PATH on the information board
 };
 
 class OriginalMenuView {
@@ -121,6 +123,7 @@ private:
     void drawSquad(render::UiRenderer& ui, const ui::Menu& squad, float originX, bool active);
     void drawHogPage(render::UiRenderer& ui, const ui::Menu& menu, float originX);
     void drawResults(render::UiRenderer& ui, const ui::Menu& menu, float originX);
+    void drawPromotion(render::UiRenderer& ui, const ui::Menu& menu, float originX);
 
 public:
     // The lines of the squad's monitor (mission, points) and the chosen hog
@@ -144,6 +147,7 @@ private:
     ui::OriginalControlsBoard controlsBoard_;
     ui::CreditsRoll credits_;
     ui::OriginalSquad squad_;
+    ui::OriginalCareerBoard career_;
     std::vector<std::string> squadLines_;
     std::size_t squadHog_ = 0;
     std::vector<std::pair<std::string, std::string>> creditRows_;

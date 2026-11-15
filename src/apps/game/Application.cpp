@@ -275,7 +275,10 @@ void Application::update(double seconds) {
     if (inCampaign_ && !campaign_->showingBriefing() && campaignScreen()) {
         const auto* pages = campaign_->menu();
         originalMenu_->setSquadInfo(
-            pages->screen() == ui::CampaignScreen::Results ? pages->lines() : pages->squadLines(), pages->hogIndex());
+            pages->screen() == ui::CampaignScreen::Results || pages->screen() == ui::CampaignScreen::Promotion
+                ? pages->lines()
+                : pages->squadLines(),
+            pages->hogIndex());
         const auto screen = *campaignScreen();
         originalMenu_->show(campaignMenuShown(), screen, screen == OriginalScreen::HogPage ? &pages->squadMenu() : nullptr);
         originalMenu_->update(seconds);
@@ -325,6 +328,7 @@ std::optional<OriginalScreen> Application::campaignScreen() const {
         if (pages->squadMenu().items().size() == ui::kSquadHogs + ui::kSquadOptions) return OriginalScreen::Squad;
         return std::nullopt;
     case ui::CampaignScreen::Results: return OriginalScreen::Results;
+    case ui::CampaignScreen::Promotion: return OriginalScreen::Promotion;
     default: return std::nullopt;
     }
 }
@@ -375,7 +379,10 @@ void Application::drawMenus(int width, int height) {
     if (inCampaign_ && !briefing && campaignScreen()) {
         const auto* pages = campaign_->menu();
         originalMenu_->setSquadInfo(
-            pages->screen() == ui::CampaignScreen::Results ? pages->lines() : pages->squadLines(), pages->hogIndex());
+            pages->screen() == ui::CampaignScreen::Results || pages->screen() == ui::CampaignScreen::Promotion
+                ? pages->lines()
+                : pages->squadLines(),
+            pages->hogIndex());
         const auto screen = *campaignScreen();
         originalMenu_->draw(ui, campaignMenuShown(), screen,
                             screen == OriginalScreen::HogPage ? &pages->squadMenu() : nullptr);
