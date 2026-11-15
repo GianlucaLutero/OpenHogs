@@ -120,6 +120,10 @@ answer.
 | 58 | Multiplayer | Not implemented yet: deathmatch limit, SELECT PIG (choose the hog each turn), team ranks (CHANGE RANKS), renaming teams, the generated levels (SURVIVAL / DEATHMATCH, CUSTOM / RANDOM / CODE) and network play. | – | `docs/formats/campaign.md`, `FrontEnd` |
 | 59 | Controls | Gamepad layout, and whether each human team should own a controller instead of sharing. | Xbox layout as in the README; any pad (or the keyboard) controls the team whose turn it is. | `src/apps/game/Gamepads.h` |
 | 60 | Multiplayer | May two teams fight for the same nation? | Yes: each team's nation is chosen freely (same uniform, same name). | `FrontEnd::handlePlayers` |
+| 110 | Objectives | Promotion points from objectives: the original adds 1 point a pickup to the hog that takes it, and objectives 4/10/16 take points from the player's current hog. | Points are counted for the squad as a whole (as crates, decision 109): a promotion point gives 1, lost points come off the mission's total. | `game/Objectives.h`, `Game::objectiveDone` |
+| 111 | Objectives | Reward crates come down by parachute (`WE_PARA`), from 0xC00 above. | They appear on the ground at once; the parachute fall is left for the refinement phase. | `game/Objectives.cpp` |
+| 112 | Objectives | Destroy objectives on buildings and vehicles (pillboxes, tents, bridges, tanks) need objects that can be destroyed. | Only hogs carry them for now (enemy hogs whose death drops a crate); the others follow with destructible buildings and vehicles in block 18. | `World::updateObjectives` |
+| 113 | Objectives | The sergeant's reminders about objectives still to do (sections 10 and 11, `FUN_00497f80`) and what type 9 does. | Not said; type 9 does nothing. Objective lines are said in turn (1 to 8) rather than at random. | `Sergeant::objective` |
 
 ## Settled
 

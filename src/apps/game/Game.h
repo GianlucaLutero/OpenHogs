@@ -141,6 +141,7 @@ private:
     void step(double seconds);
     void handleEvents(const std::vector<game::GameEvent>& events);
     void pickedUp(const game::GameEvent& event);
+    void objectiveDone(const game::GameEvent& event);
     void drawWeapons(const render::Camera& camera, int width, int height);
     void drawEffects(const render::Camera& camera, int width, int height);
     void drawModel(const render::Camera& camera, int width, int height, const formats::Model& model,

@@ -62,6 +62,7 @@ std::vector<Pickup> findPickups(const std::vector<formats::MapObject>& objects) 
         const float half = formats::kBoxSizeUnit / 2.0f;
         pickup.halfSize = {std::max<float>(object.boxSizeX, 1) * half, std::max<float>(object.boxSizeY, 1) * half,
                            std::max<float>(object.boxSizeZ, 1) * half};
+        pickup.model = model;
         pickup.amount = object.scriptParams[1];
         const int item = object.scriptParams[0];
         if (model == "PROPOINT") {

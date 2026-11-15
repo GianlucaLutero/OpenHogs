@@ -25,6 +25,9 @@ namespace {
 
 // Shown instead of a texture that cannot be decoded: a single magenta
 // pixel, the usual "missing texture" colour, easy to spot on screen.
+// The models of the crates objectives drop; every map's archive has them.
+constexpr const char* kRewardCrateModels[] = {"CRATE1", "CRATE2", "PROPOINT"};
+
 formats::RgbaImage makeMissingTexture() {
     return {1, 1, {255, 0, 255, 255}};
 }
@@ -108,34 +111,43 @@ void loadObjects(const core::VirtualFileSystem& vfs, const std::string& base, Ma
     }
 
     std::set<std::string> failedModels;
+    // Loads model `name` into the scene once; false if it cannot be drawn.
+    const auto loadModel = [&](const std::string& name) {
+        if (scene.models.contains(name)) return true;
+        if (failedModels.contains(name)) return false;
+        const auto* vtx = archive.find(name + ".VTX");
+        const auto* fac = archive.find(name + ".FAC");
+        if (vtx == nullptr || fac == nullptr) return false;
+        try {
+            const auto* no2 = archive.find(name + ".NO2");
+            const auto normals = no2 ? std::optional(archive.entryData(*no2)) : std::nullopt;
+            const auto model = formats::Model::parse(archive.entryData(*vtx), archive.entryData(*fac), normals);
+            scene.models[name] = buildModelMesh(model, textureSizes);
+            return true;
+        } catch (const std::exception& error) {
+            scene.warnings.push_back(base + ".mad/" + name + ": " + error.what());
+            failedModels.insert(name);
+            return false;
+        }
+    };
+
     for (std::size_t index = 0; index < objects.size(); ++index) {
         const auto& object = objects[index];
         const std::string name = toUpper(object.modelName);
-        const auto* vtx = archive.find(name + ".VTX");
-        const auto* fac = archive.find(name + ".FAC");
-
-        if (vtx == nullptr || fac == nullptr) {
+        if (archive.find(name + ".VTX") == nullptr || archive.find(name + ".FAC") == nullptr) {
             // No model: a logical object such as a hog start position.
             scene.markers.emplace_back(object.x, object.y, object.z);
             continue;
         }
-        if (failedModels.contains(name)) {
-            continue;
+        if (loadModel(name)) {
+            scene.objects.push_back({name, objectTransform(object), index});
         }
+    }
 
-        if (!scene.models.contains(name)) {
-            try {
-                const auto* no2 = archive.find(name + ".NO2");
-                const auto normals = no2 ? std::optional(archive.entryData(*no2)) : std::nullopt;
-                const auto model = formats::Model::parse(archive.entryData(*vtx), archive.entryData(*fac), normals);
-                scene.models[name] = buildModelMesh(model, textureSizes);
-            } catch (const std::exception& error) {
-                scene.warnings.push_back(base + ".mad/" + name + ": " + error.what());
-                failedModels.insert(name);
-                continue;
-            }
-        }
-        scene.objects.push_back({name, objectTransform(object), index});
+    // Objectives drop reward crates during the match (game/Objectives.h):
+    // their models are loaded even when the map places none.
+    for (const char* crate : kRewardCrateModels) {
+        loadModel(crate);
     }
 }
 

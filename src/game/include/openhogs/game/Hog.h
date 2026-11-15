@@ -21,6 +21,7 @@
 
 #include <glm/glm.hpp>
 
+#include <cstddef>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -49,6 +50,7 @@ struct Hog {
     const scene::CharacterClass* characterClass = nullptr;  // never null for spawned hogs
     int team = 0;                   // 0 to 7, from the object's team bit mask
     bool playerControlled = false;  // the map marks hogs meant for the player
+    std::size_t object = 0;         // its map object (index in the .POG): objectives sit on it
     glm::vec3 position{0.0f};       // where its feet are, world units
     float yawRadians = 0.0f;        // turn around the vertical axis, as for map objects
     AnimationPlayer animation;      // what its body is doing

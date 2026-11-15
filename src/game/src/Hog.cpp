@@ -63,7 +63,8 @@ const scene::CharacterClass* hogClassForObject(std::string_view modelName) {
 
 std::vector<Hog> spawnHogs(const std::vector<formats::MapObject>& objects, const TerrainHeightField& terrain) {
     std::vector<Hog> hogs;
-    for (const auto& object : objects) {
+    for (std::size_t index = 0; index < objects.size(); ++index) {
+        const auto& object = objects[index];
         const auto* characterClass = hogClassForObject(object.modelName);
         if (characterClass == nullptr) {
             continue;
@@ -74,6 +75,7 @@ std::vector<Hog> spawnHogs(const std::vector<formats::MapObject>& objects, const
         // One bit per team; a hog without a team bit goes to the first team.
         hog.team = object.team == 0 ? 0 : std::countr_zero(object.team);
         hog.playerControlled = (object.flags & kPlayerFlag) != 0;
+        hog.object = index;
         hog.yawRadians = angleToRadians(object.angleY);
 
         const auto x = static_cast<float>(object.x);

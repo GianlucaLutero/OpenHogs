@@ -295,6 +295,52 @@ void World::collectPickups(std::vector<GameEvent>& events) {
     }
 }
 
+void World::setObjectives(std::vector<Objective> objectives, std::size_t objectCount) {
+    objectives_ = std::move(objectives);
+    nextDropObject_ = objectCount;
+}
+
+void World::updateObjectives(std::vector<GameEvent>& events) {
+    // Hogs that died in this step: their objectives are destroyed (or, for
+    // a hog that had somewhere to go, lost). The list grows as rewards are
+    // reported, hence the index.
+    for (std::size_t e = 0; e < events.size(); ++e) {
+        if (events[e].type != GameEventType::Died || events[e].hog >= hogs_.size()) continue;
+        if (const auto result = destroyObjective(objectives_, hogs_[events[e].hog].object)) {
+            objectiveDone(*result, events);
+        }
+    }
+
+    // The active hog walking into its target (only in its own turn, as in
+    // FUN_004a7730, which checks for the player's current hog).
+    const auto active = activeHog();
+    if (!active || phase_ != MatchPhase::Playing) return;
+    const Hog& hog = hogs_[*active];
+    if (!hog.alive) return;
+    for (auto& objective : objectives_) {
+        if (objective.object != hog.object) continue;
+        if (const auto result = reachObjective(objective, hog.position)) {
+            objectiveDone(*result, events);
+        }
+    }
+}
+
+void World::objectiveDone(const ObjectiveResult& result, std::vector<GameEvent>& events) {
+    GameEvent event;
+    event.type = GameEventType::ObjectiveDone;
+    event.amount = static_cast<float>(result.pointsLost);
+    event.sergeantSection = result.sergeantSection;
+    if (result.drop) {
+        Pickup drop = *result.drop;
+        drop.object = nextDropObject_++;
+        event.position = drop.centre;
+        event.pickup = pickups_.size();
+        event.dropped = true;
+        pickups_.push_back(drop);
+    }
+    events.push_back(event);
+}
+
 void World::fire(std::size_t hogIndex, float power, std::vector<GameEvent>& events) {
     Hog& hog = hogs_[hogIndex];
     const WeaponSpec& spec = weaponSpec(hog.selectedWeapon());
@@ -611,6 +657,7 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
     }
     stepProjectiles(seconds, events);
     updateEffects(seconds);
+    updateObjectives(events);
 
     if (!turns_ || phase_ == MatchPhase::Over) {
         return events;
@@ -697,10 +744,14 @@ World loadWorld(const core::VirtualFileSystem& vfs, std::string_view mapName, Tu
     std::vector<Hog> hogs;
     std::vector<CollisionBox> boxes;
     std::vector<Pickup> pickups;
+    std::vector<Objective> objectives;
+    std::size_t objectCount = 0;
     if (vfs.exists(base + ".pog")) {
         const auto objects = formats::parseMapObjects(vfs.readFile(base + ".pog"));
         hogs = spawnHogs(objects, terrain);
         pickups = findPickups(objects);
+        objectives = findObjectives(objects);
+        objectCount = objects.size();
 
         // Only objects with a model in the map's archive get a collision box.
         std::optional<formats::PackageArchive> models;
@@ -714,7 +765,9 @@ World loadWorld(const core::VirtualFileSystem& vfs, std::string_view mapName, Tu
     if (prepareHogs) {
         prepareHogs(hogs);
     }
-    return World(MapCollision(std::move(terrain), std::move(boxes)), std::move(hogs), rules, std::move(pickups));
+    World world(MapCollision(std::move(terrain), std::move(boxes)), std::move(hogs), rules, std::move(pickups));
+    world.setObjectives(std::move(objectives), objectCount);
+    return world;
 }
 
 int World::nationOf(int team) const {

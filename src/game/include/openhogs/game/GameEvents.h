@@ -30,6 +30,10 @@ enum class GameEventType {
     SuddenDeath,  // every hog is down to one point of health
     MatchOver,  // team: the winner, or -1 for a draw
     PickedUp,   // hog: who; pickup: which (World::pickups()); amount: what it gave
+    // An objective was done (Objectives.h). pickup: the reward crate it
+    // dropped (World::pickups()), if `dropped`; amount: promotion points
+    // lost; sergeantSection: his comment, or -1.
+    ObjectiveDone,
 };
 
 struct GameEvent {
@@ -41,6 +45,8 @@ struct GameEvent {
     float amount = 0.0f;
     int team = -1;
     std::size_t pickup = 0;
+    bool dropped = false;
+    int sergeantSection = -1;
 };
 
 } // namespace openhogs::game
