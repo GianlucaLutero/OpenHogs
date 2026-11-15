@@ -9,7 +9,7 @@
 //        │                                                     └─ FIELD CONDITIONS (hogs per team,
 //        │                                                        turn time, health, sudden death)
 //        │    ── OPTIONS ──────> VOLUME CONTROL (sliders)
-//        │    ── QUIT ─────────> ARE YOU SURE? ── YES ──> (quit)
+//        │    ── QUIT ─────────> REALLY QUIT APP? ── YES ──> (quit)
 //
 // The campaign itself is run by CampaignMenu. DEATH MATCH is a skirmish
 // against the computer: the team that plays first is the player's, the

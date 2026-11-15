@@ -29,7 +29,11 @@ const render::UiImage* FrontEndPictures::picture(std::string_view name) {
     std::unique_ptr<render::UiImage> image;
     if (archive_) {
         for (const auto& entry : archive_->entries()) {
-            if (core::toLower(entry.name) != key + ".mgl") continue;
+            // Most entries end in ".mgl"; a few have another ending (e.g.
+            // "info1.mgl1", next to an unrelated "info1.mgl"): those are
+            // asked for by their full name.
+            const std::string entryName = core::toLower(entry.name);
+            if (entryName != key + ".mgl" && entryName != key) continue;
             try {
                 image = std::make_unique<render::UiImage>(formats::decodeMglPicture(archive_->entryData(entry)));
             } catch (const std::exception& error) {

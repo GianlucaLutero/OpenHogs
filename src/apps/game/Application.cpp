@@ -60,7 +60,7 @@ Application::Application(const core::VirtualFileSystem& vfs, ApplicationOptions 
     // The original front end's pictures; its background is behind the menus.
     pictures_ = std::make_unique<FrontEndPictures>(vfs);
     background_ = std::make_unique<MenuBackground>(*pictures_);
-    originalMenu_ = std::make_unique<OriginalMenuView>(*pictures_, interface_->menuFont());
+    originalMenu_ = std::make_unique<OriginalMenuView>(*pictures_, interface_->menuFont(), interface_->bigFont());
 }
 
 Application::~Application() {
@@ -269,11 +269,16 @@ void Application::update(double seconds) {
         return;
     }
     if (!inCampaign_ && OriginalMenuView::suits(frontEnd_->menu())) {
-        originalMenu_->show(frontEnd_->menu());
+        originalMenu_->show(frontEnd_->menu(), isQuestion());
         originalMenu_->update(seconds);
     }
     // The menus play the long theme in a loop, as the original's front end.
     sounds_->keepMusic(game::kThemeTrack, 1.0f, true);
+}
+
+bool Application::isQuestion() const {
+    // The yes/no questions of the menus, drawn as the original's question.
+    return frontEnd_->screen() == ui::FrontEndScreen::ConfirmQuit;
 }
 
 void Application::advanceMenus(double seconds) {
@@ -294,7 +299,7 @@ void Application::drawMenus(int width, int height) {
         if (!briefing) ui.drawRect(0.0f, 0.0f, ui.canvasWidth(), render::kCanvasHeight, kMenuShade);
         campaign_->draw();
     } else if (OriginalMenuView::suits(frontEnd_->menu())) {
-        originalMenu_->draw(ui, frontEnd_->menu());
+        originalMenu_->draw(ui, frontEnd_->menu(), isQuestion());
     } else {
         originalMenu_->reset();
         ui.drawRect(0.0f, 0.0f, ui.canvasWidth(), render::kCanvasHeight, kMenuShade);

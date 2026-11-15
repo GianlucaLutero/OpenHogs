@@ -12,6 +12,7 @@ namespace {
 // Entry numbers in fetext.
 constexpr std::size_t kFeYes = 6;
 constexpr std::size_t kFeNo = 7;
+constexpr std::size_t kFeReallyQuitApp = 148;  // the PC's quit question (screen 43)
 constexpr std::size_t kFeMainMenu = 8;
 constexpr std::size_t kFeOnePlayer = 9;
 constexpr std::size_t kFeMultiPlayer = 10;
@@ -138,6 +139,7 @@ UiStrings loadUiStrings(const std::vector<std::string>& frontEndText, const std:
     take(strings.multiPlayer, fe, kFeMultiPlayer);
     take(strings.options, fe, kFeOptions);
     take(strings.quit, fe, kFeQuit);
+    take(strings.reallyQuit, fe, kFeReallyQuitApp);
     take(strings.volumeControl, fe, kFeVolumeControl);
     take(strings.master, fe, kFeMaster);
     take(strings.effects, fe, kFeEffects);

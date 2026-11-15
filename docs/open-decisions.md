@@ -68,7 +68,7 @@ answer.
 | 81 | Menus | The rate of the front end's animation ticks (the executable counts frames). | 25 per second. | `ui::kFrontEndTicksPerSecond` |
 | 82 | Menus | While the plates flip, the executable moves the words with offsets not decoded (font fields 0x1C and 0x20). | The words are hidden until the plates face the front again. | `ui::OriginalMenu::showsText` |
 | 83 | Menus | The executable writes chars3 in a 1024 × 820 space (× 0.625 across, × 0.585 down on a 640 × 480 screen). | One scale, 0.6, smoothed. | `OriginalMenuView` |
-| 84 | Menus | Which menus get the original list menu, and the other screens: the original has its own level choice (`lselpc`), volume screen (`vol*`), team pages (`sq*`), yes/no dial (`yesno*`). | The menus of four entries or fewer that are all actions (main menu, ONE PLAYER, ARE YOU SURE?) use the list menu; the others keep the plain panel for now. | `OriginalMenuView::suits` |
+| 84 | Menus | Which menus get the original screens: the original has its own level choice (type 20), volume screen (type 7, two knobs where OpenHogs has four volumes), team lists and pages (types 2 and 4), field conditions (type 21). | The main menu and ONE PLAYER use the list menu, the quit question the yes/no question; the others keep the plain panel for now. | `OriginalMenuView`, `Application::isQuestion` |
 | 85 | Menus | Not done yet in the list menu: the leaving animation, the steam puffs, the dial's click. Going from one list menu to another only flips the plates. | As described. | `ui::OriginalMenu` |
 | 86 | Menus | On screens wider than 4:3 the original had no layout. | The 640 × 480 layout in the middle, the background covering the screen. | `OriginalMenuView::draw` |
 | 87 | Weapons | Whether the weapon stays out while the hog turns on the spot (the executable puts it away when the hog "is not in normal mode"). | It stays out while turning, and is put away when running, walking back, swimming, jumping or falling. | `World::updateWeaponStance` |
@@ -76,6 +76,8 @@ answer.
 | 89 | Movement | Where a hog knocked into water swims to (the executable searches around its tile, `FUN_00472dd0`, details not read). | The nearest dry tile, searched ring by ring up to 32 tiles away. | `World::nearestShore` |
 | 90 | Movement | The executable picks one of 17 death animations (57-73) at random; some end standing (the hog explodes after its last words). | The three "Dying" animations (47-49) on land; drowning (74) in water, as the executable. | `damageHog` |
 | 91 | Rendering | OpenHogs turns the original's Y-down coordinates upright by mirroring Y alone, which also mirrors the scene left to right; whether the original hogs hold their weapons in the right hand (bone 5 is the skeleton's "left" hand in docs/formats/characters.md) and whether maps appear mirrored has not been checked against the original. | Unchanged; to compare with screenshots of the original. | `game::hogModelToWorld`, map rendering |
+| 92 | Menus | The executable's text boxes of the yes/no question (title at 299, 77; answers at 600 and 710, 658, in 1024 × 820 units) do not line up with its pictures as composed from its drawing code (25-30 pixels off). | The title centred on the plate's glass, the answers in the box's windows. | `ui::OriginalDialog` |
+| 93 | Menus | The question's words: the executable writes these screens with the CHARS2 font, which the PC folder does not have. | The BIG font, at the list menu's size (0.6). | `OriginalMenuView` |
 ## Design: what do we want?
 
 | # | Area | Open question | What OpenHogs does now | Where |

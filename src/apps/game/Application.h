@@ -92,6 +92,7 @@ private:
     bool handleFrontEndResult(const ui::FrontEndResult& result);
     void update(double seconds);
     void draw(int width, int height);
+    bool isQuestion() const;
     void drawMenus(int width, int height);
     void drawLoading();
     void leaveMatch();

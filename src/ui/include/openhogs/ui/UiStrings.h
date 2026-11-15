@@ -32,6 +32,7 @@ struct UiStrings {
     std::string multiPlayer = "MULTI-PLAYER";
     std::string options = "OPTIONS";
     std::string quit = "QUIT APPLICATION";
+    std::string reallyQuit = "REALLY QUIT APP?";  // the question before quitting
     std::string selectLevel = "MULTI-PLAYER SELECT LEVEL";
     std::string volumeControl = "VOLUME CONTROL";
     std::string master = "MASTER";

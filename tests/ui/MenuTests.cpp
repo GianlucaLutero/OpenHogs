@@ -230,7 +230,7 @@ TEST_CASE("Back always leads back to the main menu", "[ui][frontend]") {
 }
 
 TEST_CASE("Quitting asks first, and a hasty double Enter does not quit", "[ui][frontend]") {
-    // Esc on the main menu, or QUIT, opens ARE YOU SURE? with NO selected:
+    // Esc on the main menu, or QUIT, opens the quit question with NO selected:
     // the game must never close because a key was pressed twice.
     auto frontEnd = makeFrontEnd();
     press(frontEnd, {MenuInput::Back});

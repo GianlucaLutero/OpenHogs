@@ -128,7 +128,7 @@ FrontEnd::FrontEnd(UiStrings strings, std::vector<std::string> maps, VolumeLevel
                      action(kOptionsBack, strings_.back)});
 
     // "No" is selected first, so a quick double Enter does not quit.
-    confirmQuit_ = Menu(strings_.areYouSure, {action(kYes, strings_.yes), action(kNo, strings_.no)});
+    confirmQuit_ = Menu(strings_.reallyQuit, {action(kYes, strings_.yes), action(kNo, strings_.no)});
 }
 
 void FrontEnd::setSavedCampaign(bool exists) {
