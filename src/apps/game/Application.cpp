@@ -64,6 +64,7 @@ Application::Application(const core::VirtualFileSystem& vfs, ApplicationOptions 
     pictures_ = std::make_unique<FrontEndPictures>(vfs);
     background_ = std::make_unique<MenuBackground>(*pictures_);
     originalMenu_ = std::make_unique<OriginalMenuView>(*pictures_, interface_->menuFont(), interface_->bigFont());
+    originalMenu_->setCredits(interface_->strings().creditRows);
 }
 
 Application::~Application() {
@@ -272,6 +273,7 @@ void Application::update(double seconds) {
         return;
     }
     if (!inCampaign_ && showsOriginalScreen()) {
+        if (originalScreen() == OriginalScreen::Players) originalMenu_->setTeamPlayers(teamPlayers());
         originalMenu_->show(frontEnd_->menu(), originalScreen(), frontEnd_->menuUnder());
         originalMenu_->update(seconds);
     }
@@ -279,16 +281,38 @@ void Application::update(double seconds) {
     sounds_->keepMusic(game::kThemeTrack, 1.0f, true);
 }
 
+std::vector<ui::OriginalTeamHolders::Player> Application::teamPlayers() const {
+    using Player = ui::OriginalTeamHolders::Player;
+    std::vector<Player> players;
+    for (const int control : frontEnd_->teamControls()) {
+        players.push_back(control == 0 ? Player::Person : control == 1 ? Player::Computer : Player::Off);
+    }
+    return players;
+}
+
 OriginalScreen Application::originalScreen() const {
     switch (frontEnd_->screen()) {
     case ui::FrontEndScreen::ConfirmQuit: return OriginalScreen::Question;
     case ui::FrontEndScreen::Volume: return OriginalScreen::Volume;
+    case ui::FrontEndScreen::SelectLevel: return OriginalScreen::LevelList;
+    case ui::FrontEndScreen::Players: return OriginalScreen::Players;
+    case ui::FrontEndScreen::FieldConditions: return OriginalScreen::FieldConditions;
+    case ui::FrontEndScreen::Controls: return OriginalScreen::Controls;
+    case ui::FrontEndScreen::Credits: return OriginalScreen::Credits;
     default: return OriginalMenuView::suitsSelectList(frontEnd_->menu()) ? OriginalScreen::SelectList : OriginalScreen::List;
     }
 }
 
 bool Application::showsOriginalScreen() const {
     const auto& menu = frontEnd_->menu();
+    switch (originalScreen()) {
+    case OriginalScreen::LevelList: return !menu.items().empty();
+    case OriginalScreen::Players: return true;
+    case OriginalScreen::FieldConditions: return frontEnd_->menuUnder() != nullptr;
+    case OriginalScreen::Controls:
+    case OriginalScreen::Credits: return true;
+    default: break;
+    }
     if (originalScreen() == OriginalScreen::Volume) {
         return OriginalMenuView::suitsVolume(menu) && frontEnd_->menuUnder() &&
                OriginalMenuView::suits(*frontEnd_->menuUnder());

@@ -41,6 +41,15 @@ struct UiStrings {
     std::string mode = "MODE";          // VOLUME CONTROL: the sound mode
     std::array<std::string, 3> soundModes{"MONO", "STEREO", "SURROUND"};
     std::string on = "ON";
+    // CREDITS: name and job, one row each (fetext 503-652, the original's
+    // credits; empty without the game's text tables).
+    std::vector<std::pair<std::string, std::string>> creditRows;
+    // CONTROLS: the original's names of the actions (fetext 349-360).
+    std::array<std::string, 12> controlNames{"FORWARD", "BACK", "LEFT", "RIGHT", "ACTION", "FIRE // SELECT",
+                                             "JUMP", "WEAPONS MENU", "AIM // LOOK", "ANGLE DOWN", "ANGLE UP", "PAUSE"};
+    // ...and the PC version's extra keys, which have no name in the tables.
+    std::string nextHog = "NEXT HOG";
+    std::string endTurn = "END TURN";
     std::string master = "MASTER";
     std::string effects = "SFX";
     std::string voices = "VOICES";

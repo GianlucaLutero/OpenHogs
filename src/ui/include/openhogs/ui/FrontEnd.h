@@ -9,7 +9,7 @@
 //        │                                                     └─ FIELD CONDITIONS (hogs per team,
 //        │                                                        turn time, health, sudden death)
 //        │    ── OPTIONS ──────> AUDIO ── VOLUME CONTROL (MODE, MASTER, SFX, VOICES)
-//        │                       (CONTROLS and CREDITS are not made yet)
+//        │                       CONTROLS (the keys) · CREDITS (the original's, rolling)
 //        │    ── QUIT ─────────> REALLY QUIT APP? ── YES ──> (quit)
 //
 // The campaign itself is run by CampaignMenu. DEATH MATCH is a skirmish
@@ -46,6 +46,8 @@ enum class FrontEndScreen {
     FieldConditions,
     Options,
     Volume,
+    Controls,
+    Credits,
     ConfirmQuit,
 };
 
@@ -110,6 +112,10 @@ public:
     // The menu that stays on screen behind the current one (OPTIONS behind
     // VOLUME CONTROL, as the original), or nullptr.
     const Menu* menuUnder() const;
+
+    // Who plays each team on the MULTI-PLAYER page, in team order:
+    // 0 a person, 1 the computer, 2 nobody (switched off).
+    std::vector<int> teamControls() const;
     VolumeLevels volumes() const { return volumes_; }
 
     // Goes back to the main menu (e.g. after a match).
@@ -131,6 +137,7 @@ private:
     MatchSettings fieldSettings() const;
     FrontEndResult handleOptions(const MenuResponse& response);
     FrontEndResult handleVolume(const MenuResponse& response);
+    FrontEndResult handleOptionPage(const MenuResponse& response);  // CONTROLS, CREDITS
     FrontEndResult handleConfirmQuit(const MenuResponse& response);
     void open(FrontEndScreen screen);
 
@@ -150,6 +157,8 @@ private:
     Menu fieldConditions_;
     Menu options_;
     Menu volume_;
+    Menu controls_;
+    Menu credits_;
     Menu confirmQuit_;
 };
 

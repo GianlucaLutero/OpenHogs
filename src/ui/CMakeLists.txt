@@ -15,6 +15,8 @@
 #   OriginalDialog - the original yes/no question's layout and animation
 #   OriginalVolume - the original VOLUME CONTROL panel's layout and animation
 #   OriginalSelectList - the original longer list (SELECT TEAM), layout and animation
+#   OriginalLevelPanel - the original level panel (SELECT LEVEL, FIELD CONDITIONS) and team holders
+#   OriginalOptionPages - the original CREDITS roll and CONTROLS board
 #   CampaignMenu  - the campaign pages: squad, promotions, mission results
 
 add_library(openhogs_ui STATIC
@@ -27,6 +29,8 @@ add_library(openhogs_ui STATIC
     src/OriginalDialog.cpp
     src/OriginalVolume.cpp
     src/OriginalSelectList.cpp
+    src/OriginalLevelPanel.cpp
+    src/OriginalOptionPages.cpp
     src/OriginalMenu.cpp
     src/MessageBanner.cpp
     src/PauseMenu.cpp

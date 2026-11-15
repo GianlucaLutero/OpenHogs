@@ -17,7 +17,12 @@
 //
 // A list of five to eight actions (SELECT TEAM) is drawn as the original's
 // longer list: a monitor showing the entries, with a selector that slides
-// down it (ui::OriginalSelectList).
+// down it (ui::OriginalSelectList). The MULTI-PLAYER page uses it too, with
+// the team holders on the left (ui::OriginalTeamHolders).
+//
+// SELECT LEVEL is drawn on the original's level panel, and FIELD
+// CONDITIONS on its monitor, over the dimmed level list
+// (ui::OriginalLevelPanel).
 //
 // The view follows the menu it is given each frame: a menu it was not
 // showing opens with the full animation (or only flips its plates if a
@@ -32,11 +37,15 @@
 #include "openhogs/render/UiRenderer.h"
 #include "openhogs/ui/Menu.h"
 #include "openhogs/ui/OriginalDialog.h"
+#include "openhogs/ui/OriginalLevelPanel.h"
 #include "openhogs/ui/OriginalMenu.h"
+#include "openhogs/ui/OriginalOptionPages.h"
 #include "openhogs/ui/OriginalSelectList.h"
 #include "openhogs/ui/OriginalVolume.h"
 
 #include <cstddef>
+#include <string>
+#include <utility>
 #include <vector>
 
 namespace openhogs::gameapp {
@@ -47,6 +56,11 @@ enum class OriginalScreen {
     Question,  // a yes/no question, YES first
     Volume,    // VOLUME CONTROL: MODE, MASTER, SFX, VOICES over a list menu
     SelectList,  // the longer list: five to eight actions on a monitor
+    Players,     // the longer list with the team holders (MULTI-PLAYER)
+    LevelList,   // the level panel: the maps in its slots, BACK in the last
+    FieldConditions,  // the level panel's monitor, over the level list
+    Controls,    // the keys, on the turning board
+    Credits,     // the original's credits rolling up the screen
 };
 
 class OriginalMenuView {
@@ -70,6 +84,12 @@ public:
     // list menu that stays on screen above the panel. draw() calls it too.
     void show(const ui::Menu& menu, OriginalScreen screen = OriginalScreen::List, const ui::Menu* under = nullptr);
 
+    // The credits rows (name, job) for the CREDITS page.
+    void setCredits(std::vector<std::pair<std::string, std::string>> rows) { creditRows_ = std::move(rows); }
+
+    // Who plays each team on the MULTI-PLAYER page.
+    void setTeamPlayers(const std::vector<ui::OriginalTeamHolders::Player>& players) { holders_.setPlayers(players); }
+
     // Moves the animation on by `seconds`.
     void update(double seconds);
 
@@ -90,6 +110,10 @@ private:
     void drawVolume(render::UiRenderer& ui, const ui::Menu& menu, float originX);
     void drawVolumePanel(render::UiRenderer& ui, float originX);
     void drawSelectList(render::UiRenderer& ui, const ui::Menu& menu, float originX);
+    void drawLevelPanel(render::UiRenderer& ui, const ui::Menu& levels, float originX, bool active);
+    void drawFieldConditions(render::UiRenderer& ui, const ui::Menu& menu, float originX);
+    void drawControls(render::UiRenderer& ui, const ui::Menu& menu, float originX);
+    void drawCredits(render::UiRenderer& ui, float originX);
 
     FrontEndPictures& pictures_;
     const render::UiFont& font_;
@@ -98,6 +122,11 @@ private:
     ui::OriginalDialog dialog_;
     ui::OriginalVolumePanel volume_;
     ui::OriginalSelectList selectList_;
+    ui::OriginalTeamHolders holders_;
+    ui::OriginalLevelPanel levelPanel_;
+    ui::OriginalControlsBoard controlsBoard_;
+    ui::CreditsRoll credits_;
+    std::vector<std::pair<std::string, std::string>> creditRows_;
     const ui::Menu* shown_ = nullptr;  // the menu drawn last time
     OriginalScreen screen_ = OriginalScreen::List;  // ...and how
     std::size_t selected_ = 0;

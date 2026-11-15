@@ -182,6 +182,65 @@ y 369, 407, 447, 489, 527, 567, 607, 647), in the list menu's font and
 colours; the title's box is (201, 65, 600). Screen 16 (MULTI-PLAYER)
 adds four team rows with `pcchip` / `pcpad` / `com_man`, still to read.
 
+### Screen 16: MULTI-PLAYER's team holders
+
+Screen 16 is a type 2 list with four team holders on the left, drawn
+after the monitor (`FUN_0041bef0`, case 2, when the screen is 16). For
+team *i* at y 114 + 78*i*: the holder `com_man` (203 × 78) at (*x* + 8, y)
+and, centred on its window (x 139, y 38 of the holder), `pcpad` for a
+person or `pcchip` for the computer (the team's type, through the table
+{1, 0, −1}: nothing when off). *x* springs to 0 (gain 6, damping 15, top
+speed 10) when the team plays and to −250 when it is off
+(`FUN_00423e70`, case 2). The executable bobs the picture with a sine of
+a counter that grows by 70 a tick and writes the team's name with
+`FUN_004188c0`.
+
+### Types 20 and 21: the level panel and FIELD CONDITIONS
+
+Type 20 (screen 28, MULTI-PLAYER SELECT LEVEL; `FUN_0041bef0` at
+0x41E579), with *x* = horizontal offset − 52 and *L* half the drop
+(spring to 0 from 800: gain 8, damping 17, top speed 80; the plate too):
+
+| Sprite | Picture | Position |
+|--------|---------|----------|
+| two lamps per slot | `lit1`-`lit3` (elements 32-37), columns 8-32 | (*x* + 153, row + *L* + 55), (*x* + 340, same) |
+| the chosen slot's arrow | `lselpc2` (26 × 41) but its last column | (*x* + 355, *L* + 130 + 46 × slot, + 18 for the last) |
+| panel | `lselpc` (640 × 480) | (8, *L* + 53) |
+| plate | `sqname01` (400 × 96) | (124, plate − 12) |
+
+The slots' rows are 73 + 46 × slot (the sixth 18 lower); their words are
+in text boxes 108-113 (x 196, width 180; y 242, 321, 400, 479, 555, 665),
+in (120, 120, 100) when chosen, (90, 90, 70) otherwise, (45, 45, 40) when
+another screen is on top. The original's slots are level types
+(SURVIVAL-NOVICE, SURVIVAL-EXPERT, SURVIVAL-STRATEGY, DEATH MATCH,
+GENERATE; fetext 106-110) and LEVEL SETUP (111).
+
+Type 21 (screen 17, FIELD CONDITIONS, and 29, RANDOM GENERATED LEVEL)
+draws no picture of its own: it is drawn over the level panel and writes
+"LABEL: VALUE" (`FUN_00428cf0`, case 21) in text boxes 114-123 (x 570,
+width 180; y 257 to 651, every 44), which fall on the panel's dark
+monitor (x 332-540, y 133-413 on screen).
+
+### Type 15: CONTROLS
+
+`FUN_0041bef0` draws only element 0's picture, `pckey000`-`pckey006` (a
+board turning to face the player, 410 × 480), at (offset + 156, 25).
+`FUN_0042dea0` writes six rows from the first visible one: the action's
+name (fetext 349 + row: FORWARD, BACK, LEFT, RIGHT, ACTION, FIRE //
+SELECT, JUMP, WEAPONS MENU, AIM // LOOK, ANGLE DOWN, ANGLE UP, PAUSE) in
+boxes 66-71 (x 280, y 250 + 85 a row) and its key (fetext 361 onwards,
+from the key codes at 0x4C0110; 458 when unknown) in boxes 72-77
+(x 530); the row being changed blinks.
+
+### Type 16: CREDITS
+
+No picture. `FUN_00428cf0` (case 16) writes rows of two texts, fetext
+503 + 2*i* (x 100, width 500) and 504 + 2*i* (x 500), 80 units apart from
+the screen's offset, while −51 < y < 901, in (120, 120, 120). The update
+(case 16) sets the offset to 1000 − (milliseconds since the screen
+opened) / 10, starting again below −9440. The PC's credits are fetext
+503-652.
+
 ### Type 7: VOLUME CONTROL
 
 A screen whose pointer at +0x2C is set is drawn over that screen
@@ -209,7 +268,8 @@ only once `DAT_00512958` is 400 again.
   fetext 306 + on (OFF, ON); the selected one's value blinks (tint 20 for
   31 ticks, then 200, out of every 101).
 
-Still to read: the other screen types (MULTI-PLAYER's team rows; team
-pages, type 4: `sq*`; level choice, type 20; field conditions, type 21; saving
+Still to read: the campaign's screen types (team pages, type 4: `sq*`;
+squad, type 5; a hog's page, type 6; career path, type 13; loading and
+saving, types 8 and 9: `pcsav`; level choice, type 20; field conditions, type 21; saving
 `pcsav`; the keys `pckey*`), the steam puffs (`FUN_00419fa0`) and the
 leaving animations.

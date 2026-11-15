@@ -94,6 +94,7 @@ private:
     void draw(int width, int height);
     OriginalScreen originalScreen() const;  // how the current menu is drawn
     bool showsOriginalScreen() const;       // ...if it can be drawn as the original
+    std::vector<ui::OriginalTeamHolders::Player> teamPlayers() const;  // for the MULTI-PLAYER page
     void drawMenus(int width, int height);
     void drawLoading();
     void leaveMatch();

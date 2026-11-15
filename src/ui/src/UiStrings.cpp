@@ -20,6 +20,10 @@ constexpr std::size_t kFeOptions = 11;
 constexpr std::size_t kFeQuit = 16;
 constexpr std::size_t kFeVolumeControl = 74;
 constexpr std::size_t kFeMode = 75;
+// CREDITS: name and job in pairs (left and right column), 503 to 652.
+constexpr std::size_t kFeCreditsFirst = 503, kFeCreditsLast = 652;
+// CONTROLS: the actions' names (FORWARD, BACK...), 349 onwards.
+constexpr std::size_t kFeControlNames = 349;
 constexpr std::size_t kFeAudio = 21;     // OPTIONS (screen 2): AUDIO, CONTROLS, CREDITS
 constexpr std::size_t kFeControls = 22;
 constexpr std::size_t kFeCredits = 23;
@@ -152,6 +156,15 @@ UiStrings loadUiStrings(const std::vector<std::string>& frontEndText, const std:
     take(strings.controls, fe, kFeControls);
     take(strings.credits, fe, kFeCredits);
     take(strings.on, fe, kFeOn);
+    if (fe.size() > kFeCreditsLast) {
+        strings.creditRows.clear();
+        for (std::size_t i = kFeCreditsFirst; i + 1 <= kFeCreditsLast; i += 2) {
+            strings.creditRows.emplace_back(fe[i], fe[i + 1]);
+        }
+    }
+    for (std::size_t i = 0; i < strings.controlNames.size(); ++i) {
+        take(strings.controlNames[i], fe, kFeControlNames + i);
+    }
     for (std::size_t i = 0; i < kFeSoundModes.size(); ++i) {
         take(strings.soundModes[i], fe, kFeSoundModes[i]);
     }

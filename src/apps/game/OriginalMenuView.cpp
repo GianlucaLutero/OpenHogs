@@ -25,6 +25,13 @@ const glm::vec4 kSelectedColour{120 * kTint, 120 * kTint, 75 * kTint, 1.0f};
 constexpr float kDisabledDimming = 1.0f / 3.0f;
 // The question's title, set by the executable for these screens.
 const glm::vec4 kQuestionColour{120 * kTint, 120 * kTint, 80 * kTint, 1.0f};
+// The level panel's words (types 20 and 21): the chosen one, the others,
+// and all of them when another screen is on top.
+const glm::vec4 kLevelSelectedColour{120 * kTint, 120 * kTint, 100 * kTint, 1.0f};
+const glm::vec4 kLevelColour{90 * kTint, 90 * kTint, 70 * kTint, 1.0f};
+const glm::vec4 kInactiveLevelColour{45 * kTint, 45 * kTint, 40 * kTint, 1.0f};
+// The credits, written in grey (tint 120 on every channel).
+const glm::vec4 kCreditsColour{120 * kTint, 120 * kTint, 120 * kTint, 1.0f};
 // The blinking value of VOLUME CONTROL (tint 200, brighter than the
 // picture, is as bright as the font gets here).
 const glm::vec4 kBlinkLitColour{1.0f, 1.0f, 1.0f, 1.0f};
@@ -72,8 +79,21 @@ void OriginalMenuView::update(double seconds) {
         dialog_.advance(seconds);
         return;
     }
-    if (screen_ == OriginalScreen::SelectList) {
+    if (screen_ == OriginalScreen::SelectList || screen_ == OriginalScreen::Players) {
         selectList_.advance(seconds);
+        holders_.advance(seconds);
+        return;
+    }
+    if (screen_ == OriginalScreen::LevelList || screen_ == OriginalScreen::FieldConditions) {
+        levelPanel_.advance(seconds);
+        return;
+    }
+    if (screen_ == OriginalScreen::Controls) {
+        controlsBoard_.advance(seconds);
+        return;
+    }
+    if (screen_ == OriginalScreen::Credits) {
+        credits_.advance(seconds);
         return;
     }
     animation_.advance(seconds);
@@ -90,12 +110,36 @@ void OriginalMenuView::show(const ui::Menu& menu, OriginalScreen screen, const u
     const bool changed = shown_ != &menu || screen_ != screen;
     switch (screen) {
     case OriginalScreen::SelectList:
+    case OriginalScreen::Players: {
+        // The monitor shows eight rows; longer menus scroll.
+        const std::size_t row = selected - menu.firstVisible(ui::kOriginalSelectListEntries);
         if (changed) {
-            selectList_.open(selected);
-        } else if (selected_ != selected) {
-            selectList_.select(selected);
+            selectList_.open(row);
+            holders_.open();
+        } else {
+            selectList_.select(row);
         }
         break;
+    }
+    case OriginalScreen::Controls:
+        if (changed) controlsBoard_.open();
+        break;
+    case OriginalScreen::Credits:
+        if (changed) credits_.open();
+        break;
+    case OriginalScreen::LevelList:
+    case OriginalScreen::FieldConditions: {
+        // The panel follows the level list (FIELD CONDITIONS: the one below).
+        const ui::Menu& levels = screen == OriginalScreen::LevelList || !under ? menu : *under;
+        const auto layout = ui::levelSlotLayout(levels.items().size(), levels.selectedIndex());
+        const bool samePanel = screen_ == OriginalScreen::LevelList || screen_ == OriginalScreen::FieldConditions;
+        if (changed && !(samePanel && shown_ != nullptr)) {
+            levelPanel_.open(layout.selectedSlot);
+        } else {
+            levelPanel_.select(layout.selectedSlot);
+        }
+        break;
+    }
     case OriginalScreen::Question:
         // The question has its own machine: it opens whenever it appears.
         if (changed) {
@@ -178,6 +222,17 @@ void OriginalMenuView::draw(render::UiRenderer& ui, const ui::Menu& menu, Origin
     switch (screen) {
     case OriginalScreen::Question: drawQuestion(ui, menu, originX); break;
     case OriginalScreen::SelectList: drawSelectList(ui, menu, originX); break;
+    case OriginalScreen::Players:
+        drawPieces(ui, holders_.pieces(), originX);
+        drawSelectList(ui, menu, originX);
+        break;
+    case OriginalScreen::LevelList: drawLevelPanel(ui, menu, originX, true); break;
+    case OriginalScreen::Controls: drawControls(ui, menu, originX); break;
+    case OriginalScreen::Credits: drawCredits(ui, originX); break;
+    case OriginalScreen::FieldConditions:
+        if (under) drawLevelPanel(ui, *under, originX, false);
+        drawFieldConditions(ui, menu, originX);
+        break;
     case OriginalScreen::Volume:
         if (under) drawList(ui, *under, originX);
         drawVolume(ui, menu, originX);
@@ -200,12 +255,97 @@ void OriginalMenuView::drawSelectList(render::UiRenderer& ui, const ui::Menu& me
     ui.drawText(font_, menu.title(), originX + title.centreX, title.top, style);
     if (!selectList_.showsText()) return;
     const auto& items = menu.items();
-    for (std::size_t i = 0; i < items.size(); ++i) {
+    const std::size_t first = menu.firstVisible(ui::kOriginalSelectListEntries);
+    for (std::size_t row = 0; row < ui::kOriginalSelectListEntries && first + row < items.size(); ++row) {
+        const std::size_t i = first + row;
         glm::vec4 colour = i == menu.selectedIndex() ? kSelectedColour : kEntryColour;
         if (!items[i].enabled) colour = glm::vec4(glm::vec3(colour) * kDisabledDimming, 1.0f);
         style.colour = colour;
-        const auto line = selectList_.entryLine(i);
-        ui.drawText(font_, items[i].label, originX + line.centreX, line.top, style);
+        const auto line = selectList_.entryLine(row);
+        // A choice shows its word (the team's nation, PLAYER or CPU).
+        const std::string& text = items[i].kind == ui::MenuItem::Kind::Choice ? items[i].choiceText() : items[i].label;
+        ui.drawText(font_, text, originX + line.centreX, line.top, style);
+    }
+}
+
+void OriginalMenuView::drawControls(render::UiRenderer& ui, const ui::Menu& menu, float originX) {
+    drawPieces(ui, controlsBoard_.pieces(), originX);
+    if (!controlsBoard_.showsText()) return;
+    render::TextStyle style;
+    style.scale = kTextScale;
+    style.align = render::TextAlign::Centre;
+    style.shadow = false;
+    style.colour = kTitleColour;
+    const auto title = controlsBoard_.titleLine();
+    ui.drawText(questionFont_, menu.title(), originX + title.centreX, title.top, style);
+    const auto& items = menu.items();
+    const std::size_t first = menu.firstVisible(ui::kControlsBoardRows);
+    for (std::size_t row = 0; row < ui::kControlsBoardRows && first + row < items.size(); ++row) {
+        const auto& item = items[first + row];
+        style.colour = first + row == menu.selectedIndex() ? kLevelSelectedColour : kLevelColour;
+        const auto action = controlsBoard_.actionLine(row);
+        ui.drawText(questionFont_, item.label, originX + action.centreX, action.top, style);
+        const auto key = controlsBoard_.keyLine(row);
+        ui.drawText(questionFont_, item.detail, originX + key.centreX, key.top, style);
+    }
+}
+
+void OriginalMenuView::drawCredits(render::UiRenderer& ui, float originX) {
+    render::TextStyle style;
+    style.scale = kTextScale;
+    style.align = render::TextAlign::Centre;
+    style.shadow = false;
+    style.colour = kCreditsColour;
+    for (const auto& row : credits_.visibleRows(creditRows_.size())) {
+        const auto& [name, job] = creditRows_[row.index];
+        ui.drawText(questionFont_, name, originX + row.name.centreX, row.name.top, style);
+        ui.drawText(questionFont_, job, originX + row.job.centreX, row.job.top, style);
+    }
+}
+
+void OriginalMenuView::drawLevelPanel(render::UiRenderer& ui, const ui::Menu& levels, float originX, bool active) {
+    drawPieces(ui, levelPanel_.pieces(), originX);
+    render::TextStyle style;
+    style.scale = kTextScale;
+    style.align = render::TextAlign::Centre;
+    style.shadow = false;
+    style.colour = kTitleColour;
+    const auto title = levelPanel_.titleLine();
+    if (active) ui.drawText(font_, levels.title(), originX + title.centreX, title.top, style);
+    if (!levelPanel_.showsText()) return;
+    const auto layout = ui::levelSlotLayout(levels.items().size(), levels.selectedIndex());
+    for (std::size_t slot = 0; slot < ui::kLevelPanelSlots; ++slot) {
+        if (layout.items[slot] < 0) continue;
+        const auto& item = levels.items()[static_cast<std::size_t>(layout.items[slot])];
+        if (!active) {
+            style.colour = kInactiveLevelColour;
+        } else {
+            style.colour = slot == layout.selectedSlot ? kLevelSelectedColour : kLevelColour;
+        }
+        const auto line = levelPanel_.slotLine(slot);
+        ui.drawText(font_, item.label, originX + line.centreX, line.top, style);
+    }
+}
+
+void OriginalMenuView::drawFieldConditions(render::UiRenderer& ui, const ui::Menu& menu, float originX) {
+    render::TextStyle style;
+    style.scale = kTextScale;
+    style.align = render::TextAlign::Centre;
+    style.shadow = false;
+    style.colour = kTitleColour;
+    const auto title = levelPanel_.titleLine();
+    ui.drawText(font_, menu.title(), originX + title.centreX, title.top, style);
+    if (!levelPanel_.showsText()) return;
+    const auto& items = menu.items();
+    const std::size_t first = menu.firstVisible(ui::kLevelPanelMonitorRows);
+    for (std::size_t row = 0; row < ui::kLevelPanelMonitorRows && first + row < items.size(); ++row) {
+        const auto& item = items[first + row];
+        style.colour = first + row == menu.selectedIndex() ? kLevelSelectedColour : kLevelColour;
+        // "LABEL: VALUE", as the executable writes FIELD CONDITIONS.
+        std::string text = item.label;
+        if (item.kind == ui::MenuItem::Kind::Choice) text += ": " + item.choiceText();
+        const auto line = levelPanel_.monitorLine(row);
+        ui.drawText(font_, text, originX + line.centreX, line.top, style);
     }
 }
 
