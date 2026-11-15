@@ -120,6 +120,8 @@ public:
 
     // The campaign squad's hogs (Hog::squadIndex) in the order they died.
     const std::vector<std::size_t>& squadDeaths() const { return squadDeaths_; }
+    // Promotion points picked up on the map (campaign missions).
+    int promotionPoints() const { return promotionPoints_; }
 
 private:
     // What a team's hogs are drawn with.
@@ -138,6 +140,7 @@ private:
     game::PlayerInput readInput();
     void step(double seconds);
     void handleEvents(const std::vector<game::GameEvent>& events);
+    void pickedUp(const game::GameEvent& event);
     void drawWeapons(const render::Camera& camera, int width, int height);
     void drawEffects(const render::Camera& camera, int width, int height);
     void drawModel(const render::Camera& camera, int width, int height, const formats::Model& model,
@@ -166,6 +169,7 @@ private:
     OriginalHud hud_;
     std::set<int> computerTeams_;
     std::vector<std::size_t> squadDeaths_;
+    int promotionPoints_ = 0;
     game::ComputerPlayer computer_;
     bool autoWalk_ = false;
     std::optional<double> autoFireAt_;

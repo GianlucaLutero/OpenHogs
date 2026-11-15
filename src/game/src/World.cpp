@@ -91,7 +91,8 @@ glm::vec3 aimDirection(const Hog& hog) {
     return hogFacing(hog) * std::cos(pitch) + glm::vec3(0.0f, std::sin(pitch), 0.0f);
 }
 
-World::World(MapCollision map, std::vector<Hog> hogs, TurnRules rules) : map_(std::move(map)), hogs_(std::move(hogs)) {
+World::World(MapCollision map, std::vector<Hog> hogs, TurnRules rules, std::vector<Pickup> pickups)
+    : map_(std::move(map)), hogs_(std::move(hogs)), pickups_(std::move(pickups)) {
     if (!hogs_.empty()) {
         turns_.emplace(hogs_, rules);
         hadSeveralTeams_ = turns_->teams().size() > 1;
@@ -219,9 +220,85 @@ std::optional<glm::vec3> World::nearestShore(const glm::vec3& from) const {
     return std::nullopt;
 }
 
+int World::stock(int team, WeaponId weapon) const {
+    const auto found = stock_.find(team);
+    if (found == stock_.end()) return 0;
+    const auto count = found->second.find(weapon);
+    return count == found->second.end() ? 0 : count->second;
+}
+
+void World::refreshStockWeapons(int team) {
+    // Every hog of the team carries its own weapons, then the team's stock.
+    for (Hog& hog : hogs_) {
+        if (hog.team != team) continue;
+        if (hog.ownWeapons > hog.weapons.size()) hog.ownWeapons = hog.weapons.size();
+        const WeaponId selected = hog.selectedWeapon();
+        hog.weapons.resize(hog.ownWeapons);
+        for (const auto& [weapon, count] : stock_[team]) {
+            if (count > 0 && std::find(hog.weapons.begin(), hog.weapons.end(), weapon) == hog.weapons.end()) {
+                hog.weapons.push_back(weapon);
+            }
+        }
+        // Keep the same weapon in hand if it is still there.
+        const auto kept = std::find(hog.weapons.begin(), hog.weapons.end(), selected);
+        hog.weaponSlot = kept != hog.weapons.end() ? static_cast<std::size_t>(kept - hog.weapons.begin()) : 0;
+    }
+}
+
+void World::useStock(std::size_t hogIndex) {
+    Hog& hog = hogs_[hogIndex];
+    if (hog.ownWeapons > hog.weapons.size() || hog.weaponSlot % std::max<std::size_t>(hog.weapons.size(), 1) < hog.ownWeapons) {
+        return;  // one of its own weapons: never runs out
+    }
+    int& count = stock_[hog.team][hog.selectedWeapon()];
+    if (count > 0) --count;
+    if (count == 0) refreshStockWeapons(hog.team);
+}
+
+void World::collectPickups(std::vector<GameEvent>& events) {
+    for (std::size_t p = 0; p < pickups_.size(); ++p) {
+        Pickup& pickup = pickups_[p];
+        if (pickup.taken) continue;
+        for (std::size_t h = 0; h < hogs_.size(); ++h) {
+            Hog& hog = hogs_[h];
+            if (!hog.alive || !touches(pickup, hog.position)) continue;
+            pickup.taken = true;
+            map_.removeObject(pickup.object);
+            GameEvent event;
+            event.type = GameEventType::PickedUp;
+            event.hog = h;
+            event.team = hog.team;
+            event.pickup = p;
+            event.position = pickup.centre;
+            switch (pickup.kind) {
+            case PickupKind::Health: {
+                const float before = hog.health;
+                hog.health = std::min(hog.maxHealth, hog.health + static_cast<float>(pickup.amount));
+                event.amount = hog.health - before;
+                break;
+            }
+            case PickupKind::Weapon:
+                event.amount = static_cast<float>(pickup.amount);
+                if (const auto weapon = pickup.weapon()) {
+                    event.weapon = *weapon;
+                    stock_[hog.team][*weapon] += pickup.amount;
+                    refreshStockWeapons(hog.team);
+                }
+                break;
+            case PickupKind::PromotionPoints:
+                event.amount = static_cast<float>(pickup.amount);  // the campaign counts them
+                break;
+            }
+            events.push_back(event);
+            break;
+        }
+    }
+}
+
 void World::fire(std::size_t hogIndex, float power, std::vector<GameEvent>& events) {
     Hog& hog = hogs_[hogIndex];
     const WeaponSpec& spec = weaponSpec(hog.selectedWeapon());
+    useStock(hogIndex);
 
     // Guns fire from the aiming pose; other weapons have their own motion.
     if (spec.useAnimation != kNoAnimation) {
@@ -524,6 +601,7 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
     }
 
     hurtSwimmers(seconds, events);
+    collectPickups(events);
 
     if (burst_) {
         burst_->secondsToNextShot -= static_cast<float>(seconds);
@@ -618,9 +696,11 @@ World loadWorld(const core::VirtualFileSystem& vfs, std::string_view mapName, Tu
 
     std::vector<Hog> hogs;
     std::vector<CollisionBox> boxes;
+    std::vector<Pickup> pickups;
     if (vfs.exists(base + ".pog")) {
         const auto objects = formats::parseMapObjects(vfs.readFile(base + ".pog"));
         hogs = spawnHogs(objects, terrain);
+        pickups = findPickups(objects);
 
         // Only objects with a model in the map's archive get a collision box.
         std::optional<formats::PackageArchive> models;
@@ -634,7 +714,7 @@ World loadWorld(const core::VirtualFileSystem& vfs, std::string_view mapName, Tu
     if (prepareHogs) {
         prepareHogs(hogs);
     }
-    return World(MapCollision(std::move(terrain), std::move(boxes)), std::move(hogs), rules);
+    return World(MapCollision(std::move(terrain), std::move(boxes)), std::move(hogs), rules, std::move(pickups));
 }
 
 int World::nationOf(int team) const {

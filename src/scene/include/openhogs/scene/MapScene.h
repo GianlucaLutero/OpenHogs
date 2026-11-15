@@ -29,6 +29,7 @@ namespace openhogs::scene {
 struct ModelInstance {
     std::string modelName;  // key into MapScene::models
     glm::mat4 transform{1.0f};  // model units -> world units
+    std::size_t object = 0;     // its index among the map's objects (.POG)
 };
 
 struct MapScene {

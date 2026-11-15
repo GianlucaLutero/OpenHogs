@@ -41,7 +41,11 @@ MapObject readObject(core::BinaryReader& reader) {
     reader.skip(3);  // unknown 16-bit + 8-bit fields
     object.team = reader.readU8();            // offset 59
     object.scriptType = reader.readI16();     // offset 60
-    reader.skip(1 + 19 + 6);  // script group, parameters, script position
+    object.scriptGroup = reader.readU8();     // offset 62
+    for (auto& value : object.scriptParams) value = reader.readU8();  // offsets 63-81
+    object.scriptX = reader.readI16();        // offset 82
+    object.scriptY = reader.readI16();
+    object.scriptZ = reader.readI16();
     object.flags = reader.readU16();          // offset 88
 
     // Jump to the next record whatever we read, so a misunderstanding of

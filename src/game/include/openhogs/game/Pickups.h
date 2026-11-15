@@ -1,0 +1,56 @@
+// Pickups.h
+//
+// The crates and other things a hog can pick up on a map. In the map's
+// objects (.POG) they have script type 19; their parameters say what they
+// hold (docs/formats/maps.md, "Crates"):
+//
+//   - parameter 0 = 255: a health crate, parameter 1 = how much health;
+//   - the PROPOINT model: promotion points for the campaign;
+//   - otherwise a weapon crate: parameter 0 is an item number that the
+//     executable turns into a weapon through its table at 0x4D9DC8 (the
+//     weapon is then text entry 96 + that number), parameter 1 how many.
+//
+// A hog picks a crate up by walking into it; the crate disappears.
+
+#pragma once
+
+#include "openhogs/formats/MapObjects.h"
+#include "openhogs/game/Weapons.h"
+
+#include <glm/glm.hpp>
+
+#include <cstddef>
+#include <optional>
+#include <vector>
+
+namespace openhogs::game {
+
+enum class PickupKind { Weapon, Health, PromotionPoints };
+
+struct Pickup {
+    std::size_t object = 0;  // index of its map object (to hide it)
+    glm::vec3 centre{0.0f};
+    glm::vec3 halfSize{0.0f};  // the crate's box (unturned), for touching it
+    PickupKind kind = PickupKind::Weapon;
+    int item = 0;  // weapons: the text entry minus 96 (WeaponId - 96)
+    int amount = 0;
+    bool taken = false;
+
+    // The weapon a weapon crate holds, if OpenHogs has it.
+    std::optional<WeaponId> weapon() const;
+};
+
+// The map script type of a pickup.
+inline constexpr int kPickupScriptType = 19;
+
+// The pickups among a map's objects.
+std::vector<Pickup> findPickups(const std::vector<formats::MapObject>& objects);
+
+// The weapon number (text entry - 96) a crate's item number stands for
+// (the executable's table at 0x4D9DC8), or -1.
+int crateItemWeapon(int item);
+
+// Whether a hog with its feet at `feet` touches the pickup.
+bool touches(const Pickup& pickup, const glm::vec3& feet);
+
+} // namespace openhogs::game

@@ -108,7 +108,8 @@ void loadObjects(const core::VirtualFileSystem& vfs, const std::string& base, Ma
     }
 
     std::set<std::string> failedModels;
-    for (const auto& object : objects) {
+    for (std::size_t index = 0; index < objects.size(); ++index) {
+        const auto& object = objects[index];
         const std::string name = toUpper(object.modelName);
         const auto* vtx = archive.find(name + ".VTX");
         const auto* fac = archive.find(name + ".FAC");
@@ -134,7 +135,7 @@ void loadObjects(const core::VirtualFileSystem& vfs, const std::string& base, Ma
                 continue;
             }
         }
-        scene.objects.push_back({name, objectTransform(object)});
+        scene.objects.push_back({name, objectTransform(object), index});
     }
 }
 

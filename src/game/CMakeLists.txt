@@ -5,6 +5,7 @@
 #                        display's frame rate
 #   TerrainHeightField - height and surface of the ground at any point
 #   MapCollision       - terrain plus the objects' collision boxes
+#   Pickups            - the crates of a map and what they hold
 #   Hog                - one hog of a match; creation from the map's objects
 #   AnimationPlayer    - plays and cross-fades a hog's animations
 #   IdleAnimator       - what a hog does while standing around
@@ -43,6 +44,7 @@ add_library(openhogs_game STATIC
     src/Ranks.cpp
     src/TerrainHeightField.cpp
     src/TurnSystem.cpp
+    src/Pickups.cpp
     src/Weapons.cpp
     src/World.cpp)
 add_library(OpenHogs::game ALIAS openhogs_game)
