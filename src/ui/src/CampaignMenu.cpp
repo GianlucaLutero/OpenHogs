@@ -81,6 +81,8 @@ void CampaignMenu::showSquad(const game::Campaign& campaign) {
     items.push_back(action(kBack, strings_.back));
     menu_ = Menu(strings_.teamName(campaign.nation()), std::move(items));
     if (!campaign.finished()) menu_.select(kStartMission);
+    squad_ = menu_;
+    squadLines_ = lines_;
 }
 
 void CampaignMenu::showHog(const game::Campaign& campaign) {

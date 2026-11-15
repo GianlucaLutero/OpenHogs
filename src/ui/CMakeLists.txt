@@ -17,6 +17,7 @@
 #   OriginalSelectList - the original longer list (SELECT TEAM), layout and animation
 #   OriginalLevelPanel - the original level panel (SELECT LEVEL, FIELD CONDITIONS) and team holders
 #   OriginalOptionPages - the original CREDITS roll and CONTROLS board
+#   OriginalSquad - the original campaign squad page and a hog's page
 #   CampaignMenu  - the campaign pages: squad, promotions, mission results
 
 add_library(openhogs_ui STATIC
@@ -31,6 +32,7 @@ add_library(openhogs_ui STATIC
     src/OriginalSelectList.cpp
     src/OriginalLevelPanel.cpp
     src/OriginalOptionPages.cpp
+    src/OriginalSquad.cpp
     src/OriginalMenu.cpp
     src/MessageBanner.cpp
     src/PauseMenu.cpp

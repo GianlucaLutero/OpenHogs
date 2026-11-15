@@ -41,6 +41,7 @@
 #include "openhogs/ui/OriginalMenu.h"
 #include "openhogs/ui/OriginalOptionPages.h"
 #include "openhogs/ui/OriginalSelectList.h"
+#include "openhogs/ui/OriginalSquad.h"
 #include "openhogs/ui/OriginalVolume.h"
 
 #include <cstddef>
@@ -61,6 +62,9 @@ enum class OriginalScreen {
     FieldConditions,  // the level panel's monitor, over the level list
     Controls,    // the keys, on the turning board
     Credits,     // the original's credits rolling up the screen
+    Squad,       // the campaign's squad page: eight hogs, START MISSION, BACK
+    HogPage,     // a hog's page over the squad (`under` is the squad page)
+    Results,     // MISSION RESULTS: words only, over the background
 };
 
 class OriginalMenuView {
@@ -114,6 +118,19 @@ private:
     void drawFieldConditions(render::UiRenderer& ui, const ui::Menu& menu, float originX);
     void drawControls(render::UiRenderer& ui, const ui::Menu& menu, float originX);
     void drawCredits(render::UiRenderer& ui, float originX);
+    void drawSquad(render::UiRenderer& ui, const ui::Menu& squad, float originX, bool active);
+    void drawHogPage(render::UiRenderer& ui, const ui::Menu& menu, float originX);
+    void drawResults(render::UiRenderer& ui, const ui::Menu& menu, float originX);
+
+public:
+    // The lines of the squad's monitor (mission, points) and the chosen hog
+    // for a hog's page.
+    void setSquadInfo(std::vector<std::string> lines, std::size_t hog) {
+        squadLines_ = std::move(lines);
+        squadHog_ = hog;
+    }
+
+private:
 
     FrontEndPictures& pictures_;
     const render::UiFont& font_;
@@ -126,6 +143,9 @@ private:
     ui::OriginalLevelPanel levelPanel_;
     ui::OriginalControlsBoard controlsBoard_;
     ui::CreditsRoll credits_;
+    ui::OriginalSquad squad_;
+    std::vector<std::string> squadLines_;
+    std::size_t squadHog_ = 0;
     std::vector<std::pair<std::string, std::string>> creditRows_;
     const ui::Menu* shown_ = nullptr;  // the menu drawn last time
     OriginalScreen screen_ = OriginalScreen::List;  // ...and how

@@ -60,6 +60,10 @@ public:
     // renderer().begin() and end()).
     void draw();
     bool showingBriefing() const { return briefing_ != nullptr; }
+    // The campaign's pages (for the original screens), if a campaign is open.
+    const ui::CampaignMenu* menu() const { return menu_.get(); }
+    // How many hogs the squad has.
+    std::size_t squadSize() const { return campaign_ ? campaign_->squad().size() : 0; }
 
 private:
     void save() const;
