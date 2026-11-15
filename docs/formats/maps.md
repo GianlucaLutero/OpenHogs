@@ -87,7 +87,7 @@ Record (94 bytes), main fields:
 | 59 | `uint8` | team bit mask (01, 02, 04... one bit per team) |
 | 60 | `int16` | script type (mission objective role, e.g. 20 = tutorial target) |
 | 62 | `uint8` | script group |
-| 63 | 19 bytes | script parameters |
+| 63 | 19 bytes | script parameters (crates: item, amount) |
 | 82 | `int16` x 3 | script position |
 | 88 | `uint16` | flags (bit 0 = player hog) |
 | 90 | `int16` x 2 | unknown |
@@ -106,6 +106,38 @@ on the object's position and turns with its Y angle. For trees it covers
 only the trunk (192 units wide), so hogs can walk under the canopy. OpenHogs
 uses these boxes for collisions: hogs walk on top of low boxes (bridges,
 floors) and are stopped by tall ones (walls, trunks, crates).
+
+### Script types and crates
+
+The script type at offset 60 gives an object a role in the mission. The
+map loader (`FUN_004a5250`) turns most of them into objectives (a list
+built by `FUN_004a7130`: type, group, parameters 0 and 1, and the cell of
+the script position). Counted on the PC maps:
+
+| Script | Objects | Role (as far as read) |
+|--------|---------|-----------------------|
+| 1 | `S1W01PPP`, `PILLBOX`, `CO_ME`, `SW2ARM` | objective (parameter 0 through the item table) |
+| 2 | `LE_ME`, `BOG`, `BIG_GUN` | objective; when done a crate drops in |
+| 7, 8 | hogs (`GR_ME`, `HV_ME`) | objectives on hogs |
+| 13 | `BRIDGE_C`, `TENT_S` | objective |
+| 14 | `M_TENT1`, `TANK`, `CARRY` | objective |
+| 19 | `CRATE1`, `CRATE2`, `PROPOINT`, `SIGN` | pickup; in the campaign a crate with a group is also an objective (type 21) |
+| 20-23 | `DUMMY`, trees, bridges in `CAMP` | Boot Camp |
+
+**Crates (script 19).** Parameter 0 (offset 63) says what the crate
+holds and parameter 1 (offset 64) how many:
+
+- 255: health, parameter 1 points of it (`CRATE2`: 10, 15, 20, 25, 50,
+  100, 200);
+- otherwise an item number, turned into a weapon number (text entry
+  96 + it) by the table at 0x4D9DC8 (`0, 1, 2, ... 12, 14, 15 ...`: item
+  13 is the flame thrower 14, item 30 the medicine ball 33, item 14 the
+  rocket launcher 15);
+- object type 23 gives item 0.
+
+`PROPOINT` (promotion point) and `SIGN` objects carry crate parameters
+too. Picking a crate up shows gtext 172, ">S FINDS USEFUL PROVISIONS!"
+(171 when the hog cannot carry more), with the sound `I_PICKUP`.
 
 Objects whose model is not in the map's MAD are logical objects; the map
 viewer shows them as yellow markers.

@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -48,6 +49,14 @@ struct MapObject {
     std::int16_t boxSizeZ = 0;
     std::uint8_t team = 0;         // bit mask of teams (hogs only)
     std::int16_t scriptType = 0;   // mission script role, 0 = none
+    // The script's group (objects of one objective share it), its
+    // parameters (for a crate: what it holds, then how many) and a
+    // position (where an objective points). See docs/formats/maps.md.
+    std::uint8_t scriptGroup = 0;
+    std::array<std::uint8_t, 19> scriptParams{};
+    std::int16_t scriptX = 0;
+    std::int16_t scriptY = 0;
+    std::int16_t scriptZ = 0;
     std::uint16_t flags = 0;
 };
 

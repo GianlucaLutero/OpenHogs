@@ -38,7 +38,8 @@ float CollisionBox::footprintDistance(float x, float z) const {
 std::vector<CollisionBox> collisionBoxes(const std::vector<formats::MapObject>& objects,
                                          const std::function<bool(const std::string&)>& hasModel) {
     std::vector<CollisionBox> boxes;
-    for (const auto& object : objects) {
+    for (std::size_t index = 0; index < objects.size(); ++index) {
+        const auto& object = objects[index];
         if (hogClassForObject(object.modelName) != nullptr || !hasModel(object.modelName)) {
             continue;
         }
@@ -52,6 +53,7 @@ std::vector<CollisionBox> collisionBoxes(const std::vector<formats::MapObject>& 
         const float half = formats::kBoxSizeUnit / 2.0f;
         box.halfSize = {object.boxSizeX * half, object.boxSizeY * half, object.boxSizeZ * half};
         box.yawRadians = angleToRadians(object.angleY);
+        box.object = index;
         boxes.push_back(box);
     }
     return boxes;
@@ -59,6 +61,10 @@ std::vector<CollisionBox> collisionBoxes(const std::vector<formats::MapObject>& 
 
 MapCollision::MapCollision(TerrainHeightField terrain, std::vector<CollisionBox> boxes)
     : terrain_(std::move(terrain)), boxes_(std::move(boxes)) {}
+
+void MapCollision::removeObject(std::size_t object) {
+    std::erase_if(boxes_, [object](const CollisionBox& box) { return box.object == object; });
+}
 
 float MapCollision::groundHeight(float x, float z, float feetY) const {
     float ground = terrain_.heightAt(x, z);

@@ -70,8 +70,9 @@ animations.
 | `original-screens-3` | ✅ done | The original's longer list for SELECT TEAM: the monitor showing the teams, the selector bar with its turning knob and lamp, the name plate with the title |
 | `original-screens-4` | ✅ done | The rest of the original front end: the level panel (SELECT LEVEL) with FIELD CONDITIONS on its monitor, MULTI-PLAYER with the team holders (joypad or chip), CONTROLS on the turning board, the original's CREDITS rolling up |
 | `original-campaign-screens` | ✅ done | The campaign's squad page as the original (two boards of portraits, selectors, START MISSION / BACK panels, monitor), a hog's page rising over it, SWAP POSITION on the squad, the results written over the background |
-| `original-campaign-screens-2` | 🔍 in review | PROMOTE and CAREER PATH on the original's information board, with its hanging bar and the careers' blinking icons |
-| fidelity blocks      | planned | the other original screens, `mission-scripts`, `weapons-complete`, `version-variants`: videos, pictures, menus and missions exactly as in the original |
+| `original-campaign-screens-2` | ✅ done | PROMOTE and CAREER PATH on the original's information board, with its hanging bar and the careers' blinking icons |
+| `mission-scripts`    | 🔍 in review | Crates: health, weapons for the team's stock and promotion points, read from the maps' script parameters through the executable's item table; picked up by walking into them |
+| fidelity blocks      | planned | the rest of `mission-scripts` (objectives, medals, Boot Camp, buildings and vehicles), `weapons-complete`, `version-variants`: missions and weapons exactly as in the original |
 | `release`            | planned | Packaged builds for Windows and Linux |
 
 ## Requirements

@@ -29,6 +29,7 @@ enum class GameEventType {
     TurnStarted,
     SuddenDeath,  // every hog is down to one point of health
     MatchOver,  // team: the winner, or -1 for a draw
+    PickedUp,   // hog: who; pickup: which (World::pickups()); amount: what it gave
 };
 
 struct GameEvent {
@@ -39,6 +40,7 @@ struct GameEvent {
     std::size_t hog = 0;
     float amount = 0.0f;
     int team = -1;
+    std::size_t pickup = 0;
 };
 
 } // namespace openhogs::game

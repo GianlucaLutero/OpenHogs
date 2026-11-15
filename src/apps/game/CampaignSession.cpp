@@ -189,6 +189,7 @@ std::vector<std::string> CampaignSession::missionEnded(const Game& game) {
         game::MissionReport report;
         report.won = world.winner() == played_->playerTeam;
         report.deathOrder = game.squadDeaths();
+        report.pickedUpPoints = game.promotionPoints();
         summary.outcome = campaign_->recordMission(report, *played_->deployed);
         save();
         if (report.won) videos = game::campaignCutscenes(campaign_->nextMission());

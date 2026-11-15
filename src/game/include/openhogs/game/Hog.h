@@ -71,7 +71,10 @@ struct Hog {
     // stands still in its turn, put away when it moves (as the original).
     std::optional<WeaponId> drawnWeapon;
 
-    std::vector<WeaponId> weapons;  // what it carries (from its class)
+    std::vector<WeaponId> weapons;  // what it carries: its own, then its team's stock
+    // How many of `weapons` are its own (from its class or rank); the rest
+    // come from crates its team picked up and can run out.
+    std::size_t ownWeapons = static_cast<std::size_t>(-1);
     std::size_t weaponSlot = 0;     // the selected one
     float aimDegrees = 15.0f;       // above the horizon
     float power = 0.0f;             // 0 to 1, while charging a throw

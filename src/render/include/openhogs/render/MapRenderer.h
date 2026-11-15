@@ -16,6 +16,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -32,6 +33,10 @@ public:
 
     // Draws the map into the current framebuffer of `width` x `height` pixels.
     void draw(const Camera& camera, int width, int height, const DrawOptions& options) const;
+
+    // Stops drawing map object `object` (its index in the .POG): a crate
+    // that was picked up.
+    void hideObject(std::size_t object) { hidden_.insert(object); }
 
 private:
     // One textured group of triangles on the GPU.
@@ -53,6 +58,7 @@ private:
     std::vector<GlTexture> modelTextures_;
     std::map<std::string, std::vector<GpuPart>> models_;
     std::vector<scene::ModelInstance> objects_;
+    std::set<std::size_t> hidden_;
 
     std::unique_ptr<GlMesh> markerMesh_;
     std::vector<glm::vec3> markers_;

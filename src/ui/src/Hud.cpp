@@ -76,6 +76,13 @@ std::optional<std::string> messageForEvent(const game::GameEvent& event, const g
             return strings.draw;
         }
         return fillPlaceholders(strings.victory, {strings.teamName(world.nationOf(event.team))});
+    case game::GameEventType::PickedUp: {
+        // ">S FINDS USEFUL PROVISIONS!": the hog's name, or its team's.
+        if (event.hog >= world.hogs().size()) return std::nullopt;
+        const auto& hog = world.hogs()[event.hog];
+        const std::string who = hog.name.empty() ? strings.teamName(world.nationOf(hog.team)) : hog.name;
+        return fillPlaceholders(strings.findsProvisions, {who});
+    }
     default:
         return std::nullopt;
     }

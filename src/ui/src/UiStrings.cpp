@@ -70,6 +70,7 @@ constexpr std::size_t kGtVictory = 165;
 constexpr std::size_t kGtDraw = 166;
 constexpr std::size_t kGtGetReady = 168;
 constexpr std::size_t kGtEnemyTurn = 169;
+constexpr std::size_t kGtFindsProvisions = 172;
 constexpr std::size_t kGtMissionTitle = 158;
 constexpr std::size_t kGtMissionResults = 187;
 constexpr std::size_t kGtMissionFailed = 188;
@@ -216,6 +217,7 @@ UiStrings loadUiStrings(const std::vector<std::string>& frontEndText, const std:
     take(strings.draw, gt, kGtDraw);
     take(strings.getReady, gt, kGtGetReady);
     take(strings.enemyTurn, gt, kGtEnemyTurn);
+    take(strings.findsProvisions, gt, kGtFindsProvisions);
     take(strings.missionTitle, gt, kGtMissionTitle);
     take(strings.missionResults, gt, kGtMissionResults);
     take(strings.missionFailed, gt, kGtMissionFailed);

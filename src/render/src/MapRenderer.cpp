@@ -99,6 +99,7 @@ void MapRenderer::draw(const Camera& camera, int width, int height, const DrawOp
 
     if (options.showObjects) {
         for (const auto& object : objects_) {
+            if (hidden_.contains(object.object)) continue;
             shader_->setMatrix("uModel", object.transform);
             drawParts(models_.at(object.modelName), modelTextures_);
         }

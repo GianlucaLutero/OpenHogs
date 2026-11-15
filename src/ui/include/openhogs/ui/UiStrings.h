@@ -82,6 +82,7 @@ struct UiStrings {
     std::string draw = "IT'S A DRAW!!";
     std::string getReady = "GET READY >S...";
     std::string enemyTurn = "THE ENEMY RETALIATES...";  // a computer team's turn
+    std::string findsProvisions = ">S FINDS USEFUL PROVISIONS!";  // a crate picked up
     std::string suddenDeath = "SUDDEN DEATH";            // fetext
 
     // Team names, in the order of scene::characterTeams() (british,

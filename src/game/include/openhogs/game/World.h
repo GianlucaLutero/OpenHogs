@@ -22,6 +22,7 @@
 #include "openhogs/game/Hog.h"
 #include "openhogs/game/HogMovement.h"
 #include "openhogs/game/MapCollision.h"
+#include "openhogs/game/Pickups.h"
 #include "openhogs/game/Projectiles.h"
 #include "openhogs/game/TurnSystem.h"
 
@@ -65,7 +66,7 @@ inline constexpr float kTracerEffectSeconds = 0.15f;
 
 class World {
 public:
-    World(MapCollision map, std::vector<Hog> hogs, TurnRules rules = {});
+    World(MapCollision map, std::vector<Hog> hogs, TurnRules rules = {}, std::vector<Pickup> pickups = {});
 
     const MapCollision& map() const { return map_; }
     const TerrainHeightField& terrain() const { return map_.terrain(); }
@@ -73,6 +74,10 @@ public:
     const std::vector<Projectile>& projectiles() const { return projectiles_; }
     const std::vector<ExplosionEffect>& explosions() const { return explosions_; }
     const std::vector<TracerEffect>& tracers() const { return tracers_; }
+    // The map's crates; taken ones stay in the list, marked taken.
+    const std::vector<Pickup>& pickups() const { return pickups_; }
+    // How many of a weapon a team has from crates (beyond its hogs' own).
+    int stock(int team, WeaponId weapon) const;
 
     // Empty when the map has no hogs (a map without hogs is only scenery).
     const std::optional<TurnSystem>& turns() const { return turns_; }
@@ -117,6 +122,9 @@ private:
     void fire(std::size_t hogIndex, float power, std::vector<GameEvent>& events);
     void updateWeaponStance(Hog& hog) const;
     void hurtSwimmers(double seconds, std::vector<GameEvent>& events);
+    void collectPickups(std::vector<GameEvent>& events);
+    void refreshStockWeapons(int team);
+    void useStock(std::size_t hogIndex);
     std::optional<glm::vec3> nearestShore(const glm::vec3& from) const;
     void fireMelee(std::size_t hogIndex, const WeaponSpec& spec, std::vector<GameEvent>& events);
     void fireShot(std::vector<GameEvent>& events);
@@ -132,6 +140,8 @@ private:
     MapCollision map_;
     std::vector<Hog> hogs_;
     std::map<int, int> nations_;  // team -> nation, where not the default
+    std::vector<Pickup> pickups_;
+    std::map<int, std::map<WeaponId, int>> stock_;  // team -> weapon -> how many, from crates
     std::optional<TurnSystem> turns_;
     MatchPhase phase_ = MatchPhase::Playing;
     std::optional<int> winner_;

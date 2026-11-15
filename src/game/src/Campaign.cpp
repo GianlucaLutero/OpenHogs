@@ -154,7 +154,7 @@ MissionOutcome Campaign::recordMission(const MissionReport& report, std::size_t 
     outcome.survivalBonus = deaths == 0;
     outcome.islandConquered = conquersIsland(nextMission_);
     outcome.pointsEarned = kMissionPoints + (outcome.survivalBonus ? kSurvivalPoints : 0) +
-                           (outcome.islandConquered ? kIslandPoints : 0);
+                           (outcome.islandConquered ? kIslandPoints : 0) + report.pickedUpPoints;
     points_ += outcome.pointsEarned;
     ++nextMission_;
     return outcome;

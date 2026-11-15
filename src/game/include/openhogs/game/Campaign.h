@@ -82,6 +82,8 @@ struct MissionReport {
     bool won = false;
     // The deployed hogs (0 = the first of the squad) in the order they died.
     std::vector<std::size_t> deathOrder;
+    // Promotion points picked up on the map (PROPOINT pickups).
+    int pickedUpPoints = 0;
 };
 
 // What the mission meant for the campaign.

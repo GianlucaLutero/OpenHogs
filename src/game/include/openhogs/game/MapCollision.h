@@ -45,6 +45,7 @@ struct CollisionBox {
     glm::vec3 centre{0.0f};
     glm::vec3 halfSize{0.0f};  // along the box's own X, Y, Z axes
     float yawRadians = 0.0f;   // turn around the vertical axis
+    std::size_t object = 0;    // the map object it belongs to (index in the .POG)
 
     float top() const { return centre.y + halfSize.y; }
     float bottom() const { return centre.y - halfSize.y; }
@@ -78,6 +79,9 @@ public:
     // True if a hog standing on the terrain at `from` may walk on the
     // terrain to `to`: not up a wall tile, not up a slope that is too steep.
     bool canWalkTerrain(const glm::vec3& from, const glm::vec3& to) const;
+
+    // Takes away the box of map object `object` (a crate that was picked up).
+    void removeObject(std::size_t object);
 
 private:
     TerrainHeightField terrain_;

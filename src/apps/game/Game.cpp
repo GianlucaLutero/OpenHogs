@@ -38,6 +38,7 @@ constexpr std::string_view kBulletHitSound = "I_BULIT1";
 constexpr std::string_view kBounceSound = "P_BOUNCE";
 constexpr std::string_view kDeathSound = "P_MOAN";
 constexpr std::string_view kSuddenDeathSound = "E_1000P";  // the big explosion
+constexpr std::string_view kPickupSound = "I_PICKUP";
 
 // Effect colours.
 constexpr glm::vec4 kAimColour{1.0f, 1.0f, 1.0f, 1.0f};
@@ -369,10 +370,24 @@ void Game::handleEvents(const std::vector<game::GameEvent>& events) {
         case GameEventType::Explosion: playSound(kExplosionSound); break;
         case GameEventType::Died: playSound(kDeathSound); break;
         case GameEventType::SuddenDeath: playSound(kSuddenDeathSound); break;
+        case GameEventType::PickedUp:
+            playSound(kPickupSound);
+            pickedUp(event);
+            break;
         case GameEventType::Hurt:         // voices and music: MatchAudio
         case GameEventType::TurnStarted:
         case GameEventType::MatchOver: break;
         }
+    }
+}
+
+void Game::pickedUp(const game::GameEvent& event) {
+    // The crate goes; promotion points go to the campaign at the end.
+    if (event.pickup >= world_.pickups().size()) return;
+    const auto& pickup = world_.pickups()[event.pickup];
+    mapRenderer_->hideObject(pickup.object);
+    if (pickup.kind == game::PickupKind::PromotionPoints) {
+        promotionPoints_ += static_cast<int>(event.amount);
     }
 }
 
