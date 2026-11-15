@@ -156,6 +156,32 @@ For type 1 (`FUN_00423e70`, `FUN_00427c90`):
 - element 4 is the dial: it turns to frame 4 × *selected* (minus 1 past 4:
   0, 4, 7, 11) and clicks when it gets there.
 
+### Type 2: the longer list (SELECT TEAM, MULTI-PLAYER)
+
+Built from the settings machine of type 12 (the same plate, tray, box
+and pipes, drawn by the foreground `FUN_0041e780`, case 2), plus a
+monitor whose screen shows the entries. With *L* the list's drop
+(`DAT_00512950`, from 546: it rises; spring gain 10, damping 15, top
+speed 15) in pixels, *v* element 0 (moved one step a tick towards
+5 × the selected entry) and *s* = 2 × (4*v* + *L*, in pixels):
+
+| Sprite | Picture | Position |
+|--------|---------|----------|
+| tray, box, pipes | `info1`, `yesno01` (closed), `mainbar0`, `mainbar1` | as type 12 |
+| lamp | `lit1`-`lit3` (element 1) | (537, *s* + 202) |
+| knob | `selec00`-`05`, frame *v* mod 6 | (348, *s* + 170) |
+| bar | `select`: columns 0-40, then from column 30 | (412, *s* + 186), (422, *s* + 186) |
+| stem | `counsele` rows 290-294, 25 times every 4 pixels | (385, *L* + 450 ...) |
+| cogs | `selcog1`-`6`, frame ((6 − drop) × 2 / 25) mod 6 | (553, *L* + 180) |
+| monitor | `counsele` (179 × 306; columns 0-128 and 128-179 around the stretch) | (385, *L* + 160) |
+| arms, plate | `namarm1`, `namarm2`, `name0`-`5` | (80, *P*), (435, *P*), (123, *P* + 16) with *P* the plate's drop |
+
+The plate springs from −150 (3, 30, 6) and the box from 0x4C8 (13, 30,
+30). The entries are written in text boxes 5-12 (x 687, width 180,
+y 369, 407, 447, 489, 527, 567, 607, 647), in the list menu's font and
+colours; the title's box is (201, 65, 600). Screen 16 (MULTI-PLAYER)
+adds four team rows with `pcchip` / `pcpad` / `com_man`, still to read.
+
 ### Type 7: VOLUME CONTROL
 
 A screen whose pointer at +0x2C is set is drawn over that screen
@@ -183,7 +209,7 @@ only once `DAT_00512958` is 400 again.
   fetext 306 + on (OFF, ON); the selected one's value blinks (tint 20 for
   31 ticks, then 200, out of every 101).
 
-Still to read: the other screen types (team lists and pages, type 2 and
-4: `sq*`; level choice, type 20; field conditions, type 21; saving
+Still to read: the other screen types (MULTI-PLAYER's team rows; team
+pages, type 4: `sq*`; level choice, type 20; field conditions, type 21; saving
 `pcsav`; the keys `pckey*`), the steam puffs (`FUN_00419fa0`) and the
 leaving animations.

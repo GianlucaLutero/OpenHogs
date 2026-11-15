@@ -8,12 +8,14 @@
 
 #include "openhogs/ui/OriginalDialog.h"
 #include "openhogs/ui/OriginalMenu.h"
+#include "openhogs/ui/OriginalSelectList.h"
 #include "openhogs/ui/OriginalVolume.h"
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <string>
 
@@ -319,4 +321,65 @@ TEST_CASE("Leaving the volume panel lets the list come back down", "[ui][origina
     list.raise(false);
     for (int tick = 0; tick < 300 && !list.settled(); ++tick) list.tick();
     CHECK(list.panelY() == 0);
+}
+
+// --- The longer list (ui::OriginalSelectList) ---------------------------------
+
+namespace {
+
+MenuPiece listPiece(const OriginalSelectList& list, const std::string& prefix) {
+    for (const auto& piece : list.pieces()) {
+        if (piece.picture.rfind(prefix, 0) == 0 && piece.sourceHeight == 0) return piece;
+    }
+    FAIL("no piece " << prefix);
+    return {};
+}
+
+void settle(OriginalSelectList& list) {
+    for (int tick = 0; tick < 1000 && !list.settled(); ++tick) list.tick();
+    REQUIRE(list.settled());
+}
+
+} // namespace
+
+TEST_CASE("The longer list's monitor rises into the executable's place", "[ui][originalselectlist]") {
+    // The monitor comes up from below the screen (546 units) and must rest
+    // at (385, 160), where the entries' text boxes fall on its dark screen.
+    OriginalSelectList list;
+    list.open(0);
+    CHECK(listPiece(list, "counsele").y > 400.0f);
+    CHECK_FALSE(list.showsText());
+    settle(list);
+    const auto monitor = listPiece(list, "counsele");
+    CHECK(monitor.x == Approx(385.0f));
+    CHECK(monitor.y == Approx(160.0f));
+    CHECK(list.showsText());
+    // Every entry is written inside the monitor's screen (x 425-545,
+    // y 190-390 on screen).
+    for (std::size_t entry = 0; entry < kOriginalSelectListEntries; ++entry) {
+        const auto line = list.entryLine(entry);
+        CHECK(line.centreX == Approx(485.6f).margin(0.1f));
+        CHECK(line.top > 190.0f);
+        CHECK(line.top + 18.0f < 400.0f);
+    }
+}
+
+TEST_CASE("The selector slides to the chosen entry, its knob turning", "[ui][originalselectlist]") {
+    // Five steps of one tick per entry, the knob showing one of its six
+    // pictures per step; at rest the bar lies over the entry's words.
+    OriginalSelectList list;
+    list.open(0);
+    settle(list);
+    const float firstBar = listPiece(list, "select").y;
+    list.select(2);
+    list.tick();
+    CHECK(list.selector() == 1);
+    CHECK(listPiece(list, "selec").picture == "selec01");
+    settle(list);
+    CHECK(list.selector() == 10);
+    const float bar = listPiece(list, "select").y;
+    CHECK(bar - firstBar == Approx(2.0f * 23.4f).margin(1.0f));
+    // The bar (64 pixels tall) is centred within a few pixels of the words.
+    const auto line = list.entryLine(2);
+    CHECK(std::abs((bar + 32.0f) - (line.top + 9.0f)) < 8.0f);
 }

@@ -15,6 +15,10 @@
 // the volume panel comes up below it, with its knobs (ui::OriginalVolume).
 // Going back, the panel drops away before the list comes down again.
 //
+// A list of five to eight actions (SELECT TEAM) is drawn as the original's
+// longer list: a monitor showing the entries, with a selector that slides
+// down it (ui::OriginalSelectList).
+//
 // The view follows the menu it is given each frame: a menu it was not
 // showing opens with the full animation (or only flips its plates if a
 // list menu was already on screen), and a new selection turns the dial.
@@ -29,6 +33,7 @@
 #include "openhogs/ui/Menu.h"
 #include "openhogs/ui/OriginalDialog.h"
 #include "openhogs/ui/OriginalMenu.h"
+#include "openhogs/ui/OriginalSelectList.h"
 #include "openhogs/ui/OriginalVolume.h"
 
 #include <cstddef>
@@ -41,6 +46,7 @@ enum class OriginalScreen {
     List,      // the list menu (four actions or fewer)
     Question,  // a yes/no question, YES first
     Volume,    // VOLUME CONTROL: MODE, MASTER, SFX, VOICES over a list menu
+    SelectList,  // the longer list: five to eight actions on a monitor
 };
 
 class OriginalMenuView {
@@ -54,6 +60,10 @@ public:
     // Whether `menu` is the original's VOLUME CONTROL (four entries:
     // a choice, two sliders, a choice).
     static bool suitsVolume(const ui::Menu& menu);
+
+    // Whether `menu` can be shown as the longer list: five to eight
+    // entries, all of them actions.
+    static bool suitsSelectList(const ui::Menu& menu);
 
     // Follows `menu` (which must suit `screen`): opens, flips or turns the
     // dial when it changed since the last call. For Volume, `under` is the
@@ -79,6 +89,7 @@ private:
     void drawQuestion(render::UiRenderer& ui, const ui::Menu& menu, float originX);
     void drawVolume(render::UiRenderer& ui, const ui::Menu& menu, float originX);
     void drawVolumePanel(render::UiRenderer& ui, float originX);
+    void drawSelectList(render::UiRenderer& ui, const ui::Menu& menu, float originX);
 
     FrontEndPictures& pictures_;
     const render::UiFont& font_;
@@ -86,6 +97,7 @@ private:
     ui::OriginalMenu animation_;
     ui::OriginalDialog dialog_;
     ui::OriginalVolumePanel volume_;
+    ui::OriginalSelectList selectList_;
     const ui::Menu* shown_ = nullptr;  // the menu drawn last time
     OriginalScreen screen_ = OriginalScreen::List;  // ...and how
     std::size_t selected_ = 0;

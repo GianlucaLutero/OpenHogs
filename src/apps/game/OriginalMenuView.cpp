@@ -51,10 +51,29 @@ bool OriginalMenuView::suitsVolume(const ui::Menu& menu) {
            items[3].kind == Kind::Choice;
 }
 
+namespace {
+
+bool allActions(const ui::Menu& menu) {
+    const auto& items = menu.items();
+    return std::all_of(items.begin(), items.end(),
+                       [](const ui::MenuItem& item) { return item.kind == ui::MenuItem::Kind::Action; });
+}
+
+} // namespace
+
+bool OriginalMenuView::suitsSelectList(const ui::Menu& menu) {
+    const std::size_t count = menu.items().size();
+    return count > ui::kOriginalMenuEntries && count <= ui::kOriginalSelectListEntries && allActions(menu);
+}
+
 void OriginalMenuView::update(double seconds) {
     if (!shown_) return;
     if (screen_ == OriginalScreen::Question) {
         dialog_.advance(seconds);
+        return;
+    }
+    if (screen_ == OriginalScreen::SelectList) {
+        selectList_.advance(seconds);
         return;
     }
     animation_.advance(seconds);
@@ -70,6 +89,13 @@ void OriginalMenuView::show(const ui::Menu& menu, OriginalScreen screen, const u
     const std::size_t selected = menu.selectedIndex();
     const bool changed = shown_ != &menu || screen_ != screen;
     switch (screen) {
+    case OriginalScreen::SelectList:
+        if (changed) {
+            selectList_.open(selected);
+        } else if (selected_ != selected) {
+            selectList_.select(selected);
+        }
+        break;
     case OriginalScreen::Question:
         // The question has its own machine: it opens whenever it appears.
         if (changed) {
@@ -96,7 +122,7 @@ void OriginalMenuView::show(const ui::Menu& menu, OriginalScreen screen, const u
         effectsLevel_ = menu.items()[ui::kVolumeEffectsEntry].value;
         break;
     case OriginalScreen::List:
-        if (shown_ == nullptr || screen_ == OriginalScreen::Question) {
+        if (shown_ == nullptr || screen_ == OriginalScreen::Question || screen_ == OriginalScreen::SelectList) {
             animation_.open(selected);
             volumeLeaving_ = false;
         } else if (screen_ == OriginalScreen::Volume) {
@@ -151,6 +177,7 @@ void OriginalMenuView::draw(render::UiRenderer& ui, const ui::Menu& menu, Origin
     const float originX = (ui.canvasWidth() - ui::kOriginalScreenWidth) / 2.0f;
     switch (screen) {
     case OriginalScreen::Question: drawQuestion(ui, menu, originX); break;
+    case OriginalScreen::SelectList: drawSelectList(ui, menu, originX); break;
     case OriginalScreen::Volume:
         if (under) drawList(ui, *under, originX);
         drawVolume(ui, menu, originX);
@@ -159,6 +186,26 @@ void OriginalMenuView::draw(render::UiRenderer& ui, const ui::Menu& menu, Origin
         drawList(ui, menu, originX);
         if (volumeLeaving_) drawVolumePanel(ui, originX);
         break;
+    }
+}
+
+void OriginalMenuView::drawSelectList(render::UiRenderer& ui, const ui::Menu& menu, float originX) {
+    drawPieces(ui, selectList_.pieces(), originX);
+    render::TextStyle style;
+    style.scale = kTextScale;
+    style.align = render::TextAlign::Centre;
+    style.shadow = false;
+    style.colour = kTitleColour;
+    const auto title = selectList_.titleLine();
+    ui.drawText(font_, menu.title(), originX + title.centreX, title.top, style);
+    if (!selectList_.showsText()) return;
+    const auto& items = menu.items();
+    for (std::size_t i = 0; i < items.size(); ++i) {
+        glm::vec4 colour = i == menu.selectedIndex() ? kSelectedColour : kEntryColour;
+        if (!items[i].enabled) colour = glm::vec4(glm::vec3(colour) * kDisabledDimming, 1.0f);
+        style.colour = colour;
+        const auto line = selectList_.entryLine(i);
+        ui.drawText(font_, items[i].label, originX + line.centreX, line.top, style);
     }
 }
 

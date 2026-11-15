@@ -283,7 +283,7 @@ OriginalScreen Application::originalScreen() const {
     switch (frontEnd_->screen()) {
     case ui::FrontEndScreen::ConfirmQuit: return OriginalScreen::Question;
     case ui::FrontEndScreen::Volume: return OriginalScreen::Volume;
-    default: return OriginalScreen::List;
+    default: return OriginalMenuView::suitsSelectList(frontEnd_->menu()) ? OriginalScreen::SelectList : OriginalScreen::List;
     }
 }
 
@@ -293,7 +293,7 @@ bool Application::showsOriginalScreen() const {
         return OriginalMenuView::suitsVolume(menu) && frontEnd_->menuUnder() &&
                OriginalMenuView::suits(*frontEnd_->menuUnder());
     }
-    return OriginalMenuView::suits(menu);
+    return OriginalMenuView::suits(menu) || OriginalMenuView::suitsSelectList(menu);
 }
 
 void Application::advanceMenus(double seconds) {
