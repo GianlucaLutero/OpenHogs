@@ -24,6 +24,9 @@ constexpr int kPlateFlipStartY = -50;  // once the panel is this close to its pl
 // The springs' settings (gain, damping, top speed), as the executable.
 constexpr int kRackGain = 4, kRackDamping = 12, kRackMaxSpeed = 21;
 constexpr int kPanelGain = 8, kPanelDamping = 17, kPanelMaxSpeed = 80;
+// Raised for VOLUME CONTROL: 180 units up, with that screen's spring.
+constexpr int kRaisedY = -180;
+constexpr int kRaiseGain = 5, kRaiseDamping = 14, kRaiseMaxSpeed = 20;
 
 // --- The lamps -------------------------------------------------------------
 // The selected entry's lamp plays this sequence in a loop (table 0x4C0A78
@@ -88,6 +91,7 @@ int frontEndSpring(int value, int target, int& velocity, int gain, int damping, 
 }
 
 void OriginalMenu::open(std::size_t selected) {
+    raised_ = false;
     panelY_ = kPanelStartY;
     panelVelocity_ = 0;
     rackOffset_ = kRackStartOffset;
@@ -122,6 +126,11 @@ void OriginalMenu::select(std::size_t entry) {
     }
 }
 
+void OriginalMenu::raise(bool raised) {
+    if (raised_ != raised) panelVelocity_ = 0;
+    raised_ = raised;
+}
+
 void OriginalMenu::tickLamp(Lamp& lamp) const {
     if (lamp.blinking) {
         if (--lamp.wait > 0) return;
@@ -139,8 +148,13 @@ void OriginalMenu::tick() {
     if (rackOffset_ != 0) {
         rackOffset_ = frontEndSpring(rackOffset_, 0, rackVelocity_, kRackGain, kRackDamping, kRackMaxSpeed);
     } else {
-        panelY_ = frontEndSpring(panelY_, 0, panelVelocity_, kPanelGain, kPanelDamping, kPanelMaxSpeed);
-        if (plateFrame_ < kPlateRestFrame && panelY_ > kPlateFlipStartY) ++plateFrame_;
+        if (raised_) {
+            panelY_ = frontEndSpring(panelY_, kRaisedY, panelVelocity_, kRaiseGain, kRaiseDamping, kRaiseMaxSpeed);
+        } else {
+            panelY_ = frontEndSpring(panelY_, 0, panelVelocity_, kPanelGain, kPanelDamping, kPanelMaxSpeed);
+        }
+        // (A raised panel is in place too: it flips where it is.)
+        if (plateFrame_ < kPlateRestFrame && (raised_ || panelY_ > kPlateFlipStartY)) ++plateFrame_;
     }
     if (dialFrame_ < dialTarget_) ++dialFrame_;
     if (dialFrame_ > dialTarget_) --dialFrame_;
@@ -156,7 +170,7 @@ void OriginalMenu::advance(double seconds) {
 }
 
 bool OriginalMenu::settled() const {
-    return rackOffset_ == 0 && rackVelocity_ == 0 && panelY_ == 0 && panelVelocity_ == 0 &&
+    return rackOffset_ == 0 && rackVelocity_ == 0 && panelY_ == (raised_ ? kRaisedY : 0) && panelVelocity_ == 0 &&
            plateFrame_ == kPlateRestFrame && dialFrame_ == dialTarget_;
 }
 

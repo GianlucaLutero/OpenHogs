@@ -30,6 +30,14 @@ Volumes volumesFromIni(const core::IniFile& ini) {
     volumes.effects = readPercent(ini, "EffectsVolume");
     volumes.speech = readPercent(ini, "SpeechVolume");
     volumes.music = readPercent(ini, "MusicVolume");
+    const std::string mode = ini.getString("Audio", "SoundMode", "stereo");
+    if (mode == "mono") {
+        volumes.mode = SoundMode::Mono;
+    } else if (mode == "surround") {
+        volumes.mode = SoundMode::Surround;
+    } else if (mode != "stereo") {
+        throw core::FormatError("[Audio] SoundMode must be mono, stereo or surround, got " + mode);
+    }
     return volumes;
 }
 

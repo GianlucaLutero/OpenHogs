@@ -7,6 +7,7 @@
 //     EffectsVolume = 100
 //     SpeechVolume  = 100
 //     MusicVolume   = 80
+//     SoundMode     = stereo  ; mono, stereo or surround (played as stereo)
 //
 // Missing keys keep their default (100). Values outside 0..100 are an
 // error, so a typo such as "800" is reported instead of deafening anyone.
@@ -21,7 +22,8 @@ class IniFile;
 
 namespace openhogs::audio {
 
-// Throws core::FormatError for values that are not whole numbers in 0..100.
+// Throws core::FormatError for volumes that are not whole numbers in
+// 0..100 and for an unknown SoundMode.
 Volumes volumesFromIni(const core::IniFile& ini);
 
 } // namespace openhogs::audio

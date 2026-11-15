@@ -8,7 +8,8 @@
 //        │    ── MULTI-PLAYER ─> SELECT LEVEL ── a map ──> PLAYERS ── START GAME ──> (match)
 //        │                                                     └─ FIELD CONDITIONS (hogs per team,
 //        │                                                        turn time, health, sudden death)
-//        │    ── OPTIONS ──────> VOLUME CONTROL (sliders)
+//        │    ── OPTIONS ──────> AUDIO ── VOLUME CONTROL (MODE, MASTER, SFX, VOICES)
+//        │                       (CONTROLS and CREDITS are not made yet)
 //        │    ── QUIT ─────────> REALLY QUIT APP? ── YES ──> (quit)
 //
 // The campaign itself is run by CampaignMenu. DEATH MATCH is a skirmish
@@ -36,16 +37,34 @@
 
 namespace openhogs::ui {
 
-enum class FrontEndScreen { Main, OnePlayer, SelectTeam, SelectLevel, Players, FieldConditions, Options, ConfirmQuit };
+enum class FrontEndScreen {
+    Main,
+    OnePlayer,
+    SelectTeam,
+    SelectLevel,
+    Players,
+    FieldConditions,
+    Options,
+    Volume,
+    ConfirmQuit,
+};
 
 // Volume levels as shown by the sliders: 0 (silent) .. kMaxVolumeLevel.
 inline constexpr int kMaxVolumeLevel = 10;
 
+// The original's sound modes, in the order of its MODE entry.
+enum class SoundModeChoice { Mono, Stereo, Surround };
+
+// The volume settings. The original's VOLUME CONTROL shows MODE, MASTER,
+// SFX and VOICES (on or off: off is speech 0); the music level is not on
+// it (the original had no music control) and only comes from the
+// configuration.
 struct VolumeLevels {
     int master = kMaxVolumeLevel;
     int effects = kMaxVolumeLevel;
     int speech = kMaxVolumeLevel;
     int music = kMaxVolumeLevel;
+    SoundModeChoice mode = SoundModeChoice::Stereo;
 };
 
 // What a menu input led to, for sound and for the application.
@@ -88,6 +107,9 @@ public:
 
     FrontEndScreen screen() const { return screen_; }
     const Menu& menu() const;
+    // The menu that stays on screen behind the current one (OPTIONS behind
+    // VOLUME CONTROL, as the original), or nullptr.
+    const Menu* menuUnder() const;
     VolumeLevels volumes() const { return volumes_; }
 
     // Goes back to the main menu (e.g. after a match).
@@ -108,12 +130,14 @@ private:
     FrontEndResult handleFieldConditions(const MenuResponse& response);
     MatchSettings fieldSettings() const;
     FrontEndResult handleOptions(const MenuResponse& response);
+    FrontEndResult handleVolume(const MenuResponse& response);
     FrontEndResult handleConfirmQuit(const MenuResponse& response);
     void open(FrontEndScreen screen);
 
     UiStrings strings_;
     std::vector<std::string> maps_;
     VolumeLevels volumes_;
+    int speechWhenOn_ = kMaxVolumeLevel;  // the speech level VOICES ON goes back to
     FrontEndScreen screen_ = FrontEndScreen::Main;
     bool onePlayer_ = false;     // the level list was opened from ONE PLAYER
     std::string chosenMap_;
@@ -125,6 +149,7 @@ private:
     Menu players_;
     Menu fieldConditions_;
     Menu options_;
+    Menu volume_;
     Menu confirmQuit_;
 };
 

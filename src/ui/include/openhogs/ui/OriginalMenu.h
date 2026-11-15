@@ -80,6 +80,10 @@ public:
     // The player moved to another entry: the dial turns, its lamp blinks.
     void select(std::size_t entry);
 
+    // Raises the panel out of the way of a screen drawn below it (VOLUME
+    // CONTROL keeps OPTIONS on screen, 180 units higher), or lowers it back.
+    void raise(bool raised);
+
     // One tick of the front end's animation.
     void tick();
 
@@ -119,6 +123,7 @@ private:
 
     int panelY_ = 0;        // the panel's drop, in the executable's 820-high units
     int panelVelocity_ = 0;
+    bool raised_ = false;
     int rackOffset_ = 0;    // the racks' distance from their place, pixels
     int rackVelocity_ = 0;
     int dialFrame_ = 0;     // 0..11: dial0001..dial0012

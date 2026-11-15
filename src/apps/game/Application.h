@@ -92,7 +92,8 @@ private:
     bool handleFrontEndResult(const ui::FrontEndResult& result);
     void update(double seconds);
     void draw(int width, int height);
-    bool isQuestion() const;
+    OriginalScreen originalScreen() const;  // how the current menu is drawn
+    bool showsOriginalScreen() const;       // ...if it can be drawn as the original
     void drawMenus(int width, int height);
     void drawLoading();
     void leaveMatch();

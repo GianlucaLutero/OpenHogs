@@ -17,7 +17,9 @@ using Request = FrontEndResult::Request;
 enum MainItem { kOnePlayer, kMultiPlayer, kOptions, kQuit };
 enum OnePlayerItem { kNewGame, kLoadGame, kSkirmish, kOnePlayerBack };
 constexpr int kTeamBack = -1;  // nation items use the nation index as id
-enum OptionsItem { kMaster, kEffects, kVoices, kMusic, kOptionsBack };
+enum OptionsItem { kAudio, kControls, kCredits, kOptionsBack };
+enum VolumeItem { kMode, kMaster, kEffects, kVoices };
+constexpr int kVoicesOff = 0, kVoicesOn = 1;
 enum ConfirmItem { kYes, kNo };
 constexpr int kLevelBack = -1;  // map items use their index as id
 // Players page: two items per team (its nation, who plays it), with ids
@@ -122,10 +124,26 @@ FrontEnd::FrontEnd(UiStrings strings, std::vector<std::string> maps, VolumeLevel
     levels.push_back(action(kLevelBack, strings_.back));
     selectLevel_ = Menu(strings_.selectLevel, std::move(levels));
 
-    options_ = Menu(strings_.volumeControl,
-                    {slider(kMaster, strings_.master, volumes_.master), slider(kEffects, strings_.effects, volumes_.effects),
-                     slider(kVoices, strings_.voices, volumes_.speech), slider(kMusic, strings_.music, volumes_.music),
-                     action(kOptionsBack, strings_.back)});
+    // OPTIONS as the original (screen 2); only AUDIO leads somewhere yet.
+    options_ = Menu(strings_.options, {action(kAudio, strings_.audio), action(kControls, strings_.controls, false),
+                                       action(kCredits, strings_.credits, false), action(kOptionsBack, strings_.back)});
+
+    // VOLUME CONTROL as the original (screen 20): no BACK entry, Esc leaves.
+    if (volumes_.speech > 0) speechWhenOn_ = volumes_.speech;
+    MenuItem mode;
+    mode.id = kMode;
+    mode.label = strings_.mode;
+    mode.kind = MenuItem::Kind::Choice;
+    mode.choices.assign(strings_.soundModes.begin(), strings_.soundModes.end());
+    mode.value = static_cast<int>(volumes_.mode);
+    MenuItem voices;
+    voices.id = kVoices;
+    voices.label = strings_.voices;
+    voices.kind = MenuItem::Kind::Choice;
+    voices.choices = {strings_.off, strings_.on};
+    voices.value = volumes_.speech > 0 ? kVoicesOn : kVoicesOff;
+    volume_ = Menu(strings_.volumeControl, {mode, slider(kMaster, strings_.master, volumes_.master),
+                                            slider(kEffects, strings_.effects, volumes_.effects), voices});
 
     // "No" is selected first, so a quick double Enter does not quit.
     confirmQuit_ = Menu(strings_.reallyQuit, {action(kYes, strings_.yes), action(kNo, strings_.no)});
@@ -148,9 +166,14 @@ const Menu& FrontEnd::menu() const {
     case FrontEndScreen::Players: return players_;
     case FrontEndScreen::FieldConditions: return fieldConditions_;
     case FrontEndScreen::Options: return options_;
+    case FrontEndScreen::Volume: return volume_;
     case FrontEndScreen::ConfirmQuit: return confirmQuit_;
     }
     return main_;
+}
+
+const Menu* FrontEnd::menuUnder() const {
+    return screen_ == FrontEndScreen::Volume ? &options_ : nullptr;
 }
 
 void FrontEnd::open(FrontEndScreen screen) {
@@ -173,6 +196,7 @@ FrontEndResult FrontEnd::handle(MenuInput input) {
     case FrontEndScreen::Players: return handlePlayers(players_.handle(input));
     case FrontEndScreen::FieldConditions: return handleFieldConditions(fieldConditions_.handle(input));
     case FrontEndScreen::Options: return handleOptions(options_.handle(input));
+    case FrontEndScreen::Volume: return handleVolume(volume_.handle(input));
     case FrontEndScreen::ConfirmQuit: return handleConfirmQuit(confirmQuit_.handle(input));
     }
     return {};
@@ -354,11 +378,22 @@ FrontEndResult FrontEnd::handleOptions(const MenuResponse& response) {
     if (response.type == Type::Back || (response.type == Type::Activated && response.itemId == kOptionsBack)) {
         open(FrontEndScreen::Main);
         result.sound = MenuSound::Back;
+    } else if (response.type == Type::Activated && response.itemId == kAudio) {
+        open(FrontEndScreen::Volume);
+    }
+    return result;
+}
+
+FrontEndResult FrontEnd::handleVolume(const MenuResponse& response) {
+    FrontEndResult result;
+    result.sound = soundFor(response);
+    if (response.type == Type::Back) {
+        open(FrontEndScreen::Options);
     } else if (response.type == Type::Changed) {
-        volumes_.master = options_.item(kMaster).value;
-        volumes_.effects = options_.item(kEffects).value;
-        volumes_.speech = options_.item(kVoices).value;
-        volumes_.music = options_.item(kMusic).value;
+        volumes_.mode = static_cast<SoundModeChoice>(volume_.item(kMode).value);
+        volumes_.master = volume_.item(kMaster).value;
+        volumes_.effects = volume_.item(kEffects).value;
+        volumes_.speech = volume_.item(kVoices).value == kVoicesOn ? speechWhenOn_ : 0;
         result.request = Request::VolumesChanged;
     }
     return result;

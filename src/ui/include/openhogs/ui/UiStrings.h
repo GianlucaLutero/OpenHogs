@@ -35,6 +35,12 @@ struct UiStrings {
     std::string reallyQuit = "REALLY QUIT APP?";  // the question before quitting
     std::string selectLevel = "MULTI-PLAYER SELECT LEVEL";
     std::string volumeControl = "VOLUME CONTROL";
+    std::string audio = "AUDIO";        // OPTIONS: the volume screen
+    std::string controls = "CONTROLS";
+    std::string credits = "CREDITS";
+    std::string mode = "MODE";          // VOLUME CONTROL: the sound mode
+    std::array<std::string, 3> soundModes{"MONO", "STEREO", "SURROUND"};
+    std::string on = "ON";
     std::string master = "MASTER";
     std::string effects = "SFX";
     std::string voices = "VOICES";

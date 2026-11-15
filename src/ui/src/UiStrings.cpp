@@ -19,6 +19,12 @@ constexpr std::size_t kFeMultiPlayer = 10;
 constexpr std::size_t kFeOptions = 11;
 constexpr std::size_t kFeQuit = 16;
 constexpr std::size_t kFeVolumeControl = 74;
+constexpr std::size_t kFeMode = 75;
+constexpr std::size_t kFeAudio = 21;     // OPTIONS (screen 2): AUDIO, CONTROLS, CREDITS
+constexpr std::size_t kFeControls = 22;
+constexpr std::size_t kFeCredits = 23;
+constexpr std::size_t kFeOn = 307;       // VOICES ON (306 is its OFF)
+constexpr std::array<std::size_t, 3> kFeSoundModes{334, 335, 336};  // MONO, STEREO, SURROUND
 constexpr std::size_t kFeMaster = 76;
 constexpr std::size_t kFeEffects = 77;
 constexpr std::size_t kFeVoices = 78;
@@ -141,6 +147,14 @@ UiStrings loadUiStrings(const std::vector<std::string>& frontEndText, const std:
     take(strings.quit, fe, kFeQuit);
     take(strings.reallyQuit, fe, kFeReallyQuitApp);
     take(strings.volumeControl, fe, kFeVolumeControl);
+    take(strings.mode, fe, kFeMode);
+    take(strings.audio, fe, kFeAudio);
+    take(strings.controls, fe, kFeControls);
+    take(strings.credits, fe, kFeCredits);
+    take(strings.on, fe, kFeOn);
+    for (std::size_t i = 0; i < kFeSoundModes.size(); ++i) {
+        take(strings.soundModes[i], fe, kFeSoundModes[i]);
+    }
     take(strings.master, fe, kFeMaster);
     take(strings.effects, fe, kFeEffects);
     take(strings.voices, fe, kFeVoices);

@@ -25,6 +25,10 @@ const glm::vec4 kSelectedColour{120 * kTint, 120 * kTint, 75 * kTint, 1.0f};
 constexpr float kDisabledDimming = 1.0f / 3.0f;
 // The question's title, set by the executable for these screens.
 const glm::vec4 kQuestionColour{120 * kTint, 120 * kTint, 80 * kTint, 1.0f};
+// The blinking value of VOLUME CONTROL (tint 200, brighter than the
+// picture, is as bright as the font gets here).
+const glm::vec4 kBlinkLitColour{1.0f, 1.0f, 1.0f, 1.0f};
+const glm::vec4 kBlinkDarkColour{20 * kTint, 20 * kTint, 20 * kTint, 1.0f};
 
 } // namespace
 
@@ -39,33 +43,77 @@ bool OriginalMenuView::suits(const ui::Menu& menu) {
                        [](const ui::MenuItem& item) { return item.kind == ui::MenuItem::Kind::Action; });
 }
 
+bool OriginalMenuView::suitsVolume(const ui::Menu& menu) {
+    using Kind = ui::MenuItem::Kind;
+    const auto& items = menu.items();
+    return items.size() == ui::kVolumeEntries && items[0].kind == Kind::Choice &&
+           items[ui::kVolumeMasterEntry].kind == Kind::Slider && items[ui::kVolumeEffectsEntry].kind == Kind::Slider &&
+           items[3].kind == Kind::Choice;
+}
+
 void OriginalMenuView::update(double seconds) {
     if (!shown_) return;
-    if (question_) {
+    if (screen_ == OriginalScreen::Question) {
         dialog_.advance(seconds);
-    } else {
-        animation_.advance(seconds);
+        return;
+    }
+    animation_.advance(seconds);
+    if (screen_ == OriginalScreen::Volume || volumeLeaving_) volume_.advance(seconds);
+    if (volumeLeaving_ && volume_.closed()) {
+        // The panel is gone: the list comes back down.
+        volumeLeaving_ = false;
+        animation_.raise(false);
     }
 }
 
-void OriginalMenuView::show(const ui::Menu& menu, bool question) {
+void OriginalMenuView::show(const ui::Menu& menu, OriginalScreen screen, const ui::Menu* under) {
     const std::size_t selected = menu.selectedIndex();
-    if (question) {
+    const bool changed = shown_ != &menu || screen_ != screen;
+    switch (screen) {
+    case OriginalScreen::Question:
         // The question has its own machine: it opens whenever it appears.
-        if (shown_ != &menu || !question_) {
+        if (changed) {
             dialog_.open(selected);
         } else if (selected_ != selected) {
             dialog_.select(selected);
         }
-    } else if (shown_ == nullptr || question_) {
-        animation_.open(selected);
-    } else if (shown_ != &menu) {
-        animation_.replaceContents(selected);
-    } else if (selected_ != selected) {
-        animation_.select(selected);
+        break;
+    case OriginalScreen::Volume:
+        if (changed) {
+            // The list above stays if it is the one on screen; otherwise it
+            // drops in first.
+            const std::size_t underSelected = under ? under->selectedIndex() : 0;
+            if (shown_ == nullptr || screen_ != OriginalScreen::List || shown_ != under) {
+                animation_.open(underSelected);
+            }
+            animation_.raise(true);
+            volume_.open(selected);
+            volumeLeaving_ = false;
+        } else if (selected_ != selected) {
+            volume_.select(selected);
+        }
+        masterLevel_ = menu.items()[ui::kVolumeMasterEntry].value;
+        effectsLevel_ = menu.items()[ui::kVolumeEffectsEntry].value;
+        break;
+    case OriginalScreen::List:
+        if (shown_ == nullptr || screen_ == OriginalScreen::Question) {
+            animation_.open(selected);
+            volumeLeaving_ = false;
+        } else if (screen_ == OriginalScreen::Volume) {
+            // Back from VOLUME CONTROL to the list above it: the panel
+            // leaves, then the list comes down.
+            volume_.close();
+            volumeLeaving_ = true;
+            animation_.select(selected);
+        } else if (shown_ != &menu) {
+            animation_.replaceContents(selected);
+        } else if (selected_ != selected) {
+            animation_.select(selected);
+        }
+        break;
     }
     shown_ = &menu;
-    question_ = question;
+    screen_ = screen;
     selected_ = selected;
 }
 
@@ -95,15 +143,50 @@ void OriginalMenuView::drawPieces(render::UiRenderer& ui, const std::vector<ui::
     for (auto piece = pieces.rbegin(); piece != pieces.rend(); ++piece) drawPiece(ui, *piece, originX);
 }
 
-void OriginalMenuView::draw(render::UiRenderer& ui, const ui::Menu& menu, bool question) {
-    show(menu, question);
+void OriginalMenuView::draw(render::UiRenderer& ui, const ui::Menu& menu, OriginalScreen screen,
+                            const ui::Menu* under) {
+    show(menu, screen, under);
     // The original screen is 640 pixels wide; wider canvases get the same
     // layout in the middle (the canvas is 480 units high, like the screen).
     const float originX = (ui.canvasWidth() - ui::kOriginalScreenWidth) / 2.0f;
-    if (question) {
-        drawQuestion(ui, menu, originX);
-    } else {
+    switch (screen) {
+    case OriginalScreen::Question: drawQuestion(ui, menu, originX); break;
+    case OriginalScreen::Volume:
+        if (under) drawList(ui, *under, originX);
+        drawVolume(ui, menu, originX);
+        break;
+    case OriginalScreen::List:
         drawList(ui, menu, originX);
+        if (volumeLeaving_) drawVolumePanel(ui, originX);
+        break;
+    }
+}
+
+void OriginalMenuView::drawVolumePanel(render::UiRenderer& ui, float originX) {
+    drawPieces(ui, volume_.pieces(masterLevel_, effectsLevel_), originX);
+}
+
+void OriginalMenuView::drawVolume(render::UiRenderer& ui, const ui::Menu& menu, float originX) {
+    drawVolumePanel(ui, originX);
+    if (!volume_.showsText()) return;
+    render::TextStyle style;
+    style.scale = kTextScale;
+    style.shadow = false;
+    const float halfHeight = static_cast<float>(questionFont_.font().lineHeight) * kTextScale / 2.0f;
+    const auto& items = menu.items();
+    for (std::size_t i = 0; i < items.size(); ++i) {
+        const auto line = volume_.textLine(i);
+        const float top = line.middle - halfHeight;
+        style.align = render::TextAlign::Right;
+        style.colour = kQuestionColour;
+        ui.drawText(questionFont_, items[i].label, originX + line.labelRight, top, style);
+        if (items[i].kind != ui::MenuItem::Kind::Choice) continue;
+        // The selected value blinks, between the executable's tints 200 and 20.
+        if (i == menu.selectedIndex()) {
+            style.colour = volume_.valueLit() ? kBlinkLitColour : kBlinkDarkColour;
+        }
+        style.align = render::TextAlign::Left;
+        ui.drawText(questionFont_, items[i].choiceText(), originX + line.valueLeft, top, style);
     }
 }
 
