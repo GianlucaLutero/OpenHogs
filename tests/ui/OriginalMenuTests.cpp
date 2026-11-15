@@ -8,6 +8,7 @@
 
 #include "openhogs/ui/OriginalDialog.h"
 #include "openhogs/ui/OriginalMenu.h"
+#include "openhogs/ui/OriginalVolume.h"
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -222,4 +223,100 @@ TEST_CASE("The answers are written inside the box's windows", "[ui][originaldial
     CHECK(no.centreX == Approx(box.x + 154.0f));
     CHECK(yes.top > box.y + 36.0f);
     CHECK(yes.top + 18.0f < box.y + 58.0f + 2.0f);
+}
+
+// --- VOLUME CONTROL (ui::OriginalVolumePanel) ---------------------------------
+
+namespace {
+
+MenuPiece volumePiece(const OriginalVolumePanel& panel, const std::string& prefix, std::size_t index = 0) {
+    std::vector<MenuPiece> found;
+    for (const auto& piece : panel.pieces(10, 0)) {
+        if (piece.picture.rfind(prefix, 0) == 0) found.push_back(piece);
+    }
+    REQUIRE(index < found.size());
+    return found[index];
+}
+
+void settle(OriginalVolumePanel& panel) {
+    for (int tick = 0; tick < 500 && !panel.settled(); ++tick) panel.tick();
+    REQUIRE(panel.settled());
+}
+
+} // namespace
+
+TEST_CASE("The volume panel comes up, unfolds and only then shows its knobs", "[ui][originalvolume]") {
+    // Like the executable, the knobs and the words appear on the open panel
+    // (vol00) only; on the unfolding pictures they would float in the air.
+    OriginalVolumePanel panel;
+    panel.open(1);
+    CHECK(volumePiece(panel, "vol0").y > 480.0f);  // starts below the screen
+    CHECK(volumePiece(panel, "vol0").picture == "vol01");
+    CHECK_FALSE(panel.showsText());
+    for (const auto& piece : panel.pieces(10, 0)) CHECK(piece.picture.rfind("vollit", 0) != 0);
+
+    settle(panel);
+    const auto open = volumePiece(panel, "vol0");
+    CHECK(open.picture == "vol00");
+    CHECK(open.x == Approx(100.0f));
+    CHECK(open.y == Approx(240.0f));
+    CHECK(panel.showsText());
+}
+
+TEST_CASE("The knobs slide along the rails with the volume", "[ui][originalvolume]") {
+    // x = 230 + level * 12.5 (FUN_0041e780): silent at the left end of the
+    // rails of vol00 (x 260 on screen), full at the right end (386).
+    OriginalVolumePanel panel;
+    panel.open(1);
+    settle(panel);
+    const auto master = volumePiece(panel, "vollit", 0);  // level 10
+    const auto effects = volumePiece(panel, "vollit", 1);  // level 0
+    CHECK(effects.x == Approx(230.0f));
+    CHECK(master.x == Approx(355.0f));
+    CHECK(master.y == Approx(320.0f));
+    CHECK(effects.y == Approx(351.0f));
+    // The knob's middle (24 pixels in) lies on the rails' extent.
+    CHECK(effects.x + 24.0f < 262.0f);
+    CHECK(master.x + 24.0f > 375.0f);
+}
+
+TEST_CASE("The selected slider's knob lights up, the other one fades", "[ui][originalvolume]") {
+    // The only sign of which slider is selected is its lit knob.
+    OriginalVolumePanel panel;
+    panel.open(kVolumeMasterEntry);
+    settle(panel);
+    CHECK(panel.knobFrame(0) == 2);
+    CHECK(panel.knobFrame(1) == 0);
+    panel.select(kVolumeEffectsEntry);
+    panel.tick();
+    panel.tick();
+    CHECK(panel.knobFrame(0) == 0);
+    CHECK(panel.knobFrame(1) == 2);
+}
+
+TEST_CASE("Leaving the volume panel lets the list come back down", "[ui][originalvolume]") {
+    // OPTIONS rises out of the panel's way and must return to its place
+    // once the panel has gone, or the next menu would hang 105 pixels high.
+    OriginalMenu list;
+    list.open(0);
+    for (int tick = 0; tick < 300 && !list.settled(); ++tick) list.tick();
+    list.raise(true);
+    for (int tick = 0; tick < 300 && !list.settled(); ++tick) list.tick();
+    CHECK(list.panelY() == -180);
+    CHECK(list.showsText());
+
+    OriginalVolumePanel panel;
+    panel.open(0);
+    settle(panel);
+    panel.close();
+    int ticks = 0;
+    while (!panel.closed() && ticks < 100) {
+        panel.tick();
+        ++ticks;
+    }
+    CHECK(panel.closed());
+    CHECK(ticks < 25);  // gone in under a second
+    list.raise(false);
+    for (int tick = 0; tick < 300 && !list.settled(); ++tick) list.tick();
+    CHECK(list.panelY() == 0);
 }

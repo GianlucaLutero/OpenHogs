@@ -30,7 +30,9 @@ constexpr std::size_t kMapListRows = 9;  // the level list scrolls beyond this
 
 ui::VolumeLevels toVolumeLevels(const audio::Volumes& volumes) {
     const auto level = [](float volume) { return static_cast<int>(std::lround(volume * ui::kMaxVolumeLevel)); };
-    return {level(volumes.master), level(volumes.effects), level(volumes.speech), level(volumes.music)};
+    ui::VolumeLevels levels{level(volumes.master), level(volumes.effects), level(volumes.speech), level(volumes.music)};
+    levels.mode = static_cast<ui::SoundModeChoice>(volumes.mode);  // same order
+    return levels;
 }
 
 audio::Volumes toVolumes(const ui::VolumeLevels& levels) {
@@ -40,6 +42,7 @@ audio::Volumes toVolumes(const ui::VolumeLevels& levels) {
     volumes.effects = volume(levels.effects);
     volumes.speech = volume(levels.speech);
     volumes.music = volume(levels.music);
+    volumes.mode = static_cast<audio::SoundMode>(levels.mode);
     return volumes;
 }
 
@@ -268,17 +271,29 @@ void Application::update(double seconds) {
         game_->advance(seconds);
         return;
     }
-    if (!inCampaign_ && OriginalMenuView::suits(frontEnd_->menu())) {
-        originalMenu_->show(frontEnd_->menu(), isQuestion());
+    if (!inCampaign_ && showsOriginalScreen()) {
+        originalMenu_->show(frontEnd_->menu(), originalScreen(), frontEnd_->menuUnder());
         originalMenu_->update(seconds);
     }
     // The menus play the long theme in a loop, as the original's front end.
     sounds_->keepMusic(game::kThemeTrack, 1.0f, true);
 }
 
-bool Application::isQuestion() const {
-    // The yes/no questions of the menus, drawn as the original's question.
-    return frontEnd_->screen() == ui::FrontEndScreen::ConfirmQuit;
+OriginalScreen Application::originalScreen() const {
+    switch (frontEnd_->screen()) {
+    case ui::FrontEndScreen::ConfirmQuit: return OriginalScreen::Question;
+    case ui::FrontEndScreen::Volume: return OriginalScreen::Volume;
+    default: return OriginalScreen::List;
+    }
+}
+
+bool Application::showsOriginalScreen() const {
+    const auto& menu = frontEnd_->menu();
+    if (originalScreen() == OriginalScreen::Volume) {
+        return OriginalMenuView::suitsVolume(menu) && frontEnd_->menuUnder() &&
+               OriginalMenuView::suits(*frontEnd_->menuUnder());
+    }
+    return OriginalMenuView::suits(menu);
 }
 
 void Application::advanceMenus(double seconds) {
@@ -298,8 +313,8 @@ void Application::drawMenus(int width, int height) {
         originalMenu_->reset();
         if (!briefing) ui.drawRect(0.0f, 0.0f, ui.canvasWidth(), render::kCanvasHeight, kMenuShade);
         campaign_->draw();
-    } else if (OriginalMenuView::suits(frontEnd_->menu())) {
-        originalMenu_->draw(ui, frontEnd_->menu(), isQuestion());
+    } else if (showsOriginalScreen()) {
+        originalMenu_->draw(ui, frontEnd_->menu(), originalScreen(), frontEnd_->menuUnder());
     } else {
         originalMenu_->reset();
         ui.drawRect(0.0f, 0.0f, ui.canvasWidth(), render::kCanvasHeight, kMenuShade);

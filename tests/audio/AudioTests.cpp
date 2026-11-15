@@ -230,6 +230,29 @@ TEST_CASE("AudioSettings: reads volumes as percentages", "[audio][settings]") {
     CHECK_THROWS_AS(volumesFromIni(core::IniFile::parse("[Audio]\nSpeechVolume = 150\n")), core::FormatError);
 }
 
+// The original's MODE can be set in openhogs.ini too; a misspelt mode is
+// reported instead of being quietly ignored.
+TEST_CASE("AudioSettings: reads the sound mode", "[audio][settings]") {
+    CHECK(volumesFromIni(core::IniFile::parse("")).mode == SoundMode::Stereo);
+    CHECK(volumesFromIni(core::IniFile::parse("[Audio]\nSoundMode = mono\n")).mode == SoundMode::Mono);
+    CHECK_THROWS_AS(volumesFromIni(core::IniFile::parse("[Audio]\nSoundMode = quad\n")), core::FormatError);
+}
+
+// MONO must put the same signal on both speakers: a stereo music track
+// with its left channel only would otherwise play from one side.
+TEST_CASE("Mixer: mono mode mixes the two channels together", "[audio][mixer]") {
+    Mixer mixer(22050);
+    Volumes volumes;
+    volumes.mode = SoundMode::Mono;
+    mixer.setVolumes(volumes);
+    mixer.play(makeSound(22050, 2, {16384, 0, 16384, 0}), SoundCategory::Music);
+
+    const auto output = mixFrames(mixer, 2);
+
+    CHECK(output[0] == Approx(0.25f));
+    CHECK(output[1] == Approx(0.25f));
+}
+
 // Music tracks are numbered from 2 (track 1 of the original CD was data).
 // The library must find tracks whatever the case of the file names, since
 // a content pack may ship "music/track05.ogg" on a case-sensitive system.

@@ -156,10 +156,32 @@ For type 1 (`FUN_00423e70`, `FUN_00427c90`):
 - element 4 is the dial: it turns to frame 4 × *selected* (minus 1 past 4:
   0, 4, 7, 11) and clicks when it gets there.
 
-Type 7, VOLUME CONTROL, draws only its own panel: `vol00`-`vol06`
-(368 × 240, opening frames) at (100, 240 + twice the drop of
-`DAT_00512958`), then, once open, two knobs (`vollit01`-`03`) on its
-rails at x 230 + level × 12.5, y 320 and 351 (`FUN_0041e780`).
+### Type 7: VOLUME CONTROL
+
+A screen whose pointer at +0x2C is set is drawn over that screen
+(`FUN_00427770` first draws the screen at +0x2C): VOLUME CONTROL keeps
+the OPTIONS list menu on screen. Its update (`FUN_00423e70`, case 7)
+springs the list's drop (`DAT_00512950`) to −180 (gain 5, damping 14,
+top speed 20), lifting OPTIONS about 105 pixels, and its own panel
+(`DAT_00512958`, 400 when the list menu opened) to 0 (gain 8, damping 30,
+top speed 30). The list menu's update (case 1) brings the list back down
+only once `DAT_00512958` is 400 again.
+
+- The panel: `vol00`-`vol06` (368 × 240) at (100, 240 + twice the drop in
+  pixels) (`FUN_0041bef0`, case 7). `vol01`-`vol06` rise and unfold;
+  `vol00` has the two plain rails (rows 109 and 140, x 160-286) that
+  the knobs fit.
+- The knobs, once element 8 is at frame 6 (`FUN_0041e780`, case 7):
+  `vollit01`-`03` (48 × 48, dark to lit; the frame is elements 9 and 11)
+  at x 230 + level × 12.5 (level 0-10), y 320 + the drop + 31 per knob:
+  MASTER and SFX.
+- The words (`FUN_00428cf0`, case 7): text boxes 35-38 of the table at
+  0x4C1728 (the first box of each type is the running sum of the counts at
+  0x4C16C8) — (334, 542), (334, 587), (334, 637), (334, 687), 250 × 30 —
+  in colour (120, 120, 80) with the settings-machine font. MODE is
+  followed by fetext 334 + mode (MONO, STEREO, SURROUND) and VOICES by
+  fetext 306 + on (OFF, ON); the selected one's value blinks (tint 20 for
+  31 ticks, then 200, out of every 101).
 
 Still to read: the other screen types (team lists and pages, type 2 and
 4: `sq*`; level choice, type 20; field conditions, type 21; saving

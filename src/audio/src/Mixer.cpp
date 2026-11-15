@@ -119,6 +119,14 @@ void Mixer::mix(std::span<float> output) {
         return !mixVoice(voice, output, gain);
     });
 
+    if (volumes_.mode == SoundMode::Mono) {
+        for (std::size_t frame = 0; frame + 1 < output.size(); frame += 2) {
+            const float both = (output[frame] + output[frame + 1]) * 0.5f;
+            output[frame] = both;
+            output[frame + 1] = both;
+        }
+    }
+
     // Several loud sounds can add up beyond full scale: clamp instead of
     // letting the values wrap around, which would sound like loud cracks.
     for (float& value : output) {

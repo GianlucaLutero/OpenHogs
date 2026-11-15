@@ -29,11 +29,17 @@ namespace openhogs::audio {
 enum class SoundCategory { Effects, Speech, Music };
 
 // Volumes from 0 (silent) to 1 (unchanged).
+// The original's MODE setting: MONO plays both channels mixed together (one
+// speaker, or headphones that should not pan); STEREO and SURROUND keep the
+// two channels (the PC version plays surround as stereo).
+enum class SoundMode { Mono, Stereo, Surround };
+
 struct Volumes {
     float master = 1.0f;
     float effects = 1.0f;
     float speech = 1.0f;
     float music = 1.0f;
+    SoundMode mode = SoundMode::Stereo;
 
     float forCategory(SoundCategory category) const;
 };

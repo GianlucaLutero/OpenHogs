@@ -223,7 +223,12 @@ TEST_CASE("Back always leads back to the main menu", "[ui][frontend]") {
 
     press(frontEnd, {MenuInput::Down, MenuInput::Down, MenuInput::Confirm});  // OPTIONS
     CHECK(frontEnd.screen() == FrontEndScreen::Options);
-    // BACK is the last entry, after the four sliders.
+    // AUDIO opens VOLUME CONTROL, which has no BACK entry: Esc returns.
+    press(frontEnd, {MenuInput::Confirm});
+    CHECK(frontEnd.screen() == FrontEndScreen::Volume);
+    press(frontEnd, {MenuInput::Back});
+    CHECK(frontEnd.screen() == FrontEndScreen::Options);
+    // BACK is the last entry of OPTIONS (one step up from AUDIO).
     const auto result = press(frontEnd, {MenuInput::Up, MenuInput::Confirm});
     CHECK(frontEnd.screen() == FrontEndScreen::Main);
     CHECK(result.sound == MenuSound::Back);
@@ -246,7 +251,8 @@ TEST_CASE("Volume sliders report every change", "[ui][frontend]") {
     // The application applies the new volumes at once, so the player hears
     // the difference while moving the slider.
     auto frontEnd = makeFrontEnd();
-    press(frontEnd, {MenuInput::Down, MenuInput::Down, MenuInput::Confirm});  // OPTIONS, on MASTER
+    press(frontEnd, {MenuInput::Down, MenuInput::Down, MenuInput::Confirm, MenuInput::Confirm});  // AUDIO
+    press(frontEnd, {MenuInput::Down});  // from MODE to MASTER
     const auto result = press(frontEnd, {MenuInput::Left, MenuInput::Left});
     CHECK(result.request == FrontEndResult::Request::VolumesChanged);
     CHECK(frontEnd.volumes().master == kMaxVolumeLevel - 2);
@@ -254,6 +260,21 @@ TEST_CASE("Volume sliders report every change", "[ui][frontend]") {
     press(frontEnd, {MenuInput::Down, MenuInput::Left});  // SFX
     CHECK(frontEnd.volumes().effects == kMaxVolumeLevel - 1);
     CHECK(frontEnd.volumes().master == kMaxVolumeLevel - 2);
+}
+
+TEST_CASE("VOICES switches speech off and back to its level; MODE picks mono", "[ui][frontend]") {
+    // The original's VOICES is on or off: switching it on again must give
+    // back the speech level of the configuration, not full volume.
+    VolumeLevels start;
+    start.speech = 6;
+    FrontEnd frontEnd(UiStrings{}, {"ROAD"}, start);
+    press(frontEnd, {MenuInput::Down, MenuInput::Down, MenuInput::Confirm, MenuInput::Confirm});  // AUDIO
+    press(frontEnd, {MenuInput::Left});  // MODE: STEREO -> MONO
+    CHECK(frontEnd.volumes().mode == SoundModeChoice::Mono);
+    press(frontEnd, {MenuInput::Up, MenuInput::Left});  // VOICES (up wraps from MODE): ON -> OFF
+    CHECK(frontEnd.volumes().speech == 0);
+    press(frontEnd, {MenuInput::Right});
+    CHECK(frontEnd.volumes().speech == 6);
 }
 
 TEST_CASE("The pause menu resumes, or aborts only after confirmation", "[ui][pause]") {
