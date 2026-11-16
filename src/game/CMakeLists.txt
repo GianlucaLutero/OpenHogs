@@ -27,6 +27,7 @@
 
 add_library(openhogs_game STATIC
     src/AnimationPlayer.cpp
+    src/BattleAwards.cpp
     src/Campaign.cpp
     src/ChaseCamera.cpp
     src/ComputerPlayer.cpp

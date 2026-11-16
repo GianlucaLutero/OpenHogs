@@ -123,6 +123,23 @@ struct UiStrings {
     std::string missionAborted = "MISSION ABORTED";
     std::string levelComplete = "LEVEL COMPLETE";
     std::string survivalBonus = "SURVIVAL BONUS";
+    std::string specialBonus = "SPECIAL BONUS";
+    std::string none = "NONE";  // a medal not won (gtext 96, also "no weapon")
+
+    // The battle results after a skirmish or a match between people
+    // (gtext 195-208), and the special awards in their order: THE
+    // ANNIHLATOR!!!, TRIPLE RIP REAPER!!!, MASTER SADIST!!!, DOUBLE DEATH
+    // DEALER!, SADISM AWARD!, PIG OF THE BATTLE (game::SpecialAwardKind).
+    std::string battleResults = "BATTLE RESULTS";
+    std::string enemyGrilled = "ENEMY GRILLED";
+    std::string friendsFried = "FRIENDS FRIED";
+    std::string victoryBonus = "VICTORY BONUS";
+    std::string specialAwards = "SPECIAL AWARDS";
+    std::string total = "TOTAL";
+    std::string wins = "WINS!!";
+    std::string specialAward = "SPECIAL AWARD";
+    std::vector<std::string> awardNames{"THE ANNIHLATOR!!!", "TRIPLE RIP REAPER!!!", "MASTER SADIST!!!",
+                                        "DOUBLE DEATH DEALER!", "SADISM AWARD!", "PIG OF THE BATTLE"};
     std::string retry = "RETRY";
     std::string editSquad = "EDIT SQUAD";
     std::string rip = "RIP";

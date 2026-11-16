@@ -22,6 +22,7 @@
 #   CampaignMenu  - the campaign pages: squad, promotions, mission results
 
 add_library(openhogs_ui STATIC
+    src/BattleResultsPage.cpp
     src/CampaignMenu.cpp
     src/FloatingNumbers.cpp
     src/FrontEnd.cpp

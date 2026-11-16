@@ -4,11 +4,13 @@
 
 #include "MenuControls.h"
 
+#include "openhogs/game/BattleAwards.h"
 #include "openhogs/game/Cutscenes.h"
 #include "openhogs/game/FieldConditions.h"
 #include "openhogs/game/MatchSounds.h"
 
 #include "openhogs/render/GlObjects.h"
+#include "openhogs/ui/BattleResultsPage.h"
 
 #include <SDL3/SDL.h>
 #include <glad/gl.h>
@@ -126,8 +128,25 @@ void Application::leaveMatch() {
         if (!videos.empty()) playCutscenes(videos);
         return;
     }
+    // A match played to the end: the BATTLE RESULTS page, as the original.
+    if (game_->world().phase() == game::MatchPhase::Over) {
+        frontEnd_->showBattleResults(battleResultLines(game_->world()));
+    } else {
+        frontEnd_->showMainMenu();
+    }
     game_.reset();
-    frontEnd_->showMainMenu();
+}
+
+std::vector<std::string> Application::battleResultLines(const game::World& world) const {
+    const auto results = game::battleResults(world.hogs(), world.turns() ? world.turns()->teams() : std::vector<int>{},
+                                             world.winner());
+    const auto& strings = interface_->strings();
+    return ui::battleResultLines(
+        results, strings, [&](int team) { return world.nationOf(team); },
+        [&](std::size_t hog) {
+            const auto& pig = world.hogs()[hog];
+            return pig.name.empty() ? strings.teamName(world.nationOf(pig.team)) : pig.name;
+        });
 }
 
 void Application::startCampaignMission() {
@@ -285,6 +304,7 @@ void Application::update(double seconds) {
     }
     if (!inCampaign_ && showsOriginalScreen()) {
         if (originalScreen() == OriginalScreen::Players) originalMenu_->setTeamPlayers(teamPlayers());
+        if (originalScreen() == OriginalScreen::Results) originalMenu_->setSquadInfo(frontEnd_->resultLines(), 0);
         originalMenu_->show(frontEnd_->menu(), originalScreen(), frontEnd_->menuUnder());
         originalMenu_->update(seconds);
     }
@@ -342,6 +362,7 @@ OriginalScreen Application::originalScreen() const {
     case ui::FrontEndScreen::FieldConditions: return OriginalScreen::FieldConditions;
     case ui::FrontEndScreen::Controls: return OriginalScreen::Controls;
     case ui::FrontEndScreen::Credits: return OriginalScreen::Credits;
+    case ui::FrontEndScreen::BattleResults: return OriginalScreen::Results;
     default: return OriginalMenuView::suitsSelectList(frontEnd_->menu()) ? OriginalScreen::SelectList : OriginalScreen::List;
     }
 }
@@ -353,7 +374,8 @@ bool Application::showsOriginalScreen() const {
     case OriginalScreen::Players: return true;
     case OriginalScreen::FieldConditions: return frontEnd_->menuUnder() != nullptr;
     case OriginalScreen::Controls:
-    case OriginalScreen::Credits: return true;
+    case OriginalScreen::Credits:
+    case OriginalScreen::Results: return true;
     default: break;
     }
     if (originalScreen() == OriginalScreen::Volume) {
@@ -391,6 +413,7 @@ void Application::drawMenus(int width, int height) {
         if (!briefing) ui.drawRect(0.0f, 0.0f, ui.canvasWidth(), render::kCanvasHeight, kMenuShade);
         campaign_->draw();
     } else if (showsOriginalScreen()) {
+        if (originalScreen() == OriginalScreen::Results) originalMenu_->setSquadInfo(frontEnd_->resultLines(), 0);
         originalMenu_->draw(ui, frontEnd_->menu(), originalScreen(), frontEnd_->menuUnder());
     } else {
         originalMenu_->reset();
