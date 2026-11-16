@@ -107,6 +107,12 @@ void moveInAir(std::vector<Hog>& hogs, std::size_t self, double seconds, const M
     Hog& hog = hogs[self];
     const auto dt = static_cast<float>(seconds);
     hog.motion.velocity.y -= kGravity * dt;
+    if (hog.parachute) {
+        // Under a parachute it sinks slowly and lands unhurt: the fall is
+        // measured from where it is, not from where it started.
+        hog.motion.velocity.y = std::max(hog.motion.velocity.y, -kParachuteSinkSpeed);
+        hog.motion.highestPoint = hog.position.y;
+    }
 
     // Horizontal part first: a wall stops the forward motion, not the fall.
     glm::vec3 next = hog.position + glm::vec3(hog.motion.velocity.x, 0.0f, hog.motion.velocity.z) * dt;

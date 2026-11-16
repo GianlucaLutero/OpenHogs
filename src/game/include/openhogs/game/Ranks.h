@@ -12,8 +12,7 @@
 //                 └─ Engineer:      Sapper → Engineer → Saboteur      ─┘
 //
 // Health, weapons and their number of uses follow the Hogs of War Wiki's
-// rank pages; the weapons OpenHogs does not implement yet (jetpack,
-// airstrikes, special ops) are left out (docs/open-decisions.md).
+// rank pages (the Legend, a rank OpenHogs does not have, is left out).
 // The names are entries of the game text table gtext (63 GRUNT ... 79
 // LEGEND), so language packs translate them.
 

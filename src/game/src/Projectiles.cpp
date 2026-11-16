@@ -24,6 +24,12 @@ constexpr float kRollingFrictionPerSecond = 0.1f;
 // Bounces slower than this make no sound.
 constexpr float kAudibleBounceSpeed = 200.0f;
 
+// A homing missile flies straight this long, then turns towards its prey
+// at most this fast.
+constexpr float kHomingDelaySeconds = 0.5f;
+constexpr float kHomingDegreesPerSecond = 180.0f;
+constexpr float kSteepestClimbDegrees = 80.0f;
+
 // Anything this far below the lowest point of the map is gone.
 constexpr float kLowestHeight = -20000.0f;
 
@@ -80,7 +86,55 @@ ProjectileOutcome stepPlaced(Projectile& projectile, const WeaponSpec& spec, con
     return ProjectileOutcome::Flying;
 }
 
+// The nearest living enemy of the projectile's owner, if any.
+const Hog* nearestEnemy(const Projectile& projectile, const std::vector<Hog>& hogs) {
+    if (projectile.owner >= hogs.size()) return nullptr;
+    const int team = hogs[projectile.owner].team;
+    const Hog* nearest = nullptr;
+    float best = 0.0f;
+    for (const auto& hog : hogs) {
+        if (!hog.alive || hog.team == team || hog.hidden()) continue;
+        const float distance = glm::length(hog.position - projectile.position);
+        if (!nearest || distance < best) {
+            nearest = &hog;
+            best = distance;
+        }
+    }
+    return nearest;
+}
+
+// Turns `velocity` towards `wanted` by at most `maxRadians`, keeping its speed.
+glm::vec3 turnTowards(const glm::vec3& velocity, const glm::vec3& wanted, float maxRadians) {
+    const float speed = glm::length(velocity);
+    if (speed < 1.0f || glm::length(wanted) < 1.0f) return velocity;
+    const glm::vec3 from = velocity / speed;
+    const glm::vec3 to = glm::normalize(wanted);
+    const float angle = std::acos(std::clamp(glm::dot(from, to), -1.0f, 1.0f));
+    if (angle <= maxRadians) return to * speed;
+    // Spherical step from `from` towards `to`.
+    const float t = maxRadians / angle;
+    const float s = std::sin(angle);
+    const glm::vec3 direction = (std::sin((1.0f - t) * angle) * from + std::sin(t * angle) * to) / s;
+    return glm::normalize(direction) * speed;
+}
+
 } // namespace
+
+bool explodesOnContact(const WeaponSpec& spec) {
+    return spec.kind == WeaponKind::Shell || spec.kind == WeaponKind::Airstrike;
+}
+
+void steerProjectile(Projectile& projectile, float yawRadians, float pitchRadians) {
+    glm::vec3& v = projectile.velocity;
+    const float speed = glm::length(v);
+    if (speed < 1.0f) return;
+    const float horizontal = glm::length(glm::vec2(v.x, v.z));
+    float yaw = std::atan2(v.x, v.z) + yawRadians;
+    float pitch = std::atan2(v.y, horizontal) + pitchRadians;
+    const float steepest = glm::radians(kSteepestClimbDegrees);
+    pitch = std::clamp(pitch, -steepest, steepest);
+    v = glm::vec3(std::sin(yaw) * std::cos(pitch), std::sin(pitch), std::cos(yaw) * std::cos(pitch)) * speed;
+}
 
 Projectile launchProjectile(WeaponId weapon, std::size_t owner, const glm::vec3& muzzle,
                             const glm::vec3& direction, float power) {
@@ -121,13 +175,19 @@ ProjectileOutcome stepProjectile(Projectile& projectile, double seconds, const M
     } else {
         projectile.velocity.y -= kGravity * spec.gravityFactor * dt;
     }
+    if (spec.guidance == Guidance::Homing && projectile.ageSeconds > kHomingDelaySeconds) {
+        if (const Hog* prey = nearestEnemy(projectile, hogs)) {
+            const glm::vec3 aim = prey->position + glm::vec3(0.0f, kHogHeight / 2.0f, 0.0f) - projectile.position;
+            projectile.velocity = turnTowards(projectile.velocity, aim, glm::radians(kHomingDegreesPerSecond) * dt);
+        }
+    }
     projectile.position += projectile.velocity * dt;
     glm::vec3& p = projectile.position;
 
     if (!map.terrain().contains(p.x, p.z) || p.y < kLowestHeight) {
         return ProjectileOutcome::Gone;
     }
-    const bool isShell = spec.kind == WeaponKind::Shell;
+    const bool isShell = explodesOnContact(spec);
 
     if (touchesHog(projectile, hogs)) {
         if (isShell) return ProjectileOutcome::Explodes;

@@ -50,6 +50,15 @@ Projectile launchProjectile(WeaponId weapon, std::size_t owner, const glm::vec3&
 ProjectileOutcome stepProjectile(Projectile& projectile, double seconds, const MapCollision& map,
                                  const std::vector<Hog>& hogs, std::vector<GameEvent>& events);
 
+// Turns a flying projectile: `yawRadians` round the vertical (positive to
+// its left), `pitchRadians` up or down, keeping its speed. Used to steer
+// guided missiles; the climb stays within 80 degrees of level.
+void steerProjectile(Projectile& projectile, float yawRadians, float pitchRadians);
+
+// True for what bursts as soon as it touches anything: shells, missiles
+// and the bombs of an airstrike.
+bool explodesOnContact(const WeaponSpec& spec);
+
 // The path a projectile launched this way would follow until it hits the
 // ground or an obstacle, as points `secondsPerPoint` apart (at most
 // `maxPoints`). Used to show the player where a throw will land.

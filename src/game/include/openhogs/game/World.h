@@ -159,6 +159,10 @@ private:
     void shockwave(std::size_t hogIndex, const WeaponSpec& spec, std::vector<GameEvent>& events);
     void pickPocket(std::size_t hogIndex, const WeaponSpec& spec, std::vector<GameEvent>& events);
     void useOwnWeapon(Hog& hog, std::size_t slot);
+    glm::vec3 targetSpot(const Hog& hog, const WeaponSpec& spec, float power) const;
+    void flyJetpack(std::size_t index, const MovementInput& input, double seconds,
+                    const std::vector<formats::Animation>& animations);
+    void steerGuided(const PlayerInput& input, double seconds);
     void fireMelee(std::size_t hogIndex, const WeaponSpec& spec, std::vector<GameEvent>& events);
     void fireShot(std::vector<GameEvent>& events);
     void stepProjectiles(double seconds, std::vector<GameEvent>& events);
@@ -206,6 +210,7 @@ private:
     bool suddenDeathDone_ = false;
     std::vector<GameEvent> pendingEvents_;  // from endTurn(), reported by the next update()
     bool fireWasHeld_ = false;
+    bool flightEndsTurn_ = false;  // a jetpack flight is on: the turn ends when the hog is down
     // Bullet spread: seeded with a fixed value, so a match replays the same
     // way (and tests are reproducible).
     std::mt19937 random_{20261111};

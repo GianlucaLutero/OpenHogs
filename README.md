@@ -76,8 +76,8 @@ animations.
 | `destructible-objects` | ✅ done | Buildings, vehicles and scenery (houses, walls, bridges, trees...) have the executable's health and are destroyed by explosions and bullets; their box goes, hogs on top fall, and objectives on them pay their reward |
 | `medals`             | ✅ done | The campaign's medals as the executable counts them (survival, special medals per mission, island bonus after every fifth mission) and the BATTLE RESULTS page after a skirmish, with the special awards (THE ANNIHLATOR!!! ... PIG OF THE BATTLE) |
 | `boot-camp`          | ✅ done | The Boot Camp opens the campaign: training mode on CAMP (weapons only from crates, never running out), the chain of hidden crates and dummies revealed group by group, and the instructor's tips with his voice |
-| `weapons-complete`   | 🔍 in review (part 2) | Part 1 (done): cattle prod, super shotgun, roller and shrapnel grenades, airburst and super airburst, anti-personnel mine, super TNT, suicide, healing hands, self heal, skip turn and surrender. Part 2: flame thrower (sweeping burst), medicine dart and ball, tranquiliser, poison, freeze and madness gas with lasting effects, pick pocket, hide, shockwave; healing cures; the campaign ranks' loadouts with a number of uses per mission, as on the Hogs of War Wiki |
-| fidelity blocks      | planned | the rest of `weapons-complete` (missiles, shells, airstrikes, jetpack, special ops, vehicles...), `version-variants`: missions and weapons exactly as in the original |
+| `weapons-complete`   | 🔍 in review (part 3) | Part 1 (done): cattle prod, super shotgun, roller and shrapnel grenades, airburst and super airburst, anti-personnel mine, super TNT, suicide, healing hands, self heal, skip turn and surrender. Part 2: flame thrower (sweeping burst), medicine dart and ball, tranquiliser, poison, freeze and madness gas with lasting effects, pick pocket, hide, shockwave; healing cures; the campaign ranks' loadouts with a number of uses per mission, as on the Hogs of War Wiki. Part 3: guided missile (steered in flight) and homing missile, the six shells (long range, mine, gas, fire rain, 1000 lbs, shock), confusion gas, jetpack, special ops, airstrike and fire-rain airstrike on a spot chosen with the power |
+| fidelity blocks      | planned | the rest of `weapons-complete` (vehicles, map view, binoculars), `version-variants`: missions and weapons exactly as in the original |
 | `release`            | planned | Packaged builds for Windows and Linux |
 
 ## Requirements
@@ -258,7 +258,9 @@ build\bin\Release\openhogs.exe --map ESTU
 | `Space` | jump (hold `W` to jump forward) |
 | `Q` / `E` | previous / next weapon |
 | `R` / `F` | aim up / down (the white dots show where the shot goes) |
-| `Ctrl` or `X` | fire; for grenades, mortars and bazookas hold it to throw further and release to fire |
+| `Ctrl` or `X` | fire; for grenades, mortars and bazookas hold it to throw further and release to fire; for special ops and airstrikes the power sets how far ahead the ring of dots (the target) lies |
+| while a guided missile flies | `A`/`D` steer it left/right, `R`/`F` up/down |
+| with the jetpack on | `W`/`S`/`A`/`D` fly, hold `Space` to climb |
 | `Tab` / `Shift+Tab` | another hog of the same team (only before moving) |
 | `Enter` | end the turn (after the match: back to the menu) |
 | left mouse button + drag | turn the camera around the hog |

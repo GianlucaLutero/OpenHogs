@@ -11,7 +11,7 @@ namespace openhogs::game {
 
 namespace {
 
-constexpr std::size_t kWeaponCount = 43;
+constexpr std::size_t kWeaponCount = 56;
 
 // Animation numbers (scene::animationName).
 constexpr std::size_t kUsingGrenade = 19;
@@ -85,7 +85,11 @@ constexpr std::size_t kDrawHandgun = 12, kDrawRifle = 13, kDrawMachineGun = 14, 
 constexpr std::size_t kPlaceExplosive = 77;
 
 constexpr std::size_t kSkipOrSurrender = 7;
-constexpr std::size_t kShockwaveUse = 81;  // the "use" animation of SHOCKWAVE (and the airstrikes)  // the "use" animation of SKIP TURN and SURRENDER
+// "Use" animations of the actions (the weapon table's +0x20): SHOCKWAVE
+// and AIRSTRIKE 81, SPECIAL OPS 78, F-RAIN AIRSTRIKE 79.
+constexpr std::size_t kShockwaveUse = 81;
+constexpr std::size_t kSpecialOpsUse = 78;
+constexpr std::size_t kFireRainUse = 79;
 
 constexpr std::array<Presentation, kWeaponCount> kPresentation{{
     {WeaponId::Trotter, "", kDrawGrenade, kNone, kSwordKnife},
@@ -131,6 +135,21 @@ constexpr std::array<Presentation, kWeaponCount> kPresentation{{
     {WeaponId::PickPocket, "", kDrawHeavy, kAimingHeavyWeapon, kNone},
     {WeaponId::Hide, "", kDrawHeavy, kAimingHeavyWeapon, kNone},
     {WeaponId::Shockwave, "WE_TNT", kDrawGrenade, kNone, kShockwaveUse},
+    {WeaponId::GuidedMissile, "rocklau", kDrawHeavy, kAimingHeavyWeapon, kNone},
+    {WeaponId::HomingMissile, "rocklau", kDrawHeavy, kAimingHeavyWeapon, kNone},
+    {WeaponId::ConfusionGas, "WE_SMOKE", kDrawGrenade, kNone, kUsingGrenade},
+    // The shells have no model in the table (in the original they may come
+    // from the artillery pieces; decision 127).
+    {WeaponId::LongRangeShell, "", kDrawHeavy, kAimingHeavyWeapon, kNone},
+    {WeaponId::MineShell, "", kDrawHeavy, kAimingHeavyWeapon, kNone},
+    {WeaponId::GasShell, "", kDrawHeavy, kAimingHeavyWeapon, kNone},
+    {WeaponId::FireRainShell, "", kDrawHeavy, kAimingHeavyWeapon, kNone},
+    {WeaponId::ThousandPoundShell, "", kDrawHeavy, kAimingHeavyWeapon, kNone},
+    {WeaponId::ShockShell, "", kDrawHeavy, kAimingHeavyWeapon, kNone},
+    {WeaponId::Jetpack, "", kDrawMachineGun, kAimingMachineGun, kNone},
+    {WeaponId::SpecialOps, "", kDrawGrenade, kNone, kSpecialOpsUse},
+    {WeaponId::Airstrike, "", kDrawGrenade, kNone, kShockwaveUse},
+    {WeaponId::FireRainAirstrike, "", kDrawGrenade, kNone, kFireRainUse},
 }};
 
 // The original's presentation over the rules of `spec`.
@@ -306,6 +325,64 @@ std::array<WeaponSpec, kWeaponCount> makeWeapons() {
     auto hide = action(W::Hide, K::Hide, "HIDE");
     hide.damage = 20.0f;  // the disguise takes 20 points
 
+    // Weapons added with part 3: missiles, shells and the actions that
+    // reach far (ammunition rows in the comments).
+    auto guided = explosive(W::GuidedMissile, K::Shell, "GUIDED MISSILE", exeDamage(9600), exeRadius(5200), 1400,
+                            "L_ROC");  // ammunition 422: 75 points, fuse 750
+    guided.gravityFactor = 0.0f;
+    guided.usesPower = false;
+    guided.fuseSeconds = 7.5f;
+    guided.guidance = Guidance::Guided;
+    auto homing = explosive(W::HomingMissile, K::Shell, "HOMING MISSILE", exeDamage(5120), exeRadius(3900), 1200,
+                            "L_ROC");  // ammunition 423: 40 points, fuse 250
+    homing.gravityFactor = 0.0f;
+    homing.usesPower = false;
+    homing.fuseSeconds = 8.0f;
+    homing.guidance = Guidance::Homing;
+    auto confusionGas = gas(W::ConfusionGas, "CONFUSION GAS", 15, 1920, WeaponEffect::Confusion);  // ammunition 416
+
+    // The shells: mortar rounds (ammunition 392-397).
+    const auto shell = [&](WeaponId id, std::string_view name, int damage, int radius) {
+        auto spec = explosive(id, K::Shell, name, exeDamage(damage), exeRadius(radius), 2400, "L_ARTIL");
+        return spec;
+    };
+    auto longRange = shell(W::LongRangeShell, "LONG RANGE SHELL", 7680, 3900);
+    longRange.launchSpeed = 3600.0f;  // reaches much further
+    auto mineShell = shell(W::MineShell, "MINE SHELL", 3200, 3900);
+    mineShell.hasPayload = true;  // lays a mine where it lands
+    mineShell.payload = W::Mine;
+    auto gasShell = shell(W::GasShell, "GAS SHELL", 1920, 2600);
+    gasShell.effect = WeaponEffect::Poison;
+    gasShell.knockback = 200.0f;
+    auto fireRainShell = shell(W::FireRainShell, "FIRE RAIN SHELL", 2560, 2600);
+    fireRainShell.bomblets = 8;  // the wiki: eight flames
+    auto thousandPounds = shell(W::ThousandPoundShell, "1000 LBS SHELL", 12800, 5200);
+    thousandPounds.knockback = 1400.0f;
+    auto shockShell = shell(W::ShockShell, "SHOCK SHELL", 1920, 6500);
+    shockShell.knockback = 1800.0f;  // little harm, thrown far
+
+    auto jetpack = action(W::Jetpack, K::Jetpack, "JETPACK");
+    jetpack.fuseSeconds = 5.0f;  // seconds of flight before the parachute
+    jetpack.endsTurn = false;    // the turn ends when the hog is down again
+    auto specialOps = action(W::SpecialOps, K::SpecialOps, "SPECIAL OPS");
+    specialOps.range = 8000.0f;
+    specialOps.usesPower = true;
+    // The wiki: the blimp drops five shells of 50 points.
+    auto airstrike = action(W::Airstrike, K::Airstrike, "AIRSTRIKE");
+    airstrike.damage = 50.0f;
+    airstrike.blastRadius = 400.0f;
+    airstrike.knockback = 900.0f;
+    airstrike.shots = 5;
+    airstrike.range = 8000.0f;
+    airstrike.usesPower = true;
+    auto fireRain = airstrike;
+    fireRain.id = W::FireRainAirstrike;
+    fireRain.fallbackName = "F-RAIN AIRSTRIKE";
+    fireRain.damage = exeDamage(2560);  // as the fire rain shell's flames
+    fireRain.blastRadius = exeRadius(2600);
+    fireRain.knockback = 300.0f;
+    fireRain.shots = 12;
+
     std::array<WeaponSpec, kWeaponCount> table{{
         melee(W::Trotter, "TROTTER", 15, 160, "P_PUNCH"),
         melee(W::Knife, "KNIFE", 25, 170, "I_STAB"),
@@ -350,6 +427,19 @@ std::array<WeaponSpec, kWeaponCount> makeWeapons() {
         pickPocket,
         hide,
         shockwave,
+        guided,
+        homing,
+        confusionGas,
+        longRange,
+        mineShell,
+        gasShell,
+        fireRainShell,
+        thousandPounds,
+        shockShell,
+        jetpack,
+        specialOps,
+        airstrike,
+        fireRain,
     }};
     for (auto& spec : table) present(spec);
     return table;
