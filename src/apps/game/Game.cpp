@@ -13,6 +13,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glad/gl.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <exception>
@@ -28,6 +29,9 @@ constexpr float kPadOrbitDegreesPerSecond = 120.0f;
 
 // The camera looks at the hog's chest, this far above its feet.
 constexpr float kCameraTargetHeight = 180.0f;
+// The rifle sight magnifies: its view is this narrow (the ordinary
+// camera's is 60 degrees; decision 131).
+constexpr float kSightFieldOfViewDegrees = 25.0f;
 
 // Sounds of the match bank (Audio/sfxday.srl), by file name, for what happens in a match. The
 // choice is OpenHogs' own (docs/open-decisions.md).
@@ -113,6 +117,7 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Inter
         world_.setTeamNation(team, nation);
     }
     autoWalk_ = options.autoWalk;
+    autoSight_ = options.autoSight;
     autoFireAt_ = options.autoFireAt;
     if (options.startHog) {
         if (*options.startHog >= world_.hogs().size()) {
@@ -336,6 +341,8 @@ game::PlayerInput Game::readInput() {
     input.aimUp = keys[SDL_SCANCODE_R];
     input.aimDown = keys[SDL_SCANCODE_F];
     input.fire = keys[SDL_SCANCODE_LCTRL] || keys[SDL_SCANCODE_RCTRL] || keys[SDL_SCANCODE_X];
+    // The rifle sight: held with V or the right mouse button.
+    input.sight = autoSight_ || keys[SDL_SCANCODE_V] || (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_RMASK) != 0;
     if (autoFireAt_) {
         // Screenshot aid: hold fire for a while (half power for throws).
         constexpr double kAutoFireHoldSeconds = 0.75;
@@ -557,7 +564,9 @@ void Game::drawWeapons(const render::Camera& camera, int width, int height) {
 void Game::drawEffects(const render::Camera& camera, int width, int height) {
     effects_->begin(camera, width, height);
 
-    effects_->drawDots(world_.aimPreview(), 14.0f, kAimColour, true);
+    if (!world_.sightView()) {
+        effects_->drawDots(world_.aimPreview(), 14.0f, kAimColour, true);  // the sight has its crosshair
+    }
 
     for (const auto& tracer : world_.tracers()) {
         std::vector<glm::vec3> dots;
@@ -581,8 +590,17 @@ void Game::drawEffects(const render::Camera& camera, int width, int height) {
 }
 
 render::Camera Game::sceneCamera() const {
-    const auto pose = camera_.pose(world_.terrain());
     render::Camera camera;
+    if (const auto sight = world_.sightView()) {
+        // Through the rifle sight: from the muzzle along the line of fire,
+        // magnified.
+        camera.position = sight->eye;
+        camera.yawDegrees = glm::degrees(std::atan2(sight->direction.x, -sight->direction.z));
+        camera.pitchDegrees = glm::degrees(std::asin(std::clamp(sight->direction.y, -1.0f, 1.0f)));
+        camera.fieldOfViewDegrees = kSightFieldOfViewDegrees;
+        return camera;
+    }
+    const auto pose = camera_.pose(world_.terrain());
     camera.position = pose.position;
     camera.yawDegrees = pose.yawDegrees;
     camera.pitchDegrees = pose.pitchDegrees;
@@ -591,6 +609,7 @@ render::Camera Game::sceneCamera() const {
 
 void Game::drawScene(int width, int height) {
     const render::Camera camera = sceneCamera();
+    const bool sighting = world_.sightView().has_value();
 
     render::DrawOptions options;
     options.showMarkers = false;  // the hogs themselves stand where the markers were
@@ -598,6 +617,7 @@ void Game::drawScene(int width, int height) {
 
     for (std::size_t i = 0; i < world_.hogs().size(); ++i) {
         if (world_.hogs()[i].hidden()) continue;  // its disguise (a crate) is drawn instead
+        if (sighting && world_.activeHog() == i) continue;  // we look out of its eyes
         drawHog(camera, width, height, world_.hogs()[i], i);
     }
     drawWeapons(camera, width, height);
@@ -610,6 +630,7 @@ void Game::drawHud(int width, int height) {
     const float aspect = height > 0 ? static_cast<float>(width) / static_cast<float>(height) : 1.0f;
     hud_.drawDamageNumbers(interface_.renderer(), camera.projectionMatrix(aspect) * camera.viewMatrix(),
                            camera.position);
+    if (world_.sightView()) hud_.drawRifleSight(interface_.renderer());
     hud_.draw(interface_, ui::describeTurn(world_, interface_.strings(), interface_.gameText()));
     if (const auto& message = banner_.current()) {
         // Turn messages fade out over their last quarter.

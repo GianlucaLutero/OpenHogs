@@ -8,7 +8,8 @@
 // worked out by ui::HudLayout (see docs/formats/hud.md).
 //
 // It also shows the damage numbers that rise above hurt hogs (digits of
-// Language/Tims/expltims.mad).
+// Language/Tims/expltims.mad) and the rifle sight (crosshair of
+// Language/Tims/facetims.mad).
 //
 // update() runs the instruments' animations (sliding in and out, fading)
 // at the original's 25 ticks per second; draw() draws them. Needs a
@@ -50,6 +51,10 @@ public:
     // `cameraPosition`.
     void drawDamageNumbers(render::UiRenderer& ui, const glm::mat4& viewProjection,
                            const glm::vec3& cameraPosition) const;
+
+    // The rifle sight over the view: black around a round hole and the
+    // crosshair (ui/RifleSight.h).
+    void drawRifleSight(render::UiRenderer& ui) const;
 
 private:
     const render::UiImage* picture(std::string_view name) const;

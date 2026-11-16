@@ -20,7 +20,7 @@ Addresses are virtual addresses in the executable (file offset = VA −
 | `Language/Tims/tboxtims.mad` | `npro1`–`npro4`, a frame for text boxes |
 | `Language/Tims/mapicons.mtd` | the radar map: `map1`, icons for hogs, health, pick-ups, props, bombs, rain, snow |
 | `Language/Tims/menutims.mad` | weapon icons (56 × 34), loaded by `FUN_00457690` |
-| `Chars/sight.mtd`, `Chars/top.mad`, `Chars/sight.mad` | the sniper sight and the 3D radar |
+| `Chars/sight.mtd`, `Chars/top.mad`, `Chars/sight.mad` | the rifle sight (`sight.mad` holds the model `hole`) and the 3D radar |
 
 `dashtims.mad` (46 TIMs), by index:
 
@@ -89,7 +89,31 @@ Per frame, `FUN_00457840` draws the HUD:
   = picture index), side by side, sized by the distance to the camera
   (never below 10 pixels), tinted and fading over the particle's life.
 
+## Rifle sight
+
+The "rifle cam" (`FUN_00492820`, messages "Changing to rifle cam",
+"Changing to barrel cam"): while a button (input bits 0x1100) is held
+and the hog stands ready with weapon 6–15, 17 or 18 (PISTOL to ROCKET
+LAUNCHER, MEDICINE DART, TRANQUILISER; the weapon number is the text
+entry − 96), the camera switches to mode 0x0E; letting go restores the
+previous mode. Mode 0x0E (and 0x11, the "barrel cam" of weapons 45 and
+46, not reproduced) sets the HUD's sight flag (`FUN_00457830`, HUD
+object + 0xC6C). With the flag set, `FUN_00457eb0` draws:
+
+- the black around the hole: 46 polygons built at start-up
+  (`FUN_00457140`) from the faces of the model `hole` in
+  `Chars/sight.mad` — a ring whose vertices lie on a circle of radius
+  239 (hole) and on a 1030 × 1620 rectangle — scaled by 0.8 onto the
+  640 × 480 screen, centred, 9 pixels higher than the middle;
+- the crosshair, `croshair.tim` of `facetims.mad`, 48 × 48, centred on the
+  screen.
+
+The radar map is not drawn meanwhile; the angle gauge and the clock are.
+A full PS1 playthrough on YouTube shows the same view (first person along
+the gun, the black mask with the round hole; there the crosshair is four
+small marks).
+
 Not reproduced yet (`docs/open-decisions.md`): the weapon menu (the frame
 of `wepn01`–`20` with a 4 × 4 grid of icons and ammunition counts,
-`FUN_00459550`), the sniper sight (`FUN_00457eb0`), the 3D radar
-(`FUN_004582f0`, `Chars/top.mad`), text boxes and the limit marks.
+`FUN_00459550`), the 3D radar (`FUN_004582f0`, `Chars/top.mad`), text
+boxes and the limit marks.

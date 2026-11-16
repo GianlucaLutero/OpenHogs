@@ -50,6 +50,14 @@ struct PlayerInput {
     bool aimUp = false;   // held
     bool aimDown = false; // held
     bool fire = false;    // held: powered weapons charge while held and fire when released
+    bool sight = false;   // held: look through the rifle sight (guns only, standing still)
+};
+
+// What the player sees through the rifle sight: from the gun's muzzle,
+// along the line of fire.
+struct SightView {
+    glm::vec3 eye{0.0f};
+    glm::vec3 direction{1.0f, 0.0f, 0.0f};  // unit vector
 };
 
 enum class MatchPhase { Playing, Resolving, Over };
@@ -120,6 +128,11 @@ public:
     // power being charged, or full power when not charging) or the line
     // of a bullet. Empty for melee weapons and explosives put down.
     std::vector<glm::vec3> aimPreview() const;
+
+    // While the active hog's player looks through the rifle sight (held
+    // with PlayerInput::sight, with a gun, standing on dry ground): where
+    // the view is. The hog can then turn and aim but not walk.
+    std::optional<SightView> sightView() const;
 
     // Picks another hog of the active team (only before the active hog has
     // moved). Returns true if the active hog changed.
@@ -210,7 +223,8 @@ private:
     bool suddenDeathDone_ = false;
     std::vector<GameEvent> pendingEvents_;  // from endTurn(), reported by the next update()
     bool fireWasHeld_ = false;
-    bool flightEndsTurn_ = false;  // a jetpack flight is on: the turn ends when the hog is down
+    bool flightEndsTurn_ = false;
+    bool sighting_ = false;  // the active hog's player looks through the rifle sight  // a jetpack flight is on: the turn ends when the hog is down
     // Bullet spread: seeded with a fixed value, so a match replays the same
     // way (and tests are reproducible).
     std::mt19937 random_{20261111};

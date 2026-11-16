@@ -65,7 +65,6 @@ TEST_CASE("The HUD shows the active hog's team, class, health and weapon", "[ui]
     CHECK(info->healthFraction == 1.0f);
     CHECK(info->weapon == world.hogs()[0].selectedWeapon());
     CHECK(info->secondsLeft == 60);
-    CHECK(info->movementFraction == 1.0f);
     CHECK_FALSE(info->power);
     CHECK(info->turnNumber == 1);
     if (info->weapon == WeaponId::Trotter) {

@@ -395,7 +395,7 @@ void ComputerPlayer::decide(const World& world, ComputerDecision& decision) {
         enter(Stage::Turning);
         return;
     }
-    if (!hasApproached_ && world.turns()->canMove()) {
+    if (!hasApproached_) {
         approachTarget_ = nearestEnemy(world, hog_);
         if (approachTarget_) {
             const Hog& hog = world.hogs()[hog_];
@@ -436,7 +436,7 @@ void ComputerPlayer::approach(const World& world, const Hog& hog, double seconds
     }
 
     const bool arrived = horizontalDistance(hog.position, goal) <= settings_.approachDistance;
-    if (targetGone || arrived || blocked || !world.turns()->canMove() || stageSeconds_ > kMaxApproachSeconds) {
+    if (targetGone || arrived || blocked || stageSeconds_ > kMaxApproachSeconds) {
         hasApproached_ = true;
         decision.input.movement = {};
         enter(Stage::Thinking, kSettleSeconds);

@@ -34,7 +34,6 @@ struct HudInfo {
     std::string weaponName;
     int secondsLeft = 0;            // rounded up
     double exactSecondsLeft = 0.0;  // for the clock's rolling digits
-    float movementFraction = 0.0f;  // 0 .. 1 of the turn's allowance
     std::optional<float> power;     // 0 .. 1 while charging a throw
     float aimDegrees = 0.0f;        // above the horizon
     bool canAim = false;            // the weapon is aimed up and down (guns, throws, shells)

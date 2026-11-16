@@ -17,6 +17,7 @@
 //   --video <file>       with --screenshot: show this video at --seconds
 //   --seconds <s>        with --screenshot: let the match (or the menu) run this long first
 //   --auto-walk          with --screenshot: the active hog runs forward meanwhile
+//   --sight              with --screenshot: look through the rifle sight
 //   --weapon <n>         with --screenshot: the active hog selects its n-th weapon (1 = first)
 //   --fire-at <s>        with --screenshot: the active hog fires at s seconds
 //   --computer <who>     with --map: "others" = the computer plays every team
@@ -63,6 +64,7 @@ struct Options {
     bool listMaps = false;
     bool sound = true;
     bool autoWalk = false;
+    bool sight = false;
     std::optional<std::size_t> weaponSlot;  // 1-based, as typed
     std::optional<double> fireAt;
     bool pause = false;
@@ -87,6 +89,7 @@ void printUsage() {
                  "  --video <file>       with --screenshot: show this video (e.g. Language/Streams/sheff.bik)\n"
                  "  --seconds <s>        with --screenshot: let the match (or the menu) run this long first\n"
                  "  --auto-walk          with --screenshot: the active hog runs forward meanwhile\n"
+                 "  --sight              with --screenshot: look through the rifle sight (with a gun)\n"
                  "  --weapon <n>         with --screenshot: the active hog selects its n-th weapon\n"
                  "  --fire-at <s>        with --screenshot: the active hog fires at s seconds\n"
                  "  --computer <who>     with --map: others (computer plays all teams but the first) or all\n"
@@ -97,7 +100,7 @@ void printUsage() {
                  "  --size <W>x<H>       window size (default 1280x720)\n\n"
                  "Menus: arrows or W/A/S/D move, Enter picks, Esc goes back.\n"
                  "Match: W/S or Up/Down run / walk back, A/D or Left/Right turn, Space jump,\n"
-                 "Q/E weapon, R/F aim, Ctrl or X fire (hold to throw further),\n"
+                 "Q/E weapon, R/F aim, Ctrl or X fire (hold to throw further), V or right mouse rifle sight,\n"
                  "Tab other hog (before moving), Enter end turn, left mouse turns the camera,\n"
                  "wheel zooms, Esc or P pause menu, F12 screenshot\n";
 }
@@ -147,6 +150,10 @@ std::optional<Options> parseArguments(const std::vector<std::string>& args) {
             }
             if (arg == "--auto-walk") {
                 options.autoWalk = true;
+                continue;
+            }
+            if (arg == "--sight") {
+                options.sight = true;
                 continue;
             }
             if (arg == "--pause") {
@@ -245,6 +252,7 @@ int runGame(const Options& options) {
         }
         if (screenshotOnly) {
             gameOptions.autoWalk = options.autoWalk;
+            gameOptions.autoSight = options.sight;
             gameOptions.autoFireAt = options.fireAt;
             if (options.weaponSlot) gameOptions.autoWeaponSlot = *options.weaponSlot - 1;
         }

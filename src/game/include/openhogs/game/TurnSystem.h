@@ -7,10 +7,10 @@
 // - Each team uses its hogs in rotation: the hog after the one it used
 //   last time. Before the hog has moved, the player may pick another hog
 //   of the same team.
-// - A turn has a time limit and a movement allowance (the distance the
-//   hog may walk, jumps included). It ends when the time runs out, when
-//   the player ends it, or once the shot of the turn is over (the world
-//   decides that, see World).
+// - A turn has a time limit; until it runs out the hog may walk as far as
+//   it likes (the original has no movement allowance). It ends when the
+//   time runs out, when the player ends it, or once the shot of the turn
+//   is over (the world decides that, see World).
 // - Dead hogs are skipped, and so are teams with no hog left.
 //
 // The values of TurnRules are OpenHogs' own until the original's are known
@@ -27,7 +27,6 @@ namespace openhogs::game {
 
 struct TurnRules {
     double turnSeconds = 60.0;
-    float movementAllowance = 3500.0f;  // world units: about 7 seconds of running
     // Sudden death: when this round begins every hog is left with one
     // point of health (0 = never). A round is one turn of every team.
     int suddenDeathRound = 0;
@@ -50,8 +49,6 @@ public:
     int round() const;
 
     double secondsLeft() const { return secondsLeft_; }
-    float movementLeft() const { return movementLeft_; }
-    bool canMove() const { return movementLeft_ > 0.0f; }
 
     // The player may pick another hog until the active one has moved.
     bool canSwitchHog() const { return !hasMoved_; }
@@ -60,7 +57,7 @@ public:
     // canSwitchHog(). Returns true if the active hog changed.
     bool switchHog(int step, const std::vector<Hog>& hogs);
 
-    // Counts down the time and the movement allowance. Returns true if the
+    // Counts down the time and notes whether the hog has moved. Returns true if the
     // turn ran out of time during this step (the turn has then already
     // passed to the next team).
     bool update(double seconds, float distanceMoved, const std::vector<Hog>& hogs);
@@ -82,7 +79,6 @@ private:
     std::size_t activeHog_ = 0;
     int turnNumber_ = 0;
     double secondsLeft_ = 0.0;
-    float movementLeft_ = 0.0f;
     bool hasMoved_ = false;
 };
 

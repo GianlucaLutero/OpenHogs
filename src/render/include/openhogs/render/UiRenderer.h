@@ -100,6 +100,9 @@ public:
     void drawImageQuad(const UiImage& image, const std::array<glm::vec2, 4>& corners,
                        const glm::vec4& tint = glm::vec4(1.0f)) const;
 
+    // Plain coloured triangles: every three points make one.
+    void drawTriangles(const std::vector<glm::vec2>& points, const glm::vec4& colour) const;
+
     // One line of text; (x, y) is its top-left corner for left-aligned text
     // (top-centre or top-right for the other alignments).
     void drawText(const UiFont& font, std::string_view text, float x, float y, const TextStyle& style = {}) const;

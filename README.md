@@ -52,7 +52,7 @@ animations.
 | `characters`         | ✅ done | Hog skeleton, 93 animations, models of every class and team; `openhogs-characterviewer` |
 | `character-expressions` | ✅ done | Faces that follow what the hog is doing, blinking |
 | `game-framework`     | ✅ done | The `openhogs` game: fixed-rate game loop, hogs placed on the map, chase camera, ambient sound |
-| `hog-movement`       | ✅ done | Turns (time limit, movement allowance), running, jumping, falling, swimming, collisions with the scenery, footsteps |
+| `hog-movement`       | ✅ done | Turns (time limit; the hog may move for the whole turn, as in the original), running, jumping, falling, swimming, collisions with the scenery, footsteps |
 | `weapons`            | ✅ done | 20 weapons (melee, bullets, grenades, shells, TNT, mines), health, explosions, knockback, fall damage, death, victory |
 | `menus-and-hud`      | ✅ done | Main menu, level choice, volume options, pause menu, HUD (team, class, health, weapon icon, time, movement, power), match messages; the game's bitmap fonts with accented letters |
 | `ai`                 | ✅ done | Computer opponents: shot planning with the real flight rules, approach, aiming errors; ONE PLAYER skirmish against the computer, PLAYER/CPU choice per team in multiplayer |
@@ -76,7 +76,8 @@ animations.
 | `destructible-objects` | ✅ done | Buildings, vehicles and scenery (houses, walls, bridges, trees...) have the executable's health and are destroyed by explosions and bullets; their box goes, hogs on top fall, and objectives on them pay their reward |
 | `medals`             | ✅ done | The campaign's medals as the executable counts them (survival, special medals per mission, island bonus after every fifth mission) and the BATTLE RESULTS page after a skirmish, with the special awards (THE ANNIHLATOR!!! ... PIG OF THE BATTLE) |
 | `boot-camp`          | ✅ done | The Boot Camp opens the campaign: training mode on CAMP (weapons only from crates, never running out), the chain of hidden crates and dummies revealed group by group, and the instructor's tips with his voice |
-| `weapons-complete`   | 🔍 in review (part 3) | Part 1 (done): cattle prod, super shotgun, roller and shrapnel grenades, airburst and super airburst, anti-personnel mine, super TNT, suicide, healing hands, self heal, skip turn and surrender. Part 2: flame thrower (sweeping burst), medicine dart and ball, tranquiliser, poison, freeze and madness gas with lasting effects, pick pocket, hide, shockwave; healing cures; the campaign ranks' loadouts with a number of uses per mission, as on the Hogs of War Wiki. Part 3: guided missile (steered in flight) and homing missile, the six shells (long range, mine, gas, fire rain, 1000 lbs, shock), confusion gas, jetpack, special ops, airstrike and fire-rain airstrike on a spot chosen with the power |
+| `weapons-complete`   | ✅ done (parts 1–3; vehicles to come) | Part 1 (done): cattle prod, super shotgun, roller and shrapnel grenades, airburst and super airburst, anti-personnel mine, super TNT, suicide, healing hands, self heal, skip turn and surrender. Part 2: flame thrower (sweeping burst), medicine dart and ball, tranquiliser, poison, freeze and madness gas with lasting effects, pick pocket, hide, shockwave; healing cures; the campaign ranks' loadouts with a number of uses per mission, as on the Hogs of War Wiki. Part 3: guided missile (steered in flight) and homing missile, the six shells (long range, mine, gas, fire rain, 1000 lbs, shock), confusion gas, jetpack, special ops, airstrike and fire-rain airstrike on a spot chosen with the power |
+| `rifle-sight`        | 🔍 in review | The original's rifle sight: hold `V` (or the right mouse button) with a gun to aim in first person along the barrel, inside the black mask with the round hole and the crosshair (from the executable's `hole` model and `croshair.tim`); no movement allowance any more: as in the original, the hog may move until its turn ends |
 | fidelity blocks      | planned | the rest of `weapons-complete` (vehicles, map view, binoculars), `version-variants`: missions and weapons exactly as in the original |
 | `release`            | planned | Packaged builds for Windows and Linux |
 
@@ -258,6 +259,7 @@ build\bin\Release\openhogs.exe --map ESTU
 | `Space` | jump (hold `W` to jump forward) |
 | `Q` / `E` | previous / next weapon |
 | `R` / `F` | aim up / down (the white dots show where the shot goes) |
+| `V` or right mouse button (held) | look through the rifle sight, with a gun: first-person view along the barrel, crosshair in the middle; turn and aim, then fire |
 | `Ctrl` or `X` | fire; for grenades, mortars and bazookas hold it to throw further and release to fire; for special ops and airstrikes the power sets how far ahead the ring of dots (the target) lies |
 | while a guided missile flies | `A`/`D` steer it left/right, `R`/`F` up/down |
 | with the jetpack on | `W`/`S`/`A`/`D` fly, hold `Space` to climb |

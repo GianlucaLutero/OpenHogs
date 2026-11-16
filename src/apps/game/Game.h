@@ -69,6 +69,7 @@ struct GameOptions {
     std::string mapName;
     std::optional<std::size_t> startHog;  // hog to start with (0-based), if of the first team
     bool autoWalk = false;                // hold "forward" (for screenshots of a walking hog)
+    bool autoSight = false;               // hold the rifle sight (for screenshots of it)
     // For screenshots of a shot: select this weapon slot of the first hog
     // and hold "fire" from this time (seconds) for kAutoFireHoldSeconds.
     std::optional<std::size_t> autoWeaponSlot;
@@ -173,6 +174,7 @@ private:
     int promotionPoints_ = 0;
     game::ComputerPlayer computer_;
     bool autoWalk_ = false;
+    bool autoSight_ = false;
     std::optional<double> autoFireAt_;
     bool jumpPressed_ = false;  // Space was pressed since the last step
     int weaponStep_ = 0;        // Q / E pressed since the last step
