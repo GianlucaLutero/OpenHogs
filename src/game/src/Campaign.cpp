@@ -279,6 +279,7 @@ int deploySquad(std::vector<Hog>& hogs, const Campaign& campaign, std::size_t de
         hog.maxHealth = rank.maxHealth;
         hog.health = rank.maxHealth;
         hog.weapons = rank.weapons;
+        hog.ownAmmo = std::map<WeaponId, int>(rank.uses.begin(), rank.uses.end());
         hog.weaponSlot = 0;
         result.push_back(std::move(hog));
     }

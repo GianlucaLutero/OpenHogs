@@ -154,6 +154,11 @@ private:
     void useStock(std::size_t hogIndex);
     std::optional<glm::vec3> nearestShore(const glm::vec3& from) const;
     void heal(std::size_t hogIndex, const WeaponSpec& spec, std::vector<GameEvent>& events);
+    void healHog(std::size_t index, float amount, std::vector<GameEvent>& events);
+    void afflict(std::size_t index, WeaponEffect effect);
+    void shockwave(std::size_t hogIndex, const WeaponSpec& spec, std::vector<GameEvent>& events);
+    void pickPocket(std::size_t hogIndex, const WeaponSpec& spec, std::vector<GameEvent>& events);
+    void useOwnWeapon(Hog& hog, std::size_t slot);
     void fireMelee(std::size_t hogIndex, const WeaponSpec& spec, std::vector<GameEvent>& events);
     void fireShot(std::vector<GameEvent>& events);
     void stepProjectiles(double seconds, std::vector<GameEvent>& events);

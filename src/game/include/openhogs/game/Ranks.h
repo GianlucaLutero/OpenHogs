@@ -11,9 +11,9 @@
 //                 ├─ Espionage:     Scout → Sniper → Spy              ─┤
 //                 └─ Engineer:      Sapper → Engineer → Saboteur      ─┘
 //
-// Health and weapons follow the game's manual and the player guides; only
-// the weapons OpenHogs implements are given (the others, such as the
-// flame thrower or healing hands, come later: docs/open-decisions.md).
+// Health, weapons and their number of uses follow the Hogs of War Wiki's
+// rank pages; the weapons OpenHogs does not implement yet (jetpack,
+// airstrikes, special ops) are left out (docs/open-decisions.md).
 // The names are entries of the game text table gtext (63 GRUNT ... 79
 // LEGEND), so language packs translate them.
 
@@ -22,6 +22,7 @@
 #include "openhogs/game/Weapons.h"
 
 #include <optional>
+#include <utility>
 #include <span>
 #include <string_view>
 #include <vector>
@@ -49,6 +50,8 @@ struct RankSpec {
     float maxHealth = 50.0f;
     std::string_view classId;       // body model (scene::characterClasses id)
     std::vector<WeaponId> weapons;
+    // Uses of the weapons that run out (the others never do), per mission.
+    std::vector<std::pair<WeaponId, int>> uses;
 };
 
 const RankSpec& rankSpec(RankId rank);
