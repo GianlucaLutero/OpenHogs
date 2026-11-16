@@ -53,6 +53,9 @@ const std::array<Mission, kMissionCount> kMissions{{
     makeMission(25, 24, 5, 30),  // FINAL     WELL, WELL, WELL!
 }};
 
+// The Boot Camp: level 10 (CAMP), first in the executable's mission order.
+const Mission kBootCamp = makeMission(kBootCampMission, 10, 0, 99);
+
 // Losing this many hogs in a mission starts costing hogs for good.
 constexpr std::size_t kLossesForgiven = 2;
 constexpr int kOpponentsPerIsland = kPlayableNations - 1;
@@ -66,6 +69,7 @@ std::string memberSection(std::size_t index) {
 } // namespace
 
 const Mission& campaignMission(int number) {
+    if (number == kBootCampMission) return kBootCamp;
     if (number < 1 || number > kMissionCount) {
         throw std::out_of_range("No campaign mission " + std::to_string(number));
     }
@@ -225,11 +229,11 @@ Campaign loadCampaign(const core::IniFile& ini) {
     }
     Campaign campaign;
     campaign.nation_ = ini.getInt(kSection, "Nation", -1);
-    campaign.nextMission_ = ini.getInt(kSection, "NextMission", 1);
+    campaign.nextMission_ = ini.getInt(kSection, "NextMission", 1);  // saves from before the Boot Camp: mission 1
     campaign.points_ = ini.getInt(kSection, "Points", 0);
     campaign.names_ = ini.getList(kSection, "Names");
     campaign.fallen_ = ini.getList(kSection, "Fallen");
-    if (campaign.nation_ < 0 || campaign.nation_ >= kPlayableNations || campaign.nextMission_ < 1 ||
+    if (campaign.nation_ < 0 || campaign.nation_ >= kPlayableNations || campaign.nextMission_ < kBootCampMission ||
         campaign.nextMission_ > kMissionCount + 1 || campaign.points_ < 0) {
         throw core::FormatError("Campaign file: nation, mission or points out of range");
     }

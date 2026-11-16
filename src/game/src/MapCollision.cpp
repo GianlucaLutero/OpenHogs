@@ -72,6 +72,19 @@ void MapCollision::removeObject(std::size_t object) {
     std::erase_if(boxes_, [object](const CollisionBox& box) { return box.object == object; });
 }
 
+std::vector<CollisionBox> MapCollision::takeObject(std::size_t object) {
+    std::vector<CollisionBox> taken;
+    for (const auto& box : boxes_) {
+        if (box.object == object) taken.push_back(box);
+    }
+    removeObject(object);
+    return taken;
+}
+
+void MapCollision::addBoxes(const std::vector<CollisionBox>& boxes) {
+    boxes_.insert(boxes_.end(), boxes.begin(), boxes.end());
+}
+
 float MapCollision::groundHeight(float x, float z, float feetY) const {
     float ground = terrain_.heightAt(x, z);
     for (const auto& box : boxes_) {

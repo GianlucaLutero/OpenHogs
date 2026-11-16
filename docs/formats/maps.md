@@ -123,8 +123,8 @@ the script position). Counted on the PC maps:
 | 7, 8 | hogs (`GR_ME`, `HV_ME`) | reach: a crate (7) or a promotion point (8) |
 | 13 | `BRIDGE_C`, `TENT_S` | destroy the whole group: a crate |
 | 14 | `M_TENT1`, `TANK`, `CARRY` | destroy the whole group: a promotion point |
-| 19 | `CRATE1`, `CRATE2`, `PROPOINT`, `SIGN` | pickup; in the campaign a crate with a group is also an objective (type 21) |
-| 20-23 | `DUMMY`, trees, bridges in `CAMP` | Boot Camp |
+| 19 | `CRATE1`, `CRATE2`, `PROPOINT`, `SIGN` | pickup; in training (the Boot Camp) a crate with a group starts hidden and is also an objective (type 21) |
+| 20-23 | `DUMMY`, trees, bridges, a wall in `CAMP` | reveal hidden objects: the Boot Camp's chain (see "Objectives") |
 
 ### Destructible objects
 
@@ -196,7 +196,9 @@ hog dies). The reward appears at the centre of the target cell
 - 20, 21: the objects whose group is this node's parameter 0 appear
   (crates fall from 0xC00 above, others become visible); 22, 23: the
   same, once the last of the node's group is gone. Objects with script
-  21 or 23 start hidden (Boot Camp).
+  21 or 23 start hidden, and so do crates with a group in training
+  (level 10, `CAMP`; the flag `DAT_005207a8`), which get a type-21 node
+  that is cleared when they appear (see campaign.md, "Boot Camp").
 
 A node of any other type (a hog with somewhere to go that dies) is simply
 dropped. Promotion-point pickups (`FUN_00464150` kind 0x17) add 1 to the

@@ -107,6 +107,9 @@ void MatchAudio::handle(const game::GameEvent& event) {
             }
         }
         break;
+    case GameEventType::TrainingTip:
+        if (event.speechLine > 0) sounds_.say(game::trainingSpeechPath(event.speechLine));
+        break;
     case GameEventType::ObjectiveDone:
         if (event.sergeantSection >= 0) sounds_.say(sergeant_.objective(event.sergeantSection));
         break;

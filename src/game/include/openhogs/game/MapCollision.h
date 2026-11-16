@@ -84,6 +84,11 @@ public:
 
     // Takes away the box of map object `object` (a crate that was picked up).
     void removeObject(std::size_t object);
+    // Takes away the boxes of map object `object` and returns them (an
+    // object hidden until revealed).
+    std::vector<CollisionBox> takeObject(std::size_t object);
+    // Puts boxes back (a hidden object revealed).
+    void addBoxes(const std::vector<CollisionBox>& boxes);
 
 private:
     TerrainHeightField terrain_;

@@ -64,6 +64,36 @@ From the manual and the achievement list: Hogshead 1–5, Saustralia
 25. Which enemy nation each mission is fought against is not stored in
 these tables (OpenHogs' choice: `docs/open-decisions.md`).
 
+## Boot Camp
+
+The campaign starts with the Boot Camp: mission 0 in the executable's
+order, level 10 (`CAMP`), 99-second turns, one hog. The executable plays
+level 10 in a training mode (`DAT_005207a8 = 1` in `FUN_0041a320`; the
+flag also decides which crates are hidden, see maps.md "Objectives"):
+
+- the hog gets no class weapons (the loadout copy in `FUN_00466950` is
+  skipped); crates give weapons that never run out and health crates 50
+  points (`FUN_00465420`);
+- the crates and dummies of the map form a chain of hidden groups: the
+  first dummy (or any of the trees of group 1) reveals group 2 (a rifle
+  crate and two dummies), whose dummies reveal group 3, and so on up to
+  group 6 (a TNT crate, a health crate and the bridge); the wall
+  `STW04_D2` (type 22) reveals group 7 (the bazooka crate in the
+  building and its two dummies);
+- the instructions are gtext 211-234, each with a line of the
+  instructor (`Speech/Sku1/Train1/tr1_enNN.wav`, `FUN_0043b530`, NN =
+  the line number): 211 / line 2 when the training starts
+  (`FUN_0048fca0`); when a crate appears (`FUN_00465ab0`, by weapon:
+  rifle 215/6, sniper rifle 219/10, 5 grenades 221/12, 10 grenades
+  224/15, TNT 226/17, bazooka 231/22); when one is picked up
+  (`FUN_00465cb0`: bayonet 212/3, rifle 217/8, sniper rifle 220/11,
+  grenades 222/13 and 225/16, TNT 229/20, bazooka 234/25; health 10
+  227/18, 15 228/19, 20 232/23, 25 233/24); when a crate weapon is chosen
+  (`FUN_00493020`: bayonet 214/5, rifle 218/9, grenade 223/14).
+
+How the executable decides the Boot Camp is over has not been read;
+OpenHogs ends it once every crate of the chain is taken (decision 118).
+
 ## Medals and points
 
 The mission results page (`FUN_004845e0`, picture

@@ -23,7 +23,8 @@ constexpr int kGroupForPoint = 14;
 constexpr int kGroupCostsPoints = 16;
 constexpr int kFirstGroupType = 13;
 constexpr int kLastGroupType = 18;
-constexpr int kLastObjectiveType = 18;
+constexpr int kLastObjectiveType = 23;
+constexpr int kCrateScriptType = 19;
 
 constexpr int kHealthItem = 255;
 
@@ -47,6 +48,8 @@ constexpr int kMapHalfWidth = 0x4000;
 
 bool isReachType(int type) { return type >= kFirstReachType && type <= kLastReachType; }
 bool isGroupType(int type) { return type >= kFirstGroupType && type <= kLastGroupType; }
+bool revealsAtOnce(int type) { return type == kRevealOnDestroy || type == kHiddenRevealOnDestroy; }
+bool revealsWithGroup(int type) { return type == kRevealWithGroup || type == kHiddenRevealWithGroup; }
 
 // A crate standing on the ground at `ground`.
 Pickup crateOnGround(PickupKind kind, const glm::vec3& ground) {
@@ -121,10 +124,20 @@ ObjectiveResult destroyReward(const Objective& objective) {
 
 } // namespace
 
-std::vector<Objective> findObjectives(const std::vector<formats::MapObject>& objects) {
+std::vector<Objective> findObjectives(const std::vector<formats::MapObject>& objects, bool training) {
     std::vector<Objective> objectives;
     for (std::size_t index = 0; index < objects.size(); ++index) {
         const auto& object = objects[index];
+        if (object.scriptType == kCrateScriptType) {
+            // In training a crate with a group belongs to it (FUN_004a5250).
+            if (!training || object.scriptGroup == 0) continue;
+            Objective crate;
+            crate.object = index;
+            crate.type = kHiddenRevealOnDestroy;
+            crate.group = object.scriptGroup;
+            objectives.push_back(crate);
+            continue;
+        }
         if (object.scriptType < 1 || object.scriptType > kLastObjectiveType) continue;
         Objective objective;
         objective.object = index;
@@ -179,6 +192,24 @@ std::optional<ObjectiveResult> reachObjective(Objective& objective, const glm::v
     return result;
 }
 
+bool startsHidden(const formats::MapObject& object, bool training) {
+    if (object.scriptType == kHiddenRevealOnDestroy || object.scriptType == kHiddenRevealWithGroup) return true;
+    return training && object.scriptType == kCrateScriptType && object.scriptGroup != 0;
+}
+
+std::vector<std::size_t> revealGroup(std::vector<Objective>& objectives, int group,
+                                     const std::vector<std::size_t>& crates) {
+    std::vector<std::size_t> revealed;
+    for (auto& objective : objectives) {
+        if (objective.done || objective.group != group) continue;
+        revealed.push_back(objective.object);
+        // A crate's objective ends as it appears (the executable clears its
+        // node), so it no longer holds its group back.
+        if (std::find(crates.begin(), crates.end(), objective.object) != crates.end()) objective.done = true;
+    }
+    return revealed;
+}
+
 std::optional<ObjectiveResult> destroyObjective(std::vector<Objective>& objectives, std::size_t object) {
     const auto found = std::find_if(objectives.begin(), objectives.end(),
                                     [&](const Objective& o) { return o.object == object && !o.done; });
@@ -186,7 +217,7 @@ std::optional<ObjectiveResult> destroyObjective(std::vector<Objective>& objectiv
     found->done = true;
     if (isReachType(found->type)) return std::nullopt;  // its hog died before getting there
 
-    if (isGroupType(found->type)) {
+    if (isGroupType(found->type) || revealsWithGroup(found->type)) {
         // Any other objective of the group still standing holds the reward
         // back (FUN_004aa170 looks at every object with a script, whatever
         // its type).
@@ -194,6 +225,11 @@ std::optional<ObjectiveResult> destroyObjective(std::vector<Objective>& objectiv
         const bool othersLeft = std::any_of(objectives.begin(), objectives.end(),
                                             [&](const Objective& o) { return !o.done && o.group == group; });
         if (othersLeft) return std::nullopt;
+    }
+    if (revealsAtOnce(found->type) || revealsWithGroup(found->type)) {
+        ObjectiveResult result;
+        result.revealGroup = found->item;  // parameter 0: the group to reveal
+        return result;
     }
     return destroyReward(*found);
 }

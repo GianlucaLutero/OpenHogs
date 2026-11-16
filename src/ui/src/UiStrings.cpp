@@ -88,6 +88,7 @@ constexpr std::size_t kGtTotal = 200;
 constexpr std::size_t kGtWins = 201;
 constexpr std::size_t kGtSpecialAward = 202;
 constexpr std::size_t kGtFirstAward = 203;  // to 208
+constexpr int kGtFirstTrainingText = 211;    // to 234
 constexpr std::size_t kGtRetry = 193;
 constexpr std::size_t kGtEditSquad = 194;
 constexpr std::size_t kGtRip = 271;
@@ -116,6 +117,12 @@ void take(std::string& target, const std::vector<std::string>& table, std::size_
 }
 
 } // namespace
+
+std::string UiStrings::trainingText(int text) const {
+    const int index = text - kGtFirstTrainingText;
+    if (index < 0 || index >= static_cast<int>(trainingTexts.size())) return "";
+    return trainingTexts[static_cast<std::size_t>(index)];
+}
 
 const std::string& UiStrings::teamName(int team) const {
     const auto count = static_cast<int>(teamNames.size());
@@ -248,10 +255,15 @@ UiStrings loadUiStrings(const std::vector<std::string>& frontEndText, const std:
     for (std::size_t i = 0; i < strings.awardNames.size(); ++i) {
         take(strings.awardNames[i], gt, kGtFirstAward + i);
     }
+    for (std::size_t i = 0; i < strings.trainingTexts.size(); ++i) {
+        take(strings.trainingTexts[i], gt, static_cast<std::size_t>(kGtFirstTrainingText) + i);
+    }
     take(strings.retry, gt, kGtRetry);
     take(strings.editSquad, gt, kGtEditSquad);
     take(strings.rip, gt, kGtRip);
-    for (const auto& mission : game::campaignMissions()) {
+    std::vector<game::Mission> missions{game::campaignMission(game::kBootCampMission)};
+    for (const auto& mission : game::campaignMissions()) missions.push_back(mission);
+    for (const auto& mission : missions) {
         if (mission.nameEntry < gt.size() && !isBlank(gt[mission.nameEntry])) {
             strings.missionNames[mission.nameEntry] = gt[mission.nameEntry];
         }

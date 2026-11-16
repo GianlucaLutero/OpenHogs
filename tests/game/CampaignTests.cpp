@@ -25,13 +25,17 @@ namespace {
 
 const std::vector<std::string> kNames{"NOBBY", "GINGER", "DEN", "MONTY", "BASIL", "PONSONBY", "PERCY", "SMITH", "JONES"};
 
-Campaign britishCampaign() {
-    return Campaign(0, kNames);
-}
-
 MissionReport won(std::vector<std::size_t> deaths = {}) {
     return {true, std::move(deaths)};
 }
+
+// A British campaign past the Boot Camp (which earned 2 points), mission 1 next.
+Campaign britishCampaign() {
+    Campaign campaign(0, kNames);
+    campaign.recordMission(won(), 1);
+    return campaign;
+}
+constexpr int kBootCampPoints = 2;
 
 } // namespace
 
@@ -71,14 +75,16 @@ TEST_CASE("Islands are conquered by missions 5, 10, 15, 20, 24 and 25", "[game][
 }
 
 TEST_CASE("A new campaign has eight grunts named after the nation's hogs", "[game][campaign]") {
-    // The squad of the manual: eight grunts, no points, mission 1 next.
-    const auto campaign = britishCampaign();
+    // The squad of the manual: eight grunts, no points, the Boot Camp
+    // next (mission 0, as in the executable's order).
+    const Campaign campaign(0, kNames);
     REQUIRE(campaign.squad().size() == kSquadSize);
     CHECK(campaign.squad()[0].name == "NOBBY");
     CHECK(campaign.squad()[7].name == "SMITH");
     for (const auto& member : campaign.squad()) CHECK(member.rank == RankId::Grunt);
     CHECK(campaign.points() == 0);
-    CHECK(campaign.nextMission() == 1);
+    CHECK(campaign.nextMission() == kBootCampMission);
+    CHECK(campaignMission(kBootCampMission).map == "CAMP");
     CHECK(campaign.deploymentSize(3) == 3);  // mission 1's map has three places
     CHECK(campaign.deploymentSize(9) == kDeployedHogs);
     CHECK_THROWS(Campaign(kTeamLardNation, kNames));  // Team Lard is not playable
@@ -96,7 +102,7 @@ TEST_CASE("Finishing a mission earns a point, one more if nobody died", "[game][
     outcome = campaign.recordMission(won({1}), 5);
     CHECK_FALSE(outcome.survivalBonus);
     CHECK(outcome.pointsEarned == 1);
-    CHECK(campaign.points() == 3);
+    CHECK(campaign.points() == kBootCampPoints + 3);
 }
 
 TEST_CASE("The last mission of an island is worth five more points", "[game][campaign]") {
@@ -142,7 +148,7 @@ TEST_CASE("Losing every hog or the battle fails the mission without changes", "[
     outcome = campaign.recordMission({false, {}}, 3);
     CHECK_FALSE(outcome.completed);
     CHECK(campaign.nextMission() == 1);
-    CHECK(campaign.points() == 0);
+    CHECK(campaign.points() == kBootCampPoints);
     CHECK(campaign.squad()[0].name == "NOBBY");
 }
 
@@ -157,9 +163,9 @@ TEST_CASE("Promotions follow the career tree and cost points", "[game][campaign]
     CHECK(promotionCost(RankId::Scout) == 1);
     CHECK(promotionCost(RankId::Hero) == 5);
 
-    auto campaign = britishCampaign();
+    Campaign campaign(0, kNames);
     CHECK_FALSE(campaign.promote(0, RankId::Gunner));  // no points yet
-    campaign.recordMission(won(), 3);                  // 2 points
+    campaign.recordMission(won(), 1);                  // the Boot Camp: 2 points
     CHECK_FALSE(campaign.promote(0, RankId::Bombardier));  // not from Grunt
     CHECK(campaign.promote(0, RankId::Gunner));
     CHECK(campaign.points() == 1);

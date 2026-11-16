@@ -74,8 +74,9 @@ animations.
 | `mission-scripts`    | ✅ done (part 1) | Crates: health, weapons for the team's stock and promotion points, read from the maps' script parameters through the executable's item table; picked up by walking into them |
 | `mission-objectives` | ✅ done | Mission objectives from the maps' script types: reaching a target cell or killing a marked enemy drops a reward crate or a promotion point (or costs points), group objectives pay for the last of the group, with the sergeant's comment |
 | `destructible-objects` | ✅ done | Buildings, vehicles and scenery (houses, walls, bridges, trees...) have the executable's health and are destroyed by explosions and bullets; their box goes, hogs on top fall, and objectives on them pay their reward |
-| `medals`             | 🔍 in review | The campaign's medals as the executable counts them (survival, special medals per mission, island bonus after every fifth mission) and the BATTLE RESULTS page after a skirmish, with the special awards (THE ANNIHLATOR!!! ... PIG OF THE BATTLE) |
-| fidelity blocks      | planned | the rest of `mission-scripts` (Boot Camp), `weapons-complete`, `version-variants`: missions and weapons exactly as in the original |
+| `medals`             | ✅ done | The campaign's medals as the executable counts them (survival, special medals per mission, island bonus after every fifth mission) and the BATTLE RESULTS page after a skirmish, with the special awards (THE ANNIHLATOR!!! ... PIG OF THE BATTLE) |
+| `boot-camp`          | 🔍 in review | The Boot Camp opens the campaign: training mode on CAMP (weapons only from crates, never running out), the chain of hidden crates and dummies revealed group by group, and the instructor's tips with his voice |
+| fidelity blocks      | planned | `weapons-complete`, `version-variants`: missions and weapons exactly as in the original |
 | `release`            | planned | Packaged builds for Windows and Linux |
 
 ## Requirements
@@ -193,15 +194,20 @@ In a match the hogs stand where the map places them, each in its team's
 uniform, and the teams take turns: each turn one hog moves, then fires one
 of its weapons. The turn ends when the shot is over (or when time runs
 out, or when you press Enter); the match ends when only one team has hogs
-left, and `Enter` then goes back to the menu.
+left, and `Enter` then goes back to the menu, through the **BATTLE
+RESULTS** page with the scores and the special award.
 
-**The campaign.** Your squad has eight hogs; the five marked `*` on the
+**The campaign.** It opens with the **Boot Camp**: one hog without
+weapons follows the coloured paths, picks up crates and destroys the
+dummies, as the instructor says; each group of dummies reveals the next
+crates, and the training is over when every crate is taken. Your squad
+has eight hogs; the five marked `*` on the
 squad page go on the next mission (three in mission 1), the others wait
 in reserve. Pick a hog to **PROMOTE** it (a grunt first chooses one of
 four careers: heavy weapons, medic, espionage, engineer; every career
 leads to Commando and Hero) or to **SWAP POSITION** with another. A
-mission earns one promotion point, one more if nobody died, five more for
-conquering an island; a promotion costs its rank's level (1 to 5). Losing
+mission earns one promotion point, one more if nobody died, one for each
+promotion point picked up, five more after missions 5, 10, 15, 20 and 25; a promotion costs its rank's level (1 to 5). Losing
 three hogs in a mission costs the first to die for good (four cost two),
 losing all of them fails the mission. **START MISSION** shows the game's
 briefing (Enter to go, Esc to go back), then the battle: defeat the enemy
