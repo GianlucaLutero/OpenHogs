@@ -154,6 +154,13 @@ void UiRenderer::drawImageRegion(const UiImage& image, float x, float y, float w
     drawQuads(vertices, image.texture(), tint);
 }
 
+void UiRenderer::drawTriangles(const std::vector<glm::vec2>& points, const glm::vec4& colour) const {
+    std::vector<Vertex2D> vertices;
+    vertices.reserve(points.size());
+    for (const auto& point : points) vertices.push_back({point, {0.0f, 0.0f}});
+    drawQuads(vertices, *whiteTexture_, colour);
+}
+
 void UiRenderer::drawImageQuad(const UiImage& image, const std::array<glm::vec2, 4>& corners,
                                const glm::vec4& tint) const {
     const Vertex2D topLeft{corners[0], {0.0f, 0.0f}};

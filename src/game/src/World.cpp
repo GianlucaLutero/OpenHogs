@@ -1151,10 +1151,17 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
     const auto active = activeHog();
     const bool playing = phase_ == MatchPhase::Playing && active.has_value();
 
+    sighting_ = false;
     if (playing) {
         handleAiming(*active, input, seconds, events);
         Hog& hog = hogs_[*active];
         if (phase_ == MatchPhase::Playing && hog.alive) updateWeaponStance(hog);
+        // The rifle sight, held as the original's "rifle cam": guns only,
+        // and only standing (not flying, falling or swimming).
+        const bool steady = hog.alive && !isAirborne(hog) && hog.motion.state != MotionState::Swimming &&
+                            hog.jetpackSecondsLeft <= 0.0f;
+        sighting_ = input.sight && steady && phase_ == MatchPhase::Playing &&
+                    weaponSpec(hog.selectedWeapon()).rifleView;
     }
 
     float distanceMoved = 0.0f;
@@ -1172,9 +1179,10 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
                 flyJetpack(i, movement, seconds, animations);
                 continue;
             }
-            canMove = turns_->canMove();
-            if (hogs_[i].charging) {
-                // Charging a throw: the hog may turn to aim, not walk away.
+            canMove = true;  // no movement allowance: only the clock limits the turn
+            if (hogs_[i].charging || sighting_) {
+                // Charging a throw or looking through the sight: the hog may
+                // turn to aim, not walk away.
                 movement.forward = movement.backward = movement.jump = false;
             }
         } else if (hogs_[i].alive && hogs_[i].madnessSecondsLeft > 0.0f) {
@@ -1301,6 +1309,13 @@ std::vector<glm::vec3> World::aimPreview() const {
         return line;
     }
     return {};
+}
+
+std::optional<SightView> World::sightView() const {
+    const auto active = activeHog();
+    if (!sighting_ || !active) return std::nullopt;
+    const Hog& hog = hogs_[*active];
+    return SightView{muzzlePosition(hog), aimDirection(hog)};
 }
 
 bool World::switchHog(int step) {

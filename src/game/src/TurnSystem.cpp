@@ -57,7 +57,6 @@ std::vector<int> TurnSystem::livingTeams(const std::vector<Hog>& hogs) const {
 void TurnSystem::startTurn(const std::vector<Hog>& hogs) {
     ++turnNumber_;
     secondsLeft_ = rules_.turnSeconds;
-    movementLeft_ = rules_.movementAllowance;
     hasMoved_ = false;
 
     // The hog after the one this team used last time (the first hog the
@@ -91,7 +90,6 @@ bool TurnSystem::switchHog(int step, const std::vector<Hog>& hogs) {
 bool TurnSystem::update(double seconds, float distanceMoved, const std::vector<Hog>& hogs) {
     if (distanceMoved > 0.0f) {
         hasMoved_ = true;
-        movementLeft_ = std::max(0.0f, movementLeft_ - distanceMoved);
     }
     secondsLeft_ -= seconds;
     if (secondsLeft_ > 0.0) {

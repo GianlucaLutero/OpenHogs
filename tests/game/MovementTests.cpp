@@ -458,24 +458,40 @@ TEST_CASE("Turns: teams in order, hogs of each team in rotation", "[game][turns]
     CHECK(turns.turnNumber() == 5);
 }
 
-// A turn ends when its time runs out; walking uses up the movement
-// allowance, after which the hog can no longer walk.
-TEST_CASE("Turns: time limit and movement allowance", "[game][turns]") {
+// A turn ends when its time runs out, however far the hog has walked:
+// as in the original there is no movement allowance.
+TEST_CASE("Turns: only the time limit ends a turn", "[game][turns]") {
     const auto map = flatMap();
     std::vector<Hog> hogs{makeHog(map, 0, 0, 0), makeHog(map, 200, 0, 1)};
-    TurnSystem turns(hogs, TurnRules{10.0, 1000.0f});
+    TurnSystem turns(hogs, TurnRules{10.0});
 
-    CHECK_FALSE(turns.update(4.0, 600.0f, hogs));
-    CHECK(turns.movementLeft() == Approx(400.0f));
-    CHECK(turns.canMove());
-    turns.update(1.0, 500.0f, hogs);
-    CHECK_FALSE(turns.canMove());
-    CHECK(turns.secondsLeft() == Approx(5.0));
+    CHECK_FALSE(turns.update(4.0, 60000.0f, hogs));  // a very long walk
+    CHECK(turns.activeTeam() == 0);
+    CHECK(turns.secondsLeft() == Approx(6.0));
 
-    CHECK(turns.update(5.0, 0.0f, hogs));  // time out
+    CHECK(turns.update(6.0, 0.0f, hogs));  // time out
     CHECK(turns.activeTeam() == 1);
-    CHECK(turns.canMove());                // the new turn has a full allowance
     CHECK(turns.secondsLeft() == Approx(10.0));
+}
+
+// A hog keeps running for as long as the turn lasts: the distance run in
+// most of a minute is far beyond the old 3500-unit allowance.
+TEST_CASE("World: a hog may walk until its turn ends", "[game][world]") {
+    const auto map = flatMap();
+    std::vector<Hog> hogs{makeHog(map, -1000, 0, 0), makeHog(map, 0, 1000, 1)};
+    World world(map, hogs, TurnRules{60.0});
+    const auto animations = makeAnimations();
+    float walked = 0.0f;
+    PlayerInput input{forward()};
+    input.movement.turnLeft = true;  // in circles, to stay on the small test map
+    glm::vec3 last = world.hogs()[0].position;
+    for (int i = 0; i < 50 * 20; ++i) {
+        world.update(kStep, input, animations);
+        walked += glm::length(world.hogs()[0].position - last);
+        last = world.hogs()[0].position;
+    }
+    CHECK(walked > 8000.0f);
+    CHECK(world.activeHog() == 0u);
 }
 
 // The player may pick another hog of the same team, but only before the
@@ -508,7 +524,6 @@ TEST_CASE("World: only the active hog follows the input", "[game][world]") {
     }
     CHECK(world.hogs()[0].position.x == Approx(kRunSpeed / 2.0f).margin(1.0));
     CHECK(world.hogs()[1].position.x == 0.0f);
-    CHECK(world.turns()->movementLeft() < world.turns()->rules().movementAllowance);
     CHECK(world.timeSeconds() == Approx(0.5));
 
     world.endTurn();

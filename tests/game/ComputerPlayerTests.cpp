@@ -150,14 +150,14 @@ TEST_CASE("Out of reach, the computer runs towards the enemy", "[game][ai]") {
 }
 
 TEST_CASE("With nothing useful to do, the computer ends its turn", "[game][ai]") {
-    // A hog with only explosives to put down and no movement left must not
-    // hold up the match until the clock runs out.
+    // A hog with only explosives to put down, once it has walked as close
+    // as it can, must not hold up the match until the clock runs out.
     TurnRules rules;
-    rules.movementAllowance = 0.0f;
+    rules.turnSeconds = 99.0;
     const auto map = flatMap();
     World world(map, standoff(map, 3000, {WeaponId::Tnt}), rules);
     ComputerPlayer computer(perfect());
-    const int steps = static_cast<int>(5.0 / kStep);
+    const int steps = static_cast<int>(40.0 / kStep);
     playComputerTurn(world, computer, steps);
     CHECK(world.turns()->activeTeam() == 1);
 }

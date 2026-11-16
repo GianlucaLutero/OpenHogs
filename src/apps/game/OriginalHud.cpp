@@ -4,6 +4,7 @@
 
 #include "openhogs/formats/PackageArchive.h"
 #include "openhogs/formats/TimImage.h"
+#include "openhogs/ui/RifleSight.h"
 
 #include <algorithm>
 #include <cctype>
@@ -16,6 +17,9 @@ namespace {
 // The instruments, and the damage digits with the explosion pictures.
 const char* const kDashboardPictures = "Language/Tims/dashtims.mad";
 const char* const kEffectPictures = "Language/Tims/expltims.mad";
+// The weapon menu frame and the rifle sight's crosshair.
+const char* const kFacePictures = "Language/Tims/facetims.mad";
+const glm::vec4 kSightBlack{0.0f, 0.0f, 0.0f, 1.0f};
 
 // TIM entry names end in ".tim"; the layout uses the bare names.
 std::string bareName(std::string_view entryName) {
@@ -30,7 +34,7 @@ std::string bareName(std::string_view entryName) {
 } // namespace
 
 OriginalHud::OriginalHud(const core::VirtualFileSystem& vfs) {
-    for (const char* path : {kDashboardPictures, kEffectPictures}) {
+    for (const char* path : {kDashboardPictures, kEffectPictures, kFacePictures}) {
         try {
             const auto archive = formats::PackageArchive::parse(vfs.readFile(path));
             for (const auto& entry : archive.entries()) {
@@ -39,6 +43,14 @@ OriginalHud::OriginalHud(const core::VirtualFileSystem& vfs) {
         } catch (const std::exception& error) {
             std::cerr << "Warning: no HUD pictures from " << path << " (" << error.what() << ")\n";
         }
+    }
+}
+
+void OriginalHud::drawRifleSight(render::UiRenderer& ui) const {
+    ui.drawTriangles(ui::sightMaskTriangles(ui.canvasWidth()), kSightBlack);
+    if (const auto* crosshair = picture("croshair")) {
+        const glm::vec2 corner = ui::crosshairCorner(ui.canvasWidth());
+        ui.drawImage(*crosshair, corner.x, corner.y, ui::kCrosshairSize, ui::kCrosshairSize);
     }
 }
 

@@ -441,7 +441,11 @@ std::array<WeaponSpec, kWeaponCount> makeWeapons() {
         airstrike,
         fireRain,
     }};
-    for (auto& spec : table) present(spec);
+    for (auto& spec : table) {
+        present(spec);
+        const int id = static_cast<int>(spec.id);
+        spec.rifleView = (id >= 102 && id <= 111) || id == 113 || id == 114;
+    }
     return table;
 }
 

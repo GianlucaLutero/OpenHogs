@@ -38,8 +38,6 @@ std::optional<HudInfo> describeTurn(const game::World& world, const UiStrings& s
     info.weaponName = weaponDisplayName(info.weapon, gameText);
     info.exactSecondsLeft = std::max(0.0, turns->secondsLeft());
     info.secondsLeft = static_cast<int>(std::ceil(info.exactSecondsLeft));
-    const float allowance = turns->rules().movementAllowance;
-    info.movementFraction = allowance > 0.0f ? std::clamp(turns->movementLeft() / allowance, 0.0f, 1.0f) : 0.0f;
     if (hog.charging) {
         info.power = std::clamp(hog.power, 0.0f, 1.0f);
     }

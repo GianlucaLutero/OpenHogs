@@ -177,6 +177,12 @@ struct WeaponSpec {
     bool hasPayload = false;
     WeaponId payload = WeaponId::Mine;
 
+    // Guns the player may aim through the rifle sight: a first-person view
+    // along the barrel, inside a round sight with a crosshair (the
+    // executable's "rifle cam", FUN_00492820: weapons 6-15, 17 and 18,
+    // that is PISTOL to ROCKET LAUNCHER, MEDICINE DART and TRANQUILISER).
+    bool rifleView = false;
+
     // Presentation, as the original's weapon table (warhogs_.exe at
     // 0x4D7300, see docs/formats/weapons.md); animation numbers as in
     // scene::animationName:

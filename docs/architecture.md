@@ -14,7 +14,7 @@ listed before it below.
 | `tools/langpack` | done | `openhogs-langpack`: builds a language pack from the PlayStation disc (text alignment, overrides, briefing conversion). |
 | `tools/extractor` | done | `openhogs-extract`: unpacks archives, converts textures to PNG and text tables to text. |
 | `scene`   | done | Turns map data into triangles grouped by texture, places objects. Poses the hogs (`CharacterPose`: bone transforms, blending between frames) and loads them (`CharacterLibrary`: classes, teams, animation names); carries weapons rigidly on the hand bone (`buildCarriedModelMesh`); facial expressions and blinking (`CharacterExpressions`). Pure CPU code, unit tested. |
-| `ui`      | in progress | What the player sees and does around a match, with no drawing code: text layout in the bitmap fonts and `>S`/`>N` placeholders (`TextLayout`), menu and HUD texts from the text tables (`UiStrings`), menu screens (`Menu`), the menus before a match (`FrontEnd`), the pause menu (`PauseMenu`), timed messages (`MessageBanner`), what the HUD shows (`Hud`), the original HUD's layout and moving parts read from the executable (`HudLayout`), the original list menu's, yes/no question's and volume panel's layout and animation (`OriginalMenu`, `OriginalDialog`, `OriginalVolume`) of the longer list (`OriginalSelectList`), of the level panel and team holders (`OriginalLevelPanel`) of CONTROLS and CREDITS (`OriginalOptionPages`) of the campaign's squad page (`OriginalSquad`) and of its career board (`OriginalCareer`), the damage numbers (`FloatingNumbers`), the campaign pages (`CampaignMenu`). Unit tested. |
+| `ui`      | in progress | What the player sees and does around a match, with no drawing code: text layout in the bitmap fonts and `>S`/`>N` placeholders (`TextLayout`), menu and HUD texts from the text tables (`UiStrings`), menu screens (`Menu`), the menus before a match (`FrontEnd`), the pause menu (`PauseMenu`), timed messages (`MessageBanner`), what the HUD shows (`Hud`), the original HUD's layout and moving parts read from the executable (`HudLayout`), the rifle sight's mask and crosshair (`RifleSight`), the original list menu's, yes/no question's and volume panel's layout and animation (`OriginalMenu`, `OriginalDialog`, `OriginalVolume`) of the longer list (`OriginalSelectList`), of the level panel and team holders (`OriginalLevelPanel`) of CONTROLS and CREDITS (`OriginalOptionPages`) of the campaign's squad page (`OriginalSquad`) and of its career board (`OriginalCareer`), the damage numbers (`FloatingNumbers`), the campaign pages (`CampaignMenu`). Unit tested. |
 | `render`  | done | OpenGL 3.3 renderers for maps, characters (and any textured model), effects and the 2D interface (`UiRenderer`: font text, panels, icons) (glad), RAII GPU objects, free camera. No window code: the application creates the context. |
 | `apps/common` | done | Shared by the applications: opening the game files (`--game` or configuration + packs), the SDL3/OpenGL window, PNG screenshots. |
 | `apps/mapviewer` | done | `openhogs-mapviewer`: input, map switching, screenshots. |
@@ -73,8 +73,11 @@ this order:
    active one with its weapon), the projectiles, then the effects
    (aiming line, tracers, explosions, health bars), and finally the HUD
    (`ui::describeTurn` drawn by `OriginalHud`: damage numbers, angle and
-   power gauges, clock) and the current message. Drawing only reads the
-   world.
+   power gauges, clock) and the current message. While the player holds
+   the rifle sight (`World::sightView`), the scene is seen from the gun's
+   muzzle with a narrow view, the active hog is not drawn, and the HUD
+   adds the sight's black mask and crosshair (`ui/RifleSight.h`). Drawing
+   only reads the world.
 
 The `game` module does not know about OpenGL, SDL or the sound card, which
 is what makes its rules unit-testable.
