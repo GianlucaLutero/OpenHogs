@@ -11,7 +11,7 @@ namespace openhogs::game {
 
 namespace {
 
-constexpr std::size_t kWeaponCount = 33;
+constexpr std::size_t kWeaponCount = 43;
 
 // Animation numbers (scene::animationName).
 constexpr std::size_t kUsingGrenade = 19;
@@ -84,9 +84,10 @@ constexpr std::size_t kDrawHandgun = 12, kDrawRifle = 13, kDrawMachineGun = 14, 
 // Putting a mine or TNT down (animation 77, unnamed in the lists).
 constexpr std::size_t kPlaceExplosive = 77;
 
-constexpr std::size_t kSkipOrSurrender = 7;  // the "use" animation of SKIP TURN and SURRENDER
+constexpr std::size_t kSkipOrSurrender = 7;
+constexpr std::size_t kShockwaveUse = 81;  // the "use" animation of SHOCKWAVE (and the airstrikes)  // the "use" animation of SKIP TURN and SURRENDER
 
-constexpr std::array<Presentation, 33> kPresentation{{
+constexpr std::array<Presentation, kWeaponCount> kPresentation{{
     {WeaponId::Trotter, "", kDrawGrenade, kNone, kSwordKnife},
     {WeaponId::Knife, "WE_KNIFE", kDrawBlade, kNone, kSwordKnife},
     {WeaponId::Bayonet, "WE_RIF", kDrawMachineGun, kAimingMachineGun, kBayonet},
@@ -120,6 +121,16 @@ constexpr std::array<Presentation, 33> kPresentation{{
     {WeaponId::SelfHeal, "", kDrawHeavy, kAimingHeavyWeapon, kNone},
     {WeaponId::SkipTurn, "", kNone, kNone, kSkipOrSurrender},
     {WeaponId::Surrender, "", kNone, kNone, kSkipOrSurrender},
+    {WeaponId::FlameThrower, "WE_FLAME", kDrawMachineGun, kAimingMachineGun, kNone},
+    {WeaponId::MedicineDart, "rocklau", kDrawHeavy, kAimingHeavyWeapon, kNone},
+    {WeaponId::Tranquiliser, "WE_RIF", kDrawRifle, kAimingRifle, kNone},
+    {WeaponId::FreezeGas, "WE_SMOKE", kDrawGrenade, kNone, kUsingGrenade},
+    {WeaponId::MadnessGas, "WE_SMOKE", kDrawGrenade, kNone, kUsingGrenade},
+    {WeaponId::PoisonGas, "WE_SMOKE", kDrawGrenade, kNone, kUsingGrenade},
+    {WeaponId::MedicineBall, "WE_BALL", kDrawHeavy, kAimingHeavyWeapon, kUsingGrenade},
+    {WeaponId::PickPocket, "", kDrawHeavy, kAimingHeavyWeapon, kNone},
+    {WeaponId::Hide, "", kDrawHeavy, kAimingHeavyWeapon, kNone},
+    {WeaponId::Shockwave, "WE_TNT", kDrawGrenade, kNone, kShockwaveUse},
 }};
 
 // The original's presentation over the rules of `spec`.
@@ -197,14 +208,13 @@ std::array<WeaponSpec, kWeaponCount> makeWeapons() {
     // Weapons added with block weapons-complete (part 1). Their numbers
     // come from the executable's ammunition rows where it has them (row
     // given in each comment); the rest are OpenHogs' choices.
-    auto prod = melee(W::CattleProd, "CATTLE PROD", 35, 220, "I_STAB");  // no ammunition row
-    prod.knockback = 700.0f;
+    auto prod = melee(W::CattleProd, "CATTLE PROD", 25, 220, "I_STAB");  // the wiki: 25, the best knockback
+    prod.knockback = 800.0f;
 
-    auto superShotgun = shotgun;  // ammunition 407: same pellets, both barrels
+    auto superShotgun = shotgun;  // ammunition 407: the same pellets; the wiki: far more knockback
     superShotgun.id = W::SuperShotgun;
     superShotgun.fallbackName = "SUPER SHOTGUN";
-    superShotgun.shots = 2;
-    superShotgun.secondsBetweenShots = 0.15f;
+    superShotgun.knockback = shotgun.knockback * 3.0f;
 
     auto roller = grenade;  // ammunition 419 (WE_ROLL): 40 points, radius 2600
     roller.id = W::RollerGrenade;
@@ -243,11 +253,58 @@ std::array<WeaponSpec, kWeaponCount> makeWeapons() {
     suicide.damage = tnt.damage;
     suicide.blastRadius = tnt.blastRadius;
     suicide.knockback = tnt.knockback;
-    auto healingHands = action(W::HealingHands, K::Heal, "HEALING HANDS");  // ammunition 436: 40 points
-    healingHands.damage = exeDamage(5120);
+    // Healing as the wiki gives it: healing hands 20 points without ending
+    // the turn, self heal 50 (the executable's rows 436/437 say 40).
+    auto healingHands = action(W::HealingHands, K::Heal, "HEALING HANDS");
+    healingHands.damage = 20.0f;
     healingHands.range = 300.0f;
-    auto selfHeal = action(W::SelfHeal, K::Heal, "SELF HEAL");  // ammunition 437: 40 points
-    selfHeal.damage = exeDamage(5120);
+    healingHands.endsTurn = false;
+    healingHands.effect = WeaponEffect::Heal;
+    auto selfHeal = action(W::SelfHeal, K::Heal, "SELF HEAL");
+    selfHeal.damage = 50.0f;
+    selfHeal.effect = WeaponEffect::Heal;
+
+    // The gases: a grenade that leaves a cloud (the wiki: impact damage
+    // 20 freeze, 15 madness and poison; radius of ammunition 414-416).
+    const auto gas = [&](WeaponId id, std::string_view name, float damage, int radius, WeaponEffect effect) {
+        auto spec = grenade;
+        spec.id = id;
+        spec.fallbackName = name;
+        spec.damage = damage;
+        spec.blastRadius = exeRadius(radius);
+        spec.knockback = 200.0f;
+        spec.effect = effect;
+        return spec;
+    };
+    auto freezeGas = gas(W::FreezeGas, "FREEZE GAS", 20, 2560, WeaponEffect::Sleep);
+    auto madnessGas = gas(W::MadnessGas, "MADNESS GAS", 15, 1920, WeaponEffect::Madness);
+    auto poisonGas = gas(W::PoisonGas, "POISON GAS", 15, 1920, WeaponEffect::Poison);
+    auto medicineBall = gas(W::MedicineBall, "MEDICINE BALL", 40, 5120, WeaponEffect::Heal);  // ammunition 425
+    medicineBall.knockback = 0.0f;
+
+    // Darts: rifle shots that heal (40) or put to sleep (ammunition 442: 20).
+    auto dart = gun(W::MedicineDart, "MEDICINE DART", 40, 6000, 1, 0.5f, "L_RIFLE");
+    dart.effect = WeaponEffect::Heal;
+    dart.knockback = 40.0f;
+    auto tranquiliser = gun(W::Tranquiliser, "TRANQUILISER", exeDamage(2560), 6000, 1, 0.5f, "L_RIFLE");
+    tranquiliser.effect = WeaponEffect::Sleep;
+
+    // The flame thrower: 17 flames sweeping about 90 degrees, 102 points if
+    // every one hits (the wiki), within a short reach.
+    auto flame = gun(W::FlameThrower, "FLAME THROWER", 6, 1400, 17, 2.0f, "L_FLAME");
+    flame.secondsBetweenShots = 0.08f;
+    flame.sweepDegrees = 90.0f;
+    flame.knockback = 30.0f;
+
+    auto shockwave = action(W::Shockwave, K::Shockwave, "SHOCKWAVE");  // little harm, thrown high
+    shockwave.damage = 10.0f;
+    shockwave.range = 350.0f;
+    shockwave.knockback = 1400.0f;
+    auto pickPocket = action(W::PickPocket, K::PickPocket, "PICK POCKET");
+    pickPocket.range = 300.0f;
+    pickPocket.endsTurn = false;
+    auto hide = action(W::Hide, K::Hide, "HIDE");
+    hide.damage = 20.0f;  // the disguise takes 20 points
 
     std::array<WeaponSpec, kWeaponCount> table{{
         melee(W::Trotter, "TROTTER", 15, 160, "P_PUNCH"),
@@ -283,6 +340,16 @@ std::array<WeaponSpec, kWeaponCount> makeWeapons() {
         selfHeal,
         action(W::SkipTurn, K::SkipTurn, "SKIP TURN"),
         action(W::Surrender, K::Surrender, "SURRENDER"),
+        flame,
+        dart,
+        tranquiliser,
+        freezeGas,
+        madnessGas,
+        poisonGas,
+        medicineBall,
+        pickPocket,
+        hide,
+        shockwave,
     }};
     for (auto& spec : table) present(spec);
     return table;

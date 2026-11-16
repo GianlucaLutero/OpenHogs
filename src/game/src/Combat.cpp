@@ -40,6 +40,20 @@ void damageHog(std::vector<Hog>& hogs, std::size_t index, float amount, std::vec
     if (!hog.alive || amount <= 0.0f) {
         return;
     }
+    if (hog.hidden()) {
+        // Its disguise takes the damage first; when it breaks, the hog shows.
+        const float absorbed = std::min(amount, hog.hideShield);
+        hog.hideShield -= absorbed;
+        amount -= absorbed;
+        if (!hog.hidden()) {
+            GameEvent unhid;
+            unhid.type = GameEventType::HogUnhidden;
+            unhid.hog = index;
+            unhid.position = hogCentre(hog);
+            events.push_back(unhid);
+        }
+        if (amount <= 0.0f) return;
+    }
     const float lost = std::min(amount, hog.health);
     hog.health -= lost;
     GameEvent hurt;

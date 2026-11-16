@@ -95,7 +95,7 @@ float explosionValue(const World& world, std::size_t shooter, const glm::vec3& c
         const float damage = spec.damage * (1.0f - distance / spec.blastRadius);
         if (hog.team == hogs[shooter].team) {
             value -= kFriendlyFireWeight * damageValue(hog, damage);
-        } else {
+        } else if (!hog.hidden()) {
             value += damageValue(hog, damage);
         }
     }
@@ -286,7 +286,8 @@ std::optional<std::size_t> nearestEnemy(const World& world, std::size_t shooter)
     std::optional<std::size_t> nearest;
     float nearestDistance = std::numeric_limits<float>::max();
     for (std::size_t i = 0; i < hogs.size(); ++i) {
-        if (!hogs[i].alive || hogs[i].team == hogs[shooter].team) continue;
+        // A hiding hog is not seen (the wiki: the AI ignores it).
+        if (!hogs[i].alive || hogs[i].hidden() || hogs[i].team == hogs[shooter].team) continue;
         const float distance = horizontalDistance(hogs[i].position, hogs[shooter].position);
         if (distance < nearestDistance) {
             nearestDistance = distance;
@@ -307,8 +308,10 @@ ShotPlanner::ShotPlanner(const World& world, std::size_t shooter) : shooter_(sho
     const auto& hogs = world.hogs();
     const Hog& me = hogs[shooter];
     for (const WeaponId weapon : me.weapons) {
+        // Medicine heals whoever it hits: never aimed at an enemy.
+        if (weaponSpec(weapon).effect == WeaponEffect::Heal) continue;
         for (std::size_t target = 0; target < hogs.size(); ++target) {
-            if (hogs[target].alive && hogs[target].team != me.team) {
+            if (hogs[target].alive && !hogs[target].hidden() && hogs[target].team != me.team) {
                 pending_.push_back({weapon, target});
             }
         }
@@ -331,7 +334,10 @@ void ShotPlanner::step(const World& world) {
     case WeaponKind::Heal:
     case WeaponKind::Suicide:
     case WeaponKind::SkipTurn:
-    case WeaponKind::Surrender: break;  // never chosen as an attack
+    case WeaponKind::Surrender:
+    case WeaponKind::Shockwave:
+    case WeaponKind::Hide:
+    case WeaponKind::PickPocket: break;  // never chosen as an attack
     }
     if (plan && plan->score > 0.0f && (!best_ || plan->score > best_->score)) {
         best_ = plan;

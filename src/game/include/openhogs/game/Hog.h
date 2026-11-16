@@ -22,6 +22,7 @@
 #include <glm/glm.hpp>
 
 #include <cstddef>
+#include <map>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -92,6 +93,17 @@ struct Hog {
     // come from crates its team picked up and can run out.
     std::size_t ownWeapons = static_cast<std::size_t>(-1);
     std::size_t weaponSlot = 0;     // the selected one
+    // Uses left of its own weapons that do not last for ever (a Bombardier
+    // has three mortar shells); a weapon not listed never runs out.
+    std::map<WeaponId, int> ownAmmo;
+
+    // What gases, darts and hiding did to it (Weapons.h, WeaponEffect):
+    bool poisoned = false;          // loses 10 points when each of its turns starts
+    bool asleep = false;            // misses its next turn
+    float madnessSecondsLeft = 0.0f;  // runs straight ahead until it is over
+    float hideShield = 0.0f;        // > 0: hidden in a disguise that takes this much damage
+    bool hidden() const { return hideShield > 0.0f; }
+
     float aimDegrees = 15.0f;       // above the horizon
     float power = 0.0f;             // 0 to 1, while charging a throw
     bool charging = false;          // the fire key is held for a powered weapon

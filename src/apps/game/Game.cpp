@@ -77,6 +77,9 @@ game::TurnRules turnRules(const GameOptions& options) {
 constexpr double kTurnMessageSeconds = 2.5;
 constexpr double kEndMessageSeconds = -1.0;  // until the players leave
 constexpr double kTrainingTipSeconds = 8.0;
+// Hiding hogs' disguises are drawn as extra objects with these numbers.
+constexpr std::size_t kDisguiseObject = 1'000'000;
+constexpr float kDisguiseHalfHeight = 96.0f;
 constexpr glm::vec4 kHealColour{0.3f, 1.0f, 0.3f, 1.0f};
 
 } // namespace
@@ -389,6 +392,22 @@ void Game::handleEvents(const std::vector<game::GameEvent>& events) {
             pickedUp(event);
             break;
         case GameEventType::ObjectiveDone: objectiveDone(event); break;
+        case GameEventType::HogHidden:
+            if (event.hog < world_.hogs().size()) {
+                // The disguise: a crate where the hog stood (the wiki: a
+                // crate or a nearby prop).
+                const auto& hog = world_.hogs()[event.hog];
+                formats::MapObject disguise;
+                disguise.modelName = "CRATE1";
+                disguise.x = static_cast<std::int16_t>(hog.position.x);
+                disguise.y = static_cast<std::int16_t>(hog.position.y + kDisguiseHalfHeight);
+                disguise.z = static_cast<std::int16_t>(hog.position.z);
+                mapRenderer_->addObject({"CRATE1", scene::objectTransform(disguise), kDisguiseObject + event.hog});
+            }
+            break;
+        case GameEventType::HogUnhidden: mapRenderer_->hideObject(kDisguiseObject + event.hog); break;
+        case GameEventType::PickedPocket: playSound("I_PICKUP"); break;
+        case GameEventType::TurnSlept: break;  // the turn simply passes
         case GameEventType::ObjectRevealed: mapRenderer_->showObject(event.object); break;
         case GameEventType::TrainingTip:
             // The Boot Camp's instruction stays a while (the instructor says it: MatchAudio).
@@ -578,6 +597,7 @@ void Game::drawScene(int width, int height) {
     mapRenderer_->draw(camera, width, height, options);
 
     for (std::size_t i = 0; i < world_.hogs().size(); ++i) {
+        if (world_.hogs()[i].hidden()) continue;  // its disguise (a crate) is drawn instead
         drawHog(camera, width, height, world_.hogs()[i], i);
     }
     drawWeapons(camera, width, height);

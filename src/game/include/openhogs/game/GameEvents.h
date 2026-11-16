@@ -43,6 +43,10 @@ enum class GameEventType {
     // the instructor's line.
     TrainingTip,
     Healed,  // hog: who; amount: health given back (healing hands, self heal)
+    HogHidden,    // hog: who went into hiding (HIDE)
+    HogUnhidden,  // hog: who came out (its turn, or its disguise broke)
+    TurnSlept,    // hog: asleep, it misses this turn
+    PickedPocket, // hog: who was robbed; weapon: what of
 };
 
 struct GameEvent {

@@ -42,8 +42,12 @@ rifle, rifle burst, machine gun, heavy machine gun, sniper rifle, shotgun,
 super shotgun, rocket launcher, grenade, cluster, high-explosive, roller
 and shrapnel grenades, mortar, bazooka, grenade launcher, airburst, super
 airburst, mine, anti-personnel mine, TNT, super TNT, suicide, healing
-hands, self heal, skip turn and surrender. The others (gases, missiles,
-shells, airstrikes, vehicles...) are listed in `docs/open-decisions.md`.
+hands, self heal, skip turn, surrender, flame thrower, medicine dart,
+tranquiliser, freeze, madness and poison gas, medicine ball, pick pocket,
+hide and shockwave. The others (missiles, shells, airstrikes, jetpack,
+special ops, vehicles...) are listed in `docs/open-decisions.md`.
+Behaviour not found in the executable (lasting effects, healing amounts,
+the ranks' number of uses) follows the Hogs of War Wiki.
 
 ## Models: `Chars/WEAPONS.MAD` and `.MTD`
 

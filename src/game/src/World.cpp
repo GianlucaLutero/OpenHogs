@@ -44,6 +44,10 @@ constexpr float kExplosionLift = 30.0f;
 
 // Explosions set off explosives lying within their radius after this delay.
 constexpr float kChainReactionSeconds = 0.15f;
+// The gases' lasting effects (the wiki): poison takes 10 points at each of
+// the hog's turns, madness makes it run for about ten seconds.
+constexpr float kPoisonDamage = 10.0f;
+constexpr float kMadnessSeconds = 10.0f;
 
 // Cluster grenades break into bomblets thrown around and up.
 constexpr float kBombletOutwardSpeed = 500.0f;
@@ -247,8 +251,11 @@ void World::refreshStockWeapons(int team) {
 
 void World::useStock(std::size_t hogIndex) {
     Hog& hog = hogs_[hogIndex];
-    if (hog.ownWeapons > hog.weapons.size() || hog.weaponSlot % std::max<std::size_t>(hog.weapons.size(), 1) < hog.ownWeapons) {
-        return;  // one of its own weapons: never runs out
+    if (hog.weapons.empty()) return;
+    const std::size_t slot = hog.weaponSlot % hog.weapons.size();
+    if (hog.ownWeapons > hog.weapons.size() || slot < hog.ownWeapons) {
+        useOwnWeapon(hog, slot);  // one of its own weapons
+        return;
     }
     if (training_) return;  // the Boot Camp's crate weapons never run out
     int& count = stock_[hog.team][hog.selectedWeapon()];
@@ -498,8 +505,12 @@ void World::fire(std::size_t hogIndex, float power, std::vector<GameEvent>& even
         hog.held = HeldAnimation{spec.useAnimation, AnimationPlayer::Repeat::Once};
         hog.animation.play(spec.useAnimation, AnimationPlayer::Repeat::Once, true);
     }
-    phase_ = MatchPhase::Resolving;
-    settleSecondsLeft_ = kSettleSeconds;
+    if (spec.endsTurn) {
+        phase_ = MatchPhase::Resolving;
+        settleSecondsLeft_ = kSettleSeconds;
+    } else {
+        fireWasHeld_ = true;  // used once per press; the turn goes on
+    }
 
     GameEvent fired;
     fired.type = GameEventType::Fired;
@@ -552,10 +563,105 @@ void World::fire(std::size_t hogIndex, float power, std::vector<GameEvent>& even
     case WeaponKind::Surrender:
         // The whole team gives up.
         for (std::size_t i = 0; i < hogs_.size(); ++i) {
-            if (hogs_[i].team == hog.team && hogs_[i].alive) damageHog(hogs_, i, hogs_[i].health, events);
+            if (hogs_[i].team != hog.team || !hogs_[i].alive) continue;
+            hogs_[i].hideShield = 0.0f;
+            damageHog(hogs_, i, hogs_[i].health, events);
         }
         break;
+    case WeaponKind::Shockwave:
+        events.push_back(fired);
+        shockwave(hogIndex, spec, events);
+        break;
+    case WeaponKind::Hide: {
+        // In a disguise until its next turn (the wiki: it takes 20 points).
+        events.push_back(fired);
+        hog.hideShield = spec.damage;
+        GameEvent hid;
+        hid.type = GameEventType::HogHidden;
+        hid.hog = hogIndex;
+        hid.position = hog.position;
+        events.push_back(hid);
+        break;
     }
+    case WeaponKind::PickPocket:
+        events.push_back(fired);
+        pickPocket(hogIndex, spec, events);
+        break;
+    }
+}
+
+void World::shockwave(std::size_t hogIndex, const WeaponSpec& spec, std::vector<GameEvent>& events) {
+    // Every other hog within reach is thrown up, and a little away.
+    const glm::vec3 origin = hogs_[hogIndex].position;
+    for (std::size_t i = 0; i < hogs_.size(); ++i) {
+        if (i == hogIndex || !hogs_[i].alive) continue;
+        glm::vec3 away = hogs_[i].position - origin;
+        away.y = 0.0f;
+        const float distance = glm::length(away);
+        if (distance > spec.range) continue;
+        const glm::vec3 direction = distance > 1.0f ? away / distance : glm::vec3(1.0f, 0.0f, 0.0f);
+        knockHog(hogs_[i], direction * (spec.knockback * 0.3f) + glm::vec3(0.0f, spec.knockback, 0.0f));
+        damageHog(hogs_, i, spec.damage, events);
+    }
+}
+
+void World::pickPocket(std::size_t hogIndex, const WeaponSpec& spec, std::vector<GameEvent>& events) {
+    // The nearest enemy within reach loses one use of a weapon of its own,
+    // chosen at random, which the thief may use once (the wiki).
+    Hog& thief = hogs_[hogIndex];
+    std::optional<std::size_t> victim;
+    float nearest = spec.range;
+    for (std::size_t i = 0; i < hogs_.size(); ++i) {
+        if (!hogs_[i].alive || hogs_[i].team == thief.team) continue;
+        const float distance = glm::length(hogs_[i].position - thief.position);
+        if (distance <= nearest) {
+            nearest = distance;
+            victim = i;
+        }
+    }
+    if (!victim) return;
+    Hog& target = hogs_[*victim];
+    const std::size_t own = std::min(target.ownWeapons, target.weapons.size());
+    std::vector<std::size_t> candidates;
+    for (std::size_t w = 0; w < own; ++w) {
+        if (target.weapons[w] != WeaponId::Trotter) candidates.push_back(w);
+    }
+    if (candidates.empty()) return;
+    const std::size_t slot = candidates[random_() % candidates.size()];
+    const WeaponId weapon = target.weapons[slot];
+    useOwnWeapon(target, slot);
+
+    // The thief carries it among its own weapons, with one use.
+    const std::size_t thiefOwn = std::min(thief.ownWeapons, thief.weapons.size());
+    const auto had = std::find(thief.weapons.begin(), thief.weapons.begin() + static_cast<std::ptrdiff_t>(thiefOwn), weapon);
+    if (had == thief.weapons.begin() + static_cast<std::ptrdiff_t>(thiefOwn)) {
+        thief.weapons.insert(thief.weapons.begin() + static_cast<std::ptrdiff_t>(thiefOwn), weapon);
+        if (thief.ownWeapons != static_cast<std::size_t>(-1)) ++thief.ownWeapons;
+        thief.ownAmmo[weapon] = 1;
+    } else if (thief.ownAmmo.contains(weapon)) {
+        ++thief.ownAmmo[weapon];
+    }
+
+    GameEvent stolen;
+    stolen.type = GameEventType::PickedPocket;
+    stolen.hog = *victim;
+    stolen.weapon = weapon;
+    stolen.position = target.position;
+    events.push_back(stolen);
+}
+
+void World::useOwnWeapon(Hog& hog, std::size_t slot) {
+    // One use of a weapon of its own: those with a number of uses run out.
+    const WeaponId weapon = hog.weapons[slot];
+    const auto ammo = hog.ownAmmo.find(weapon);
+    if (ammo == hog.ownAmmo.end()) return;  // never runs out
+    if (--ammo->second > 0) return;
+    hog.ownAmmo.erase(ammo);
+    const WeaponId selected = hog.selectedWeapon();
+    hog.weapons.erase(hog.weapons.begin() + static_cast<std::ptrdiff_t>(slot));
+    if (hog.ownWeapons != static_cast<std::size_t>(-1) && hog.ownWeapons > 0) --hog.ownWeapons;
+    const auto kept = std::find(hog.weapons.begin(), hog.weapons.end(), selected);
+    hog.weaponSlot = kept != hog.weapons.end() ? static_cast<std::size_t>(kept - hog.weapons.begin()) : 0;
 }
 
 void World::heal(std::size_t hogIndex, const WeaponSpec& spec, std::vector<GameEvent>& events) {
@@ -573,15 +679,35 @@ void World::heal(std::size_t hogIndex, const WeaponSpec& spec, std::vector<GameE
             }
         }
     }
-    Hog& hog = hogs_[patient];
+    healHog(patient, spec.damage, events);
+}
+
+void World::healHog(std::size_t index, float amount, std::vector<GameEvent>& events) {
+    // Health back, and any poison or sleep cured (the wiki).
+    Hog& hog = hogs_[index];
+    if (!hog.alive) return;
     const float before = hog.health;
-    hog.health = std::min(hog.maxHealth, hog.health + spec.damage);
+    hog.health = std::min(hog.maxHealth, hog.health + amount);
+    hog.poisoned = false;
+    hog.asleep = false;
     GameEvent healed;
     healed.type = GameEventType::Healed;
-    healed.hog = patient;
+    healed.hog = index;
     healed.amount = hog.health - before;
     healed.position = hog.position;
     events.push_back(healed);
+}
+
+void World::afflict(std::size_t index, WeaponEffect effect) {
+    Hog& hog = hogs_[index];
+    if (!hog.alive) return;
+    switch (effect) {
+    case WeaponEffect::Poison: hog.poisoned = true; break;
+    case WeaponEffect::Sleep: hog.asleep = true; break;
+    case WeaponEffect::Madness: hog.madnessSecondsLeft = kMadnessSeconds; break;
+    case WeaponEffect::Heal:
+    case WeaponEffect::None: break;
+    }
 }
 
 void World::fireMelee(std::size_t hogIndex, const WeaponSpec& spec, std::vector<GameEvent>& events) {
@@ -639,8 +765,15 @@ void World::fireShot(std::vector<GameEvent>& events) {
         const float unit = static_cast<float>(random_() % 2001) / 1000.0f - 1.0f;  // -1 to 1
         return glm::radians(spec.spreadDegrees) * unit;
     };
+    // A sweeping weapon (the flame thrower) swings from a little to the
+    // left to the right as the burst goes on.
+    float sweep = 0.0f;
+    if (spec.sweepDegrees > 0.0f && spec.shots > 1) {
+        const float done = static_cast<float>(spec.shots - burst.shotsLeft) / static_cast<float>(spec.shots - 1);
+        sweep = glm::radians(spec.sweepDegrees * (0.15f - done));
+    }
     for (int pellet = 0; pellet < spec.pellets; ++pellet) {
-        const float yaw = shooter.yawRadians + randomSpread();
+        const float yaw = shooter.yawRadians + sweep + randomSpread();
         const float pitch = glm::radians(shooter.aimDegrees) + randomSpread();
         const glm::vec3 facing{std::cos(yaw), 0.0f, -std::sin(yaw)};
         const glm::vec3 direction = facing * std::cos(pitch) + glm::vec3(0.0f, std::sin(pitch), 0.0f);
@@ -658,7 +791,12 @@ void World::fireShot(std::vector<GameEvent>& events) {
                 const glm::vec3 push = glm::vec3(direction.x, 0.0f, direction.z) * spec.knockback;
                 knockHog(target, push + glm::vec3(0.0f, spec.knockback, 0.0f));
             }
-            damageHog(hogs_, *hit.hog, spec.damage, events);
+            if (spec.effect == WeaponEffect::Heal) {
+                healHog(*hit.hog, spec.damage, events);
+            } else {
+                damageHog(hogs_, *hit.hog, spec.damage, events);
+                afflict(*hit.hog, spec.effect);
+            }
         } else if (hit.object) {
             damageMapObject(*hit.object, spec.damage, events);
         }
@@ -682,8 +820,24 @@ void World::detonate(const Projectile& projectile, std::vector<GameEvent>& event
     events.push_back(explosion);
     explosions_.push_back({centre, spec.blastRadius, 0.0f});
 
+    if (spec.effect == WeaponEffect::Heal) {
+        // Medicine: health for everyone within reach, most at the centre.
+        for (std::size_t i = 0; i < hogs_.size(); ++i) {
+            const float distance = glm::length(hogCentre(hogs_[i]) - centre);
+            if (hogs_[i].alive && distance < spec.blastRadius) {
+                healHog(i, spec.damage * (1.0f - distance / spec.blastRadius), events);
+            }
+        }
+        return;
+    }
     explode(hogs_, centre, spec.blastRadius, spec.damage, spec.knockback, events);
     damageObjects(centre, spec.blastRadius, spec.damage, events);
+    if (spec.effect != WeaponEffect::None) {
+        // A gas reaches every hog in its cloud.
+        for (std::size_t i = 0; i < hogs_.size(); ++i) {
+            if (hogs_[i].alive && glm::length(hogCentre(hogs_[i]) - centre) < spec.blastRadius) afflict(i, spec.effect);
+        }
+    }
 
     // Explosives lying within the blast go off too, a moment later.
     for (auto& other : projectiles_) {
@@ -810,6 +964,29 @@ void World::turnBegan(std::vector<GameEvent>& events) {
     started.hog = turns_->activeHog();
     events.push_back(started);
 
+    // The hog whose turn it is comes out of hiding, suffers its poison and,
+    // if asleep, misses the turn (the wiki's gases, darts and hide).
+    if (const auto active = activeHog()) {
+        Hog& hog = hogs_[*active];
+        if (hog.hidden()) {
+            hog.hideShield = 0.0f;
+            GameEvent unhid;
+            unhid.type = GameEventType::HogUnhidden;
+            unhid.hog = *active;
+            events.push_back(unhid);
+        }
+        if (hog.poisoned) damageHog(hogs_, *active, kPoisonDamage, events);
+        if (hog.asleep && hog.alive) {
+            hog.asleep = false;
+            GameEvent slept;
+            slept.type = GameEventType::TurnSlept;
+            slept.hog = *active;
+            events.push_back(slept);
+            phase_ = MatchPhase::Resolving;  // its turn passes at once
+            settleSecondsLeft_ = 0.0f;
+        }
+    }
+
     // Sudden death: when the chosen round begins, every hog is down to one
     // point of health, so the next hit decides.
     const int round = turns_->round();
@@ -851,6 +1028,11 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
                 // Charging a throw: the hog may turn to aim, not walk away.
                 movement.forward = movement.backward = movement.jump = false;
             }
+        } else if (hogs_[i].alive && hogs_[i].madnessSecondsLeft > 0.0f) {
+            // Madness gas: it runs straight ahead until it wears off.
+            hogs_[i].madnessSecondsLeft = std::max(0.0f, hogs_[i].madnessSecondsLeft - static_cast<float>(seconds));
+            movement.forward = true;
+            canMove = true;
         } else if (hogs_[i].alive && hogs_[i].motion.state == MotionState::Swimming) {
             // A hog nobody controls swims to the nearest shore by itself, as
             // in the original (FUN_00472dd0 looks for the nearest dry tile).

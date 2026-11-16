@@ -44,17 +44,24 @@ enum class WeaponId {
     SniperRifle = 107,
     Shotgun = 108,
     SuperShotgun = 109,
+    FlameThrower = 110,
     RocketLauncher = 111,
+    MedicineDart = 113,
+    Tranquiliser = 114,
     Grenade = 115,
     ClusterGrenade = 116,
     HighExplosiveGrenade = 117,
     RollerGrenade = 118,
+    FreezeGas = 120,
+    MadnessGas = 121,
+    PoisonGas = 122,
     ShrapnelGrenade = 123,
     Mortar = 124,
     Bazooka = 125,
     GrenadeLauncher = 126,
     Airburst = 127,
     SuperAirburst = 128,
+    MedicineBall = 129,
     Mine = 131,
     AntiPersonnelMine = 132,
     Tnt = 133,
@@ -62,6 +69,9 @@ enum class WeaponId {
     Suicide = 142,
     HealingHands = 143,
     SelfHeal = 144,
+    PickPocket = 145,
+    Hide = 146,
+    Shockwave = 147,
     SkipTurn = 156,
     Surrender = 157,
 };
@@ -72,7 +82,20 @@ enum class WeaponId {
 //   - Suicide: the hog blows itself up (blastRadius, damage);
 //   - SkipTurn: the turn ends at once;
 //   - Surrender: the team gives up: all its hogs fall.
-enum class WeaponKind { Melee, Bullet, Thrown, Shell, Placed, Heal, Suicide, SkipTurn, Surrender };
+//   - Shockwave: every hog around is thrown up and away;
+//   - Hide: the hog hides in a disguise until its next turn;
+//   - PickPocket: steals a weapon from the nearest enemy in reach.
+enum class WeaponKind {
+    Melee, Bullet, Thrown, Shell, Placed, Heal, Suicide, SkipTurn, Surrender, Shockwave, Hide, PickPocket
+};
+
+// What a weapon does to the hogs it reaches besides harm (the wiki's
+// descriptions of the gases, darts and medicine):
+//   - Heal: gives `damage` health instead of taking it (and cures);
+//   - Poison: 10 points lost at the start of each of the hog's turns;
+//   - Sleep: the hog misses its next turn;
+//   - Madness: the hog runs straight ahead for a while.
+enum class WeaponEffect { None, Heal, Poison, Sleep, Madness };
 
 struct WeaponSpec {
     WeaponId id = WeaponId::Trotter;
@@ -111,6 +134,14 @@ struct WeaponSpec {
 
     // How hard a hit throws a hog (world units per second at the centre).
     float knockback = 0.0f;
+
+    WeaponEffect effect = WeaponEffect::None;
+    // False for the few that leave the turn going on (healing hands, pick
+    // pocket, a single mine: the wiki's notes on them).
+    bool endsTurn = true;
+    // Bullets: how far the shots of a burst swing round from first to last
+    // (the flame thrower sweeps about 90 degrees).
+    float sweepDegrees = 0.0f;
 
     // Presentation, as the original's weapon table (warhogs_.exe at
     // 0x4D7300, see docs/formats/weapons.md); animation numbers as in

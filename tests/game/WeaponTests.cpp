@@ -98,6 +98,13 @@ TEST_CASE("Weapons: the table is complete and consistent", "[game][weapons]") {
         case WeaponKind::Suicide:
             CHECK(spec.blastRadius > 0.0f);
             break;
+        case WeaponKind::Shockwave:
+        case WeaponKind::PickPocket:
+            CHECK(spec.range > 0.0f);
+            break;
+        case WeaponKind::Hide:
+            CHECK(spec.damage > 0.0f);  // what the disguise takes
+            break;
         case WeaponKind::SkipTurn:
         case WeaponKind::Surrender:
             break;
