@@ -15,6 +15,14 @@ std::string toLower(std::string_view text) {
     return result;
 }
 
+std::string toUpper(std::string_view text) {
+    std::string result(text);
+    for (char& c : result) {
+        c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+    }
+    return result;
+}
+
 std::string trim(std::string_view text) {
     constexpr std::string_view whitespace = " \t\r\n";
 

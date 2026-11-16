@@ -52,6 +52,8 @@ struct CollisionBox {
 
     // Horizontal distance from a point to the box's footprint (0 inside).
     float footprintDistance(float x, float z) const;
+    // Distance from a point to the box (0 inside), in all three axes.
+    float distanceTo(const glm::vec3& point) const;
 };
 
 // The boxes of a map's objects. Hogs (the "_ME" objects) are left out,

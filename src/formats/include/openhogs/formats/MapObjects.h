@@ -25,6 +25,11 @@ inline constexpr int kAngleUnitsPerTurn = 4096;
 // Collision box sizes are stored in steps of 64 world units.
 inline constexpr int kBoxSizeUnit = 64;
 
+// MapObject::health: the object keeps the health of its kind.
+inline constexpr std::uint16_t kDefaultHealth = 0xff;
+// MapObject::presence: the object cannot be destroyed.
+inline constexpr std::uint8_t kIndestructibleBit = 0x40;
+
 struct MapObject {
     std::string modelName;  // e.g. "CRATE1": model files are CRATE1.VTX/.FAC/.NO2
 
@@ -47,6 +52,12 @@ struct MapObject {
     std::int16_t boxSizeX = 0;
     std::int16_t boxSizeY = 0;
     std::int16_t boxSizeZ = 0;
+    // Offset 56: the object's health in points, replacing the default of
+    // its kind (game/Destructibles.h); kDefaultHealth keeps the default.
+    std::uint16_t health = kDefaultHealth;
+    // Offset 58: bits 0-3 in which games the object appears (by number of
+    // players, when bit 5 is set), bit 6 cannot be destroyed (scenery).
+    std::uint8_t presence = 0;
     std::uint8_t team = 0;         // bit mask of teams (hogs only)
     std::int16_t scriptType = 0;   // mission script role, 0 = none
     // The script's group (objects of one objective share it), its

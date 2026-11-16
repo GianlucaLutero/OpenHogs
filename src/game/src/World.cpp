@@ -301,12 +301,15 @@ void World::setObjectives(std::vector<Objective> objectives, std::size_t objectC
 }
 
 void World::updateObjectives(std::vector<GameEvent>& events) {
-    // Hogs that died in this step: their objectives are destroyed (or, for
-    // a hog that had somewhere to go, lost). The list grows as rewards are
+    // Hogs that died and objects destroyed in this step: their objectives
+    // are done (or, for a hog that had somewhere to go, lost). The list grows as rewards are
     // reported, hence the index.
     for (std::size_t e = 0; e < events.size(); ++e) {
-        if (events[e].type != GameEventType::Died || events[e].hog >= hogs_.size()) continue;
-        if (const auto result = destroyObjective(objectives_, hogs_[events[e].hog].object)) {
+        std::optional<std::size_t> gone;
+        if (events[e].type == GameEventType::Died && events[e].hog < hogs_.size()) gone = hogs_[events[e].hog].object;
+        if (events[e].type == GameEventType::ObjectDestroyed) gone = events[e].object;
+        if (!gone) continue;
+        if (const auto result = destroyObjective(objectives_, *gone)) {
             objectiveDone(*result, events);
         }
     }
@@ -339,6 +342,43 @@ void World::objectiveDone(const ObjectiveResult& result, std::vector<GameEvent>&
         pickups_.push_back(drop);
     }
     events.push_back(event);
+}
+
+void World::damageObjects(const glm::vec3& centre, float radius, float damage, std::vector<GameEvent>& events) {
+    if (radius <= 0.0f) return;
+    // As for hogs (explode): all of the damage at the centre, none at the
+    // edge, measured to the nearest point of the object's box. The box
+    // list shrinks as objects go, so the hits are gathered first.
+    std::vector<std::pair<std::size_t, float>> hits;
+    for (const auto& box : map_.boxes()) {
+        const float distance = box.distanceTo(centre);
+        if (distance < radius) hits.emplace_back(box.object, damage * (1.0f - distance / radius));
+    }
+    for (const auto& [object, amount] : hits) {
+        damageMapObject(object, amount, events);
+    }
+}
+
+void World::damageMapObject(std::size_t object, float amount, std::vector<GameEvent>& events) {
+    const auto target = std::find_if(destructibles_.begin(), destructibles_.end(),
+                                     [&](const Destructible& d) { return d.object == object; });
+    if (target == destructibles_.end() || !damageObject(*target, amount)) return;
+
+    GameEvent destroyed;
+    destroyed.type = GameEventType::ObjectDestroyed;
+    destroyed.object = object;
+    destroyed.amount = target->blowsUp() ? 1.0f : 0.0f;
+    for (const auto& box : map_.boxes()) {
+        if (box.object == object) {
+            destroyed.position = box.centre;
+            if (target->blowsUp()) {
+                explosions_.push_back({box.centre, std::max({box.halfSize.x, box.halfSize.y, box.halfSize.z}), 0.0f});
+            }
+            break;
+        }
+    }
+    map_.removeObject(object);  // whatever stood on it falls
+    events.push_back(destroyed);
 }
 
 void World::fire(std::size_t hogIndex, float power, std::vector<GameEvent>& events) {
@@ -445,6 +485,8 @@ void World::fireShot(std::vector<GameEvent>& events) {
                 knockHog(target, push + glm::vec3(0.0f, spec.knockback, 0.0f));
             }
             damageHog(hogs_, *hit.hog, spec.damage, events);
+        } else if (hit.object) {
+            damageMapObject(*hit.object, spec.damage, events);
         }
     }
 
@@ -467,6 +509,7 @@ void World::detonate(const Projectile& projectile, std::vector<GameEvent>& event
     explosions_.push_back({centre, spec.blastRadius, 0.0f});
 
     explode(hogs_, centre, spec.blastRadius, spec.damage, spec.knockback, events);
+    damageObjects(centre, spec.blastRadius, spec.damage, events);
 
     // Explosives lying within the blast go off too, a moment later.
     for (auto& other : projectiles_) {
@@ -745,12 +788,14 @@ World loadWorld(const core::VirtualFileSystem& vfs, std::string_view mapName, Tu
     std::vector<CollisionBox> boxes;
     std::vector<Pickup> pickups;
     std::vector<Objective> objectives;
+    std::vector<Destructible> destructibles;
     std::size_t objectCount = 0;
     if (vfs.exists(base + ".pog")) {
         const auto objects = formats::parseMapObjects(vfs.readFile(base + ".pog"));
         hogs = spawnHogs(objects, terrain);
         pickups = findPickups(objects);
         objectives = findObjectives(objects);
+        destructibles = findDestructibles(objects);
         objectCount = objects.size();
 
         // Only objects with a model in the map's archive get a collision box.
@@ -767,6 +812,7 @@ World loadWorld(const core::VirtualFileSystem& vfs, std::string_view mapName, Tu
     }
     World world(MapCollision(std::move(terrain), std::move(boxes)), std::move(hogs), rules, std::move(pickups));
     world.setObjectives(std::move(objectives), objectCount);
+    world.setDestructibles(std::move(destructibles));
     return world;
 }
 

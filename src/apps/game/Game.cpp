@@ -375,6 +375,11 @@ void Game::handleEvents(const std::vector<game::GameEvent>& events) {
             pickedUp(event);
             break;
         case GameEventType::ObjectiveDone: objectiveDone(event); break;
+        case GameEventType::ObjectDestroyed:
+            // The object goes from the picture; buildings and vehicles blow up.
+            mapRenderer_->hideObject(event.object);
+            if (event.amount > 0.0f) playSound(kExplosionSound);
+            break;
         case GameEventType::Hurt:         // voices and music: MatchAudio
         case GameEventType::TurnStarted:
         case GameEventType::MatchOver: break;

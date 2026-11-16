@@ -31,6 +31,7 @@ add_library(openhogs_game STATIC
     src/ChaseCamera.cpp
     src/ComputerPlayer.cpp
     src/Cutscenes.cpp
+    src/Destructibles.cpp
     src/Combat.cpp
     src/FieldConditions.cpp
     src/FixedTimestep.cpp
