@@ -38,6 +38,10 @@ enum class GameEventType {
     // in the .POG); position: its centre; amount: 1 if it blew up (a
     // building or vehicle), 0 if it just went (scenery).
     ObjectDestroyed,
+    ObjectRevealed,  // object: a hidden map object (index in the .POG) appeared
+    // A Boot Camp instruction (Training.h). text: gtext entry; speechLine:
+    // the instructor's line.
+    TrainingTip,
 };
 
 struct GameEvent {
@@ -52,6 +56,8 @@ struct GameEvent {
     std::size_t object = 0;
     bool dropped = false;
     int sergeantSection = -1;
+    int text = -1;
+    int speechLine = -1;
 };
 
 } // namespace openhogs::game

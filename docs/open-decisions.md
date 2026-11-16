@@ -127,6 +127,9 @@ answer.
 | 115 | Destruction | Crates, explosive drums and animals have health in the original too. | They cannot be destroyed yet. | `game::objectHealth` |
 | 116 | Awards | The executable skips the kill and 351-damage awards when the best hog is in the second team (it compares with 1 where -1 seems meant). | Not copied: every team can get every award. | `game::battleResults` |
 | 117 | Awards | Skirmish hogs have names in the original (the team's hog names); OpenHogs only names campaign hogs. The battle results table draws coloured boxes over the team columns. | The special award names the hog's team when the hog has no name; the boxes take each team's message colour. | `Application::battleResultLines`, `ui::battleResultLines` |
+| 118 | Boot Camp | When the executable ends the Boot Camp, whether it must be played and what it is worth. | It is the first mission of every new campaign (no skipping); it ends, won, when every crate of the chain has been taken; it counts like any mission (level complete and survival: 2 points). | `World::trainingComplete`, `Campaign` |
+| 119 | Boot Camp | The instructions name the original's keys (RETURN for the skill menu, CTRL to aim, SPACE to fire...), and some are shown in states OpenHogs does not have (213 when the skill menu opens, the empty 230 and 235). | The texts are shown as the original writes them, for 8 seconds each; 213, 230 and 235 are not used; the weapon tips (214, 218, 223) appear the first time the weapon is in hand. | `game/Training.h`, `Game::handleEvents` |
+| 120 | Weapons | Melee weapons also hit objects in reach (the Boot Camp's first dummy is attacked with the bayonet); how the original's melee damages objects has not been read. | The weapon's damage to each object box in reach in front of the hog. | `World::fireMelee` |
 
 ## Settled
 

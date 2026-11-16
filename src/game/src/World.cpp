@@ -250,6 +250,7 @@ void World::useStock(std::size_t hogIndex) {
     if (hog.ownWeapons > hog.weapons.size() || hog.weaponSlot % std::max<std::size_t>(hog.weapons.size(), 1) < hog.ownWeapons) {
         return;  // one of its own weapons: never runs out
     }
+    if (training_) return;  // the Boot Camp's crate weapons never run out
     int& count = stock_[hog.team][hog.selectedWeapon()];
     if (count > 0) --count;
     if (count == 0) refreshStockWeapons(hog.team);
@@ -258,7 +259,7 @@ void World::useStock(std::size_t hogIndex) {
 void World::collectPickups(std::vector<GameEvent>& events) {
     for (std::size_t p = 0; p < pickups_.size(); ++p) {
         Pickup& pickup = pickups_[p];
-        if (pickup.taken) continue;
+        if (pickup.taken || pickup.hidden) continue;
         for (std::size_t h = 0; h < hogs_.size(); ++h) {
             Hog& hog = hogs_[h];
             if (!hog.alive || !touches(pickup, hog.position)) continue;
@@ -273,7 +274,8 @@ void World::collectPickups(std::vector<GameEvent>& events) {
             switch (pickup.kind) {
             case PickupKind::Health: {
                 const float before = hog.health;
-                hog.health = std::min(hog.maxHealth, hog.health + static_cast<float>(pickup.amount));
+                const int amount = training_ ? kTrainingHealthCrate : pickup.amount;
+                hog.health = std::min(hog.maxHealth, hog.health + static_cast<float>(amount));
                 event.amount = hog.health - before;
                 break;
             }
@@ -281,7 +283,8 @@ void World::collectPickups(std::vector<GameEvent>& events) {
                 event.amount = static_cast<float>(pickup.amount);
                 if (const auto weapon = pickup.weapon()) {
                     event.weapon = *weapon;
-                    stock_[hog.team][*weapon] += pickup.amount;
+                    // In training, crate weapons never run out (useStock).
+                    stock_[hog.team][*weapon] += training_ ? 1 : pickup.amount;
                     refreshStockWeapons(hog.team);
                 }
                 break;
@@ -308,6 +311,10 @@ void World::updateObjectives(std::vector<GameEvent>& events) {
         std::optional<std::size_t> gone;
         if (events[e].type == GameEventType::Died && events[e].hog < hogs_.size()) gone = hogs_[events[e].hog].object;
         if (events[e].type == GameEventType::ObjectDestroyed) gone = events[e].object;
+        // A crate picked up counts as gone too (FUN_00464630).
+        if (events[e].type == GameEventType::PickedUp && events[e].pickup < pickups_.size()) {
+            gone = pickups_[events[e].pickup].object;
+        }
         if (!gone) continue;
         if (const auto result = destroyObjective(objectives_, *gone)) {
             objectiveDone(*result, events);
@@ -328,6 +335,81 @@ void World::updateObjectives(std::vector<GameEvent>& events) {
     }
 }
 
+void World::setTraining(bool training) {
+    training_ = training;
+    if (!training) return;
+    // The Boot Camp's hog starts with nothing: crates bring the weapons.
+    for (auto& hog : hogs_) {
+        hog.weapons.clear();
+        hog.ownWeapons = 0;
+        hog.weaponSlot = 0;
+    }
+}
+
+void World::hideObjects(const std::vector<std::size_t>& objects) {
+    for (const std::size_t object : objects) {
+        hiddenBoxes_[object] = map_.takeObject(object);
+        for (std::size_t p = 0; p < pickups_.size(); ++p) {
+            if (pickups_[p].object != object) continue;
+            pickups_[p].hidden = true;
+            trainingCrates_.push_back(p);  // the crates of the chain
+        }
+    }
+}
+
+void World::reveal(std::size_t object, std::vector<GameEvent>& events) {
+    const auto hidden = hiddenBoxes_.find(object);
+    if (hidden == hiddenBoxes_.end()) return;  // already in sight
+    map_.addBoxes(hidden->second);
+    hiddenBoxes_.erase(hidden);
+
+    GameEvent revealed;
+    revealed.type = GameEventType::ObjectRevealed;
+    revealed.object = object;
+    events.push_back(revealed);
+    for (auto& pickup : pickups_) {
+        if (pickup.object != object) continue;
+        pickup.hidden = false;
+        if (training_) {
+            if (const auto tip = tipWhenCrateAppears(pickup)) trainingTip(*tip, events);
+        }
+    }
+}
+
+void World::trainingTip(const TrainingTip& tip, std::vector<GameEvent>& events) {
+    GameEvent event;
+    event.type = GameEventType::TrainingTip;
+    event.text = tip.text;
+    event.speechLine = tip.line;
+    events.push_back(event);
+}
+
+void World::trainingTips(std::optional<std::size_t> active, std::vector<GameEvent>& events) {
+    if (!trainingStarted_) {
+        trainingStarted_ = true;
+        trainingTip(trainingStartTip(), events);
+    }
+    // Crates picked up in this step (the list grows as tips are added).
+    for (std::size_t e = 0; e < events.size(); ++e) {
+        if (events[e].type != GameEventType::PickedUp || events[e].pickup >= pickups_.size()) continue;
+        if (const auto tip = tipWhenCratePicked(pickups_[events[e].pickup])) trainingTip(*tip, events);
+    }
+    // How to use a weapon, the first time it is in hand.
+    if (active && hogs_[*active].alive && !hogs_[*active].weapons.empty()) {
+        const WeaponId weapon = hogs_[*active].selectedWeapon();
+        if (!weaponsTipped_.contains(weapon)) {
+            weaponsTipped_.insert(weapon);
+            if (const auto tip = tipWhenWeaponTaken(weapon)) trainingTip(*tip, events);
+        }
+    }
+}
+
+bool World::trainingComplete() const {
+    if (!training_ || trainingCrates_.empty()) return false;
+    return std::all_of(trainingCrates_.begin(), trainingCrates_.end(),
+                       [&](std::size_t p) { return pickups_[p].taken; });
+}
+
 void World::recordDeeds(std::optional<std::size_t> active, const std::vector<GameEvent>& events) {
     for (const auto& event : events) {
         if (!active || event.hog >= hogs_.size()) continue;
@@ -346,6 +428,14 @@ void World::recordDeeds(std::optional<std::size_t> active, const std::vector<Gam
 }
 
 void World::objectiveDone(const ObjectiveResult& result, std::vector<GameEvent>& events) {
+    if (result.revealGroup) {
+        std::vector<std::size_t> crates;
+        for (const auto& pickup : pickups_) crates.push_back(pickup.object);
+        for (const std::size_t object : revealGroup(objectives_, *result.revealGroup, crates)) {
+            reveal(object, events);
+        }
+    }
+    if (!result.drop && result.pointsLost == 0 && result.sergeantSection < 0) return;  // only revealed things
     GameEvent event;
     event.type = GameEventType::ObjectiveDone;
     event.amount = static_cast<float>(result.pointsLost);
@@ -463,6 +553,20 @@ void World::fireMelee(std::size_t hogIndex, const WeaponSpec& spec, std::vector<
         knockHog(target, direction * spec.knockback + glm::vec3(0.0f, kMeleeLift, 0.0f));
         damageHog(hogs_, i, spec.damage, events);
     }
+
+    // Objects within reach in front are hit too (the Boot Camp's first
+    // dummy is attacked with the bayonet). The box list shrinks as objects
+    // go, so the hits are gathered first.
+    const glm::vec3 reachPoint = attacker.position + glm::vec3(0.0f, kMuzzleHeight, 0.0f);
+    std::vector<std::size_t> struck;
+    for (const auto& box : map_.boxes()) {
+        glm::vec3 toBox = box.centre - attacker.position;
+        toBox.y = 0.0f;
+        const float along = glm::length(toBox);
+        const bool inFront = along < 1.0f || glm::dot(toBox / along, facing) >= kMeleeConeCosine;
+        if (inFront && box.distanceTo(reachPoint) <= spec.range) struck.push_back(box.object);
+    }
+    for (const std::size_t object : struck) damageMapObject(object, spec.damage, events);
 }
 
 void World::fireShot(std::vector<GameEvent>& events) {
@@ -608,8 +712,9 @@ bool World::matchIsDecided() const {
         return false;
     }
     const auto living = turns_->livingTeams(hogs_);
-    // A map with a single team (training) only ends if that team is wiped out.
-    return living.empty() || (hadSeveralTeams_ && living.size() <= 1);
+    // A map with a single team (training) only ends if that team is wiped
+    // out, or when the Boot Camp is done.
+    return living.empty() || (hadSeveralTeams_ && living.size() <= 1) || trainingComplete();
 }
 
 void World::finishMatch(std::vector<GameEvent>& events) {
@@ -725,6 +830,7 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
     stepProjectiles(seconds, events);
     updateEffects(seconds);
     updateObjectives(events);
+    if (training_) trainingTips(active, events);
     recordDeeds(active, events);
 
     if (!turns_ || phase_ == MatchPhase::Over) {
@@ -814,12 +920,16 @@ World loadWorld(const core::VirtualFileSystem& vfs, std::string_view mapName, Tu
     std::vector<Pickup> pickups;
     std::vector<Objective> objectives;
     std::vector<Destructible> destructibles;
+    std::vector<std::size_t> hidden;
     std::size_t objectCount = 0;
     if (vfs.exists(base + ".pog")) {
         const auto objects = formats::parseMapObjects(vfs.readFile(base + ".pog"));
         hogs = spawnHogs(objects, terrain);
         pickups = findPickups(objects);
-        objectives = findObjectives(objects);
+        objectives = findObjectives(objects, isTrainingMap(mapName));
+        for (std::size_t i = 0; i < objects.size(); ++i) {
+            if (startsHidden(objects[i], isTrainingMap(mapName))) hidden.push_back(i);
+        }
         destructibles = findDestructibles(objects);
         objectCount = objects.size();
 
@@ -838,6 +948,8 @@ World loadWorld(const core::VirtualFileSystem& vfs, std::string_view mapName, Tu
     World world(MapCollision(std::move(terrain), std::move(boxes)), std::move(hogs), rules, std::move(pickups));
     world.setObjectives(std::move(objectives), objectCount);
     world.setDestructibles(std::move(destructibles));
+    world.setTraining(isTrainingMap(mapName));
+    world.hideObjects(hidden);
     return world;
 }
 

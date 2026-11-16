@@ -115,7 +115,7 @@ TEST_CASE("Campaign medals follow the executable", "[game][campaign][awards]") {
     CHECK(specialMedals(24) == 5);
 
     Campaign campaign(0, kNames);
-    for (int i = 1; i < 15; ++i) campaign.recordMission(won({0}), 5);
+    for (int i = 0; i < 15; ++i) campaign.recordMission(won({0}), 5);  // the Boot Camp, then 1 to 14
     REQUIRE(campaign.nextMission() == 15);
     auto outcome = campaign.recordMission(won({0}, 0), 5);
     CHECK(outcome.specialMedalsWon == 1);

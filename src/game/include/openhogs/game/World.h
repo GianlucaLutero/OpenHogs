@@ -26,10 +26,12 @@
 #include "openhogs/game/Objectives.h"
 #include "openhogs/game/Pickups.h"
 #include "openhogs/game/Projectiles.h"
+#include "openhogs/game/Training.h"
 #include "openhogs/game/TurnSystem.h"
 
 #include <functional>
 #include <map>
+#include <set>
 #include <optional>
 #include <random>
 #include <string_view>
@@ -86,6 +88,12 @@ public:
     // The objects weapons can destroy; destroyed ones stay, marked.
     const std::vector<Destructible>& destructibles() const { return destructibles_; }
     void setDestructibles(std::vector<Destructible> destructibles) { destructibles_ = std::move(destructibles); }
+    // Training mode (the Boot Camp, Training.h): set before the first update.
+    void setTraining(bool training);
+    bool training() const { return training_; }
+    // Hides map objects until an objective reveals them (Objectives.h).
+    void hideObjects(const std::vector<std::size_t>& objects);
+    bool isHidden(std::size_t object) const { return hiddenBoxes_.contains(object); }
     // How many of a weapon a team has from crates (beyond its hogs' own).
     int stock(int team, WeaponId weapon) const;
 
@@ -136,6 +144,10 @@ private:
     void updateObjectives(std::vector<GameEvent>& events);
     void recordDeeds(std::optional<std::size_t> active, const std::vector<GameEvent>& events);
     void objectiveDone(const ObjectiveResult& result, std::vector<GameEvent>& events);
+    void reveal(std::size_t object, std::vector<GameEvent>& events);
+    void trainingTip(const TrainingTip& tip, std::vector<GameEvent>& events);
+    void trainingTips(std::optional<std::size_t> active, std::vector<GameEvent>& events);
+    bool trainingComplete() const;
     void damageObjects(const glm::vec3& centre, float radius, float damage, std::vector<GameEvent>& events);
     void damageMapObject(std::size_t object, float amount, std::vector<GameEvent>& events);
     void refreshStockWeapons(int team);
@@ -158,6 +170,11 @@ private:
     std::vector<Pickup> pickups_;
     std::vector<Objective> objectives_;
     std::vector<Destructible> destructibles_;
+    bool training_ = false;
+    std::map<std::size_t, std::vector<CollisionBox>> hiddenBoxes_;  // hidden object -> its boxes
+    std::vector<std::size_t> trainingCrates_;  // pickups of the Boot Camp's chain
+    bool trainingStarted_ = false;
+    std::set<WeaponId> weaponsTipped_;
     std::size_t nextDropObject_ = 0;  // the object number of the next reward crate
     std::map<int, std::map<WeaponId, int>> stock_;  // team -> weapon -> how many, from crates
     std::optional<TurnSystem> turns_;

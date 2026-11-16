@@ -37,6 +37,10 @@ public:
     // Stops drawing map object `object` (its index in the .POG): a crate
     // that was picked up.
     void hideObject(std::size_t object) { hidden_.insert(object); }
+    // Draws a hidden object again (one revealed by an objective).
+    void showObject(std::size_t object) { hidden_.erase(object); }
+    // The objects the scene places (to hide those the world keeps hidden).
+    const std::vector<scene::ModelInstance>& objects() const { return objects_; }
 
     // Draws one more model, such as a reward crate that appeared during
     // the match. Ignored if the scene did not load that model (MapScene

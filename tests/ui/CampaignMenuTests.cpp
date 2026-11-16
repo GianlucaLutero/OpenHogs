@@ -42,7 +42,7 @@ TEST_CASE("The squad page marks the hogs that go on the mission", "[ui][campaign
     CHECK(items[3].label == "MONTY");
     CHECK(items[0].detail == "GRUNT");
     CHECK(menu.menu().selectedItem().label == "START MISSION");
-    CHECK(menu.lines().front() == "MISSION 01 : MISSION 1");  // no text table: fallback name
+    CHECK(menu.lines().front() == "MISSION 00 : MISSION 0");  // the Boot Camp; no text table: fallback name
     CHECK(press(menu, campaign, {MenuInput::Confirm}).request == CampaignMenuResult::Request::StartMission);
 }
 

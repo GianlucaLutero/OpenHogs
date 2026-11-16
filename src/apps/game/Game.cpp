@@ -76,6 +76,7 @@ game::TurnRules turnRules(const GameOptions& options) {
 // How long the match messages stay on screen.
 constexpr double kTurnMessageSeconds = 2.5;
 constexpr double kEndMessageSeconds = -1.0;  // until the players leave
+constexpr double kTrainingTipSeconds = 8.0;
 
 } // namespace
 
@@ -92,6 +93,9 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Inter
         std::cerr << "Warning: " << warning << "\n";
     }
     mapRenderer_ = std::make_unique<render::MapRenderer>(scene);
+    for (const auto& object : mapRenderer_->objects()) {
+        if (world_.isHidden(object.object)) mapRenderer_->hideObject(object.object);  // until revealed
+    }
     hogRenderer_ = std::make_unique<render::CharacterRenderer>();
     effects_ = std::make_unique<render::EffectsRenderer>();
     try {
@@ -375,6 +379,11 @@ void Game::handleEvents(const std::vector<game::GameEvent>& events) {
             pickedUp(event);
             break;
         case GameEventType::ObjectiveDone: objectiveDone(event); break;
+        case GameEventType::ObjectRevealed: mapRenderer_->showObject(event.object); break;
+        case GameEventType::TrainingTip:
+            // The Boot Camp's instruction stays a while (the instructor says it: MatchAudio).
+            showMessage(interface_.strings().trainingText(event.text), kTrainingTipSeconds, false);
+            break;
         case GameEventType::ObjectDestroyed:
             // The object goes from the picture; buildings and vehicles blow up.
             mapRenderer_->hideObject(event.object);

@@ -9,9 +9,8 @@
 //     Hogshead 1-5, Saustralia 6-10, Trotsville 11-15, Bellyopolis 16-20,
 //     Arstria 21-24, Isle of Swill 25,
 //
-// each on its own map, with a turn time of its own. (Boot camp, the
-// training mission, needs the map's scripted objectives and is not played
-// yet.)
+// each on its own map, with a turn time of its own. Before them comes the
+// Boot Camp (mission 0, the CAMP map), the training of Training.h.
 //
 // The rules follow the game's manual:
 //   - the squad has eight hogs; the first five (three in mission 1) go on
@@ -46,6 +45,8 @@ class IniFile;
 namespace openhogs::game {
 
 inline constexpr int kMissionCount = 25;
+// The training mission a new campaign starts with.
+inline constexpr int kBootCampMission = 0;
 inline constexpr std::size_t kSquadSize = 8;
 inline constexpr std::size_t kDeployedHogs = 5;
 
@@ -67,8 +68,9 @@ struct Mission {
     double turnSeconds = 60.0;
 };
 
-// Mission `number` (1 to 25). Throws std::out_of_range otherwise.
+// Mission `number` (0, the Boot Camp, to 25). Throws std::out_of_range otherwise.
 const Mission& campaignMission(int number);
+// Missions 1 to 25 (the Boot Camp is campaignMission(kBootCampMission)).
 std::span<const Mission> campaignMissions();
 
 // True for the last mission of an island (5, 10, 15, 20, 24 and 25).
@@ -151,7 +153,7 @@ private:
     friend Campaign loadCampaign(const core::IniFile& ini);
 
     int nation_ = 0;
-    int nextMission_ = 1;
+    int nextMission_ = kBootCampMission;
     int points_ = 0;
     std::vector<SquadMember> squad_;
     std::vector<std::string> names_;

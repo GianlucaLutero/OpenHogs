@@ -28,7 +28,15 @@
 //   16   | group gone  | the player loses `item` promotion points
 //
 // Other script types (9, 15, 17, 18) count in their group but give
-// nothing. Types 20 to 23 belong to the Boot Camp and are not handled here.
+// nothing.
+//
+// Types 20 to 23 reveal hidden objects, the way the Boot Camp leads the
+// player on (FUN_004aa170): an object with type 20 or 21, when destroyed,
+// reveals every object whose group is its parameter 0; with type 22 or 23
+// it does so once the last object of its own group is gone. Objects with
+// type 21 or 23 start hidden. In training (the CAMP map, where the
+// executable sets DAT_005207a8), crates with a group start hidden too and
+// carry a type-21 objective; a crate's objective ends when it is revealed.
 //
 // This module only decides; World applies the result (adds the crate,
 // reports the event).
@@ -64,11 +72,27 @@ struct ObjectiveResult {
     std::optional<Pickup> drop;  // a crate to add to the map
     int pointsLost = 0;          // promotion points taken from the player
     int sergeantSection = -1;    // the sergeant's comment (sargeSpeechPath)
+    std::optional<int> revealGroup;  // the group of hidden objects to reveal
 };
 
-// The objectives among a map's objects (script types 1 to 18, except the
-// crates themselves).
-std::vector<Objective> findObjectives(const std::vector<formats::MapObject>& objects);
+// Script types of the Boot Camp's chain of hidden objects.
+inline constexpr int kRevealOnDestroy = 20;
+inline constexpr int kHiddenRevealOnDestroy = 21;
+inline constexpr int kRevealWithGroup = 22;
+inline constexpr int kHiddenRevealWithGroup = 23;
+
+// The objectives among a map's objects (script types 1 to 23, except the
+// crates themselves, which only have one in training).
+std::vector<Objective> findObjectives(const std::vector<formats::MapObject>& objects, bool training = false);
+
+// Whether a map object starts hidden (types 21 and 23; crates with a
+// group in training).
+bool startsHidden(const formats::MapObject& object, bool training);
+
+// The objects that `group` reveals: those whose objective has that group.
+// Revealing a crate ends its objective.
+std::vector<std::size_t> revealGroup(std::vector<Objective>& objectives, int group,
+                                     const std::vector<std::size_t>& crates);
 
 // The cell of the 32 x 32 grid the original compares positions in: a
 // cell is 512 units wide and the map runs from -16384 to 16383.

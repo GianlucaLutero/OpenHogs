@@ -43,6 +43,9 @@ struct Pickup {
     // rather than one of the map's crates; `object` is then a number
     // after the map's objects, so it can be shown and hidden the same way.
     bool dropped = false;
+    // Hidden until revealed (a Boot Camp crate, see Training.h): it cannot
+    // be picked up or seen.
+    bool hidden = false;
 
     // The weapon a weapon crate holds, if OpenHogs has it.
     std::optional<WeaponId> weapon() const;
