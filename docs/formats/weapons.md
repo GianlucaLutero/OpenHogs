@@ -43,9 +43,11 @@ super shotgun, rocket launcher, grenade, cluster, high-explosive, roller
 and shrapnel grenades, mortar, bazooka, grenade launcher, airburst, super
 airburst, mine, anti-personnel mine, TNT, super TNT, suicide, healing
 hands, self heal, skip turn, surrender, flame thrower, medicine dart,
-tranquiliser, freeze, madness and poison gas, medicine ball, pick pocket,
-hide and shockwave. The others (missiles, shells, airstrikes, jetpack,
-special ops, vehicles...) are listed in `docs/open-decisions.md`.
+tranquiliser, freeze, madness, poison and confusion gas, medicine ball,
+pick pocket, hide, shockwave, guided and homing missiles, the six shells
+(long range, mine, gas, fire rain, 1000 lbs, shock), jetpack, special
+ops, airstrike and F-rain airstrike. The others (vehicles, map view,
+binoculars) are listed in `docs/open-decisions.md`.
 Behaviour not found in the executable (lasting effects, healing amounts,
 the ranks' number of uses) follows the Hogs of War Wiki.
 

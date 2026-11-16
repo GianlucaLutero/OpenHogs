@@ -17,6 +17,8 @@
 //             mortar, rocket);
 //   - Placed: put down at the hog's feet (TNT with a fuse, mines that go
 //             off when a hog comes near).
+// Shells may also steer themselves (homing missile) or be steered by the
+// player (guided missile): see Guidance.
 //
 // The numbers (damage, blast radius, speed...) are OpenHogs' own until the
 // original's are known: see docs/open-decisions.md.
@@ -46,12 +48,14 @@ enum class WeaponId {
     SuperShotgun = 109,
     FlameThrower = 110,
     RocketLauncher = 111,
+    GuidedMissile = 112,
     MedicineDart = 113,
     Tranquiliser = 114,
     Grenade = 115,
     ClusterGrenade = 116,
     HighExplosiveGrenade = 117,
     RollerGrenade = 118,
+    ConfusionGas = 119,
     FreezeGas = 120,
     MadnessGas = 121,
     PoisonGas = 122,
@@ -62,16 +66,27 @@ enum class WeaponId {
     Airburst = 127,
     SuperAirburst = 128,
     MedicineBall = 129,
+    HomingMissile = 130,
     Mine = 131,
     AntiPersonnelMine = 132,
     Tnt = 133,
     SuperTnt = 134,
+    LongRangeShell = 135,
+    MineShell = 136,
+    GasShell = 137,
+    FireRainShell = 138,
+    ThousandPoundShell = 139,
+    ShockShell = 140,
+    Jetpack = 141,
     Suicide = 142,
     HealingHands = 143,
     SelfHeal = 144,
     PickPocket = 145,
     Hide = 146,
     Shockwave = 147,
+    SpecialOps = 148,
+    Airstrike = 149,
+    FireRainAirstrike = 150,
     SkipTurn = 156,
     Surrender = 157,
 };
@@ -84,18 +99,31 @@ enum class WeaponId {
 //   - Surrender: the team gives up: all its hogs fall.
 //   - Shockwave: every hog around is thrown up and away;
 //   - Hide: the hog hides in a disguise until its next turn;
-//   - PickPocket: steals a weapon from the nearest enemy in reach.
+//   - PickPocket: steals a weapon from the nearest enemy in reach;
+//   - Jetpack: the hog flies for a while, then comes down by parachute;
+//   - SpecialOps: the hog is dropped by parachute on a chosen spot;
+//   - Airstrike: bombs fall from the sky along a line over a chosen spot.
+// The chosen spot of SpecialOps and Airstrike lies straight ahead of the
+// hog, as far as the power the player charges (up to `range`).
 enum class WeaponKind {
-    Melee, Bullet, Thrown, Shell, Placed, Heal, Suicide, SkipTurn, Surrender, Shockwave, Hide, PickPocket
+    Melee, Bullet, Thrown, Shell, Placed, Heal, Suicide, SkipTurn, Surrender, Shockwave, Hide, PickPocket,
+    Jetpack, SpecialOps, Airstrike
 };
+
+// How a shell finds its way:
+//   - None: a plain ballistic flight;
+//   - Homing: after a moment it turns towards the nearest enemy;
+//   - Guided: the player steers it while it flies (turn and aim keys).
+enum class Guidance { None, Homing, Guided };
 
 // What a weapon does to the hogs it reaches besides harm (the wiki's
 // descriptions of the gases, darts and medicine):
 //   - Heal: gives `damage` health instead of taking it (and cures);
 //   - Poison: 10 points lost at the start of each of the hog's turns;
 //   - Sleep: the hog misses its next turn;
-//   - Madness: the hog runs straight ahead for a while.
-enum class WeaponEffect { None, Heal, Poison, Sleep, Madness };
+//   - Madness: the hog runs straight ahead for a while;
+//   - Confusion: during the hog's next turn its controls are reversed.
+enum class WeaponEffect { None, Heal, Poison, Sleep, Madness, Confusion };
 
 struct WeaponSpec {
     WeaponId id = WeaponId::Trotter;
@@ -142,6 +170,12 @@ struct WeaponSpec {
     // Bullets: how far the shots of a burst swing round from first to last
     // (the flame thrower sweeps about 90 degrees).
     float sweepDegrees = 0.0f;
+
+    // Shells: how they steer (missiles), and what they leave where they
+    // burst (the mine shell lays a mine; `hasPayload` false: nothing).
+    Guidance guidance = Guidance::None;
+    bool hasPayload = false;
+    WeaponId payload = WeaponId::Mine;
 
     // Presentation, as the original's weapon table (warhogs_.exe at
     // 0x4D7300, see docs/formats/weapons.md); animation numbers as in

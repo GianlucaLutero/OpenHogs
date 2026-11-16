@@ -16,7 +16,7 @@ using C = Career;
 
 // Health, weapons and uses as listed by the Hogs of War Wiki's rank
 // pages (they agree with the manual for the Grunt and the first career
-// ranks), with the weapons OpenHogs does not have yet left out. Body
+// ranks). Body
 // models: the PC files have one model per career line, not per rank; the
 // Commando wears the saboteur's (as do the maps' commandos) and the Hero
 // the legend's (docs/open-decisions.md).
@@ -55,13 +55,14 @@ const std::array<RankSpec, 15> kRanks{{
      {{W::Mine, 3}, {W::Tnt, 3}, {W::ShrapnelGrenade, 3}, {W::Suicide, 1}}},
     {R::Commando, "commando", 67, "COMMANDO", C::Officer, 4, 130, "saboteur",
      {W::Knife, W::MachineGun, W::SniperRifle, W::MedicineDart, W::ClusterGrenade, W::PoisonGas, W::Bazooka, W::Airburst,
-      W::Tnt, W::Hide},
-     {{W::MachineGun, 1}, {W::MedicineDart, 3}, {W::ClusterGrenade, 1}, {W::PoisonGas, 1}, {W::Airburst, 1}, {W::Tnt, 1}}},
+      W::Tnt, W::Jetpack, W::Hide},
+     {{W::MachineGun, 1}, {W::MedicineDart, 3}, {W::ClusterGrenade, 1}, {W::PoisonGas, 1}, {W::Airburst, 1}, {W::Tnt, 1},
+      {W::Jetpack, 1}}},
     {R::Hero, "hero", 77, "HERO", C::Officer, 5, 150, "legend",
      {W::Sword, W::HeavyMachineGun, W::SniperRifle, W::MedicineDart, W::ClusterGrenade, W::PoisonGas, W::Bazooka,
-      W::Airburst, W::Tnt, W::SelfHeal, W::Hide},
+      W::Airburst, W::Tnt, W::Jetpack, W::SelfHeal, W::Hide, W::SpecialOps, W::Airstrike},
      {{W::HeavyMachineGun, 1}, {W::MedicineDart, 3}, {W::ClusterGrenade, 1}, {W::PoisonGas, 1}, {W::Airburst, 1},
-      {W::Tnt, 1}, {W::SelfHeal, 1}}},
+      {W::Tnt, 1}, {W::Jetpack, 1}, {W::SelfHeal, 1}, {W::SpecialOps, 1}, {W::Airstrike, 1}}},
 }};
 
 } // namespace

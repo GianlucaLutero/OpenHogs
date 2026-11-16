@@ -105,6 +105,17 @@ TEST_CASE("Weapons: the table is complete and consistent", "[game][weapons]") {
         case WeaponKind::Hide:
             CHECK(spec.damage > 0.0f);  // what the disguise takes
             break;
+        case WeaponKind::Jetpack:
+            CHECK(spec.fuseSeconds > 0.0f);  // seconds of flight
+            break;
+        case WeaponKind::SpecialOps:
+            CHECK(spec.range > 0.0f);
+            break;
+        case WeaponKind::Airstrike:
+            CHECK(spec.range > 0.0f);
+            CHECK(spec.shots > 0);
+            CHECK(spec.blastRadius > 0.0f);
+            break;
         case WeaponKind::SkipTurn:
         case WeaponKind::Surrender:
             break;

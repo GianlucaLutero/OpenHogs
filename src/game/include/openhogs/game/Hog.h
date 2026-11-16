@@ -102,6 +102,14 @@ struct Hog {
     bool asleep = false;            // misses its next turn
     float madnessSecondsLeft = 0.0f;  // runs straight ahead until it is over
     float hideShield = 0.0f;        // > 0: hidden in a disguise that takes this much damage
+    bool confused = false;          // its next turn will be played with reversed controls
+    bool controlsReversed = false;  // this turn: forward is back, left is right
+
+    // Flying (Weapons.h, JETPACK and SPECIAL OPS): seconds of jetpack flight
+    // left, and whether it comes down slowly under a parachute (no harm
+    // when it lands).
+    float jetpackSecondsLeft = 0.0f;
+    bool parachute = false;
     bool hidden() const { return hideShield > 0.0f; }
 
     float aimDegrees = 15.0f;       // above the horizon

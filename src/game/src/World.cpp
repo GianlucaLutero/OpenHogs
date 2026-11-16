@@ -47,6 +47,17 @@ constexpr float kChainReactionSeconds = 0.15f;
 // The gases' lasting effects (the wiki): poison takes 10 points at each of
 // the hog's turns, madness makes it run for about ten seconds.
 constexpr float kPoisonDamage = 10.0f;
+// Flying: special ops and airstrike bombs start this high above the ground;
+// the jetpack climbs and sinks at these speeds and turns a guided missile
+// at most this fast.
+constexpr float kDropHeight = 2500.0f;
+constexpr float kAirstrikeFallSpeed = 300.0f;
+constexpr float kJetpackClimbSpeed = 500.0f;
+constexpr float kJetpackSinkSpeed = 120.0f;
+constexpr float kJetpackSpeed = 600.0f;
+constexpr float kGuidedDegreesPerSecond = 90.0f;
+// How far apart the bombs of an airstrike fall, as a share of their blast.
+constexpr float kAirstrikeSpacing = 0.8f;
 constexpr float kMadnessSeconds = 10.0f;
 
 // Cluster grenades break into bomblets thrown around and up.
@@ -587,6 +598,108 @@ void World::fire(std::size_t hogIndex, float power, std::vector<GameEvent>& even
         events.push_back(fired);
         pickPocket(hogIndex, spec, events);
         break;
+    case WeaponKind::Jetpack:
+        // It takes off: the flight is steered with the movement keys (jump
+        // climbs) until the fuel runs out, then a parachute brings it down
+        // and the turn ends.
+        events.push_back(fired);
+        hog.jetpackSecondsLeft = spec.fuseSeconds;
+        hog.motion.state = MotionState::Airborne;
+        hog.motion.velocity = glm::vec3(0.0f);
+        hog.motion.jumped = false;
+        hog.motion.highestPoint = hog.position.y;
+        hog.drawnWeapon.reset();
+        hog.held.reset();
+        flightEndsTurn_ = true;
+        break;
+    case WeaponKind::SpecialOps: {
+        // Dropped by parachute on the chosen spot.
+        events.push_back(fired);
+        const glm::vec3 spot = targetSpot(hog, spec, power);
+        hog.position = spot + glm::vec3(0.0f, kDropHeight, 0.0f);
+        hog.motion.state = MotionState::Airborne;
+        hog.motion.velocity = glm::vec3(0.0f);
+        hog.motion.jumped = false;
+        hog.motion.highestPoint = hog.position.y;
+        hog.parachute = true;
+        hog.drawnWeapon.reset();
+        hog.held.reset();
+        break;
+    }
+    case WeaponKind::Airstrike: {
+        // Bombs fall in a line across the chosen spot, along the hog's aim.
+        events.push_back(fired);
+        const glm::vec3 spot = targetSpot(hog, spec, power);
+        const glm::vec3 along = hogFacing(hog);
+        const float spacing = spec.blastRadius * kAirstrikeSpacing;
+        for (int i = 0; i < spec.shots; ++i) {
+            const float offset = (static_cast<float>(i) - static_cast<float>(spec.shots - 1) / 2.0f) * spacing;
+            glm::vec3 drop = spot + along * offset;
+            drop.y = map_.groundHeight(drop.x, drop.z, drop.y + kDropHeight) + kDropHeight +
+                     static_cast<float>(i) * 60.0f;  // one after the other
+            Projectile bomb = launchProjectile(spec.id, hogIndex, drop, glm::vec3(0.0f), 0.0f);
+            bomb.velocity = glm::vec3(0.0f, -kAirstrikeFallSpeed, 0.0f);
+            projectiles_.push_back(bomb);
+        }
+        break;
+    }
+    }
+}
+
+glm::vec3 World::targetSpot(const Hog& hog, const WeaponSpec& spec, float power) const {
+    // Straight ahead, as far as the charged power, kept inside the play
+    // area and on the ground.
+    const auto& terrain = map_.terrain();
+    const float centreX = (terrain.minX() + terrain.maxX()) / 2.0f;
+    const float centreZ = (terrain.minZ() + terrain.maxZ()) / 2.0f;
+    glm::vec3 spot = hog.position + hogFacing(hog) * (spec.range * std::clamp(power, kMinimumPower, 1.0f));
+    spot.x = std::clamp(spot.x, centreX - kPlayAreaHalfSize, centreX + kPlayAreaHalfSize);
+    spot.z = std::clamp(spot.z, centreZ - kPlayAreaHalfSize, centreZ + kPlayAreaHalfSize);
+    spot.y = map_.groundHeight(spot.x, spot.z, spot.y + kDropHeight);
+    return spot;
+}
+
+void World::flyJetpack(std::size_t index, const MovementInput& input, double seconds,
+                       const std::vector<formats::Animation>& animations) {
+    Hog& hog = hogs_[index];
+    const auto dt = static_cast<float>(seconds);
+    hog.animation.update(seconds, animations);
+    if (hog.animation.animation() != kFallAnimation) {
+        hog.animation.play(kFallAnimation, AnimationPlayer::Repeat::Loop);
+    }
+    const int turn = (input.turnLeft ? 1 : 0) - (input.turnRight ? 1 : 0);
+    hog.yawRadians += static_cast<float>(turn) * glm::radians(kTurnDegreesPerSecond) * dt;
+
+    const int direction = (input.forward ? 1 : 0) - (input.backward ? 1 : 0);
+    glm::vec3 next = hog.position + hogFacing(hog) * (kJetpackSpeed * dt * static_cast<float>(direction));
+    const auto& terrain = map_.terrain();
+    const float centreX = (terrain.minX() + terrain.maxX()) / 2.0f;
+    const float centreZ = (terrain.minZ() + terrain.maxZ()) / 2.0f;
+    const bool outside = std::abs(next.x - centreX) > kPlayAreaHalfSize || std::abs(next.z - centreZ) > kPlayAreaHalfSize;
+    if (outside || map_.hitsObstacle(next)) next = hog.position;
+    next.y += (input.jump ? kJetpackClimbSpeed : -kJetpackSinkSpeed) * dt;
+    next.y = std::max(next.y, map_.groundHeight(next.x, next.z, next.y) + 1.0f);
+    hog.position = next;
+    hog.motion.highestPoint = hog.position.y;
+
+    hog.jetpackSecondsLeft -= dt;
+    if (hog.jetpackSecondsLeft <= 0.0f) {
+        hog.jetpackSecondsLeft = 0.0f;
+        hog.parachute = true;  // out of fuel: down it floats
+        hog.motion.velocity = glm::vec3(0.0f);
+    }
+}
+
+void World::steerGuided(const PlayerInput& input, double seconds) {
+    // The player who fired a guided missile steers it while it flies.
+    const auto active = activeHog();
+    if (!active) return;
+    const float step = glm::radians(kGuidedDegreesPerSecond) * static_cast<float>(seconds);
+    const int yaw = (input.movement.turnLeft ? 1 : 0) - (input.movement.turnRight ? 1 : 0);
+    const int pitch = (input.aimUp ? 1 : 0) - (input.aimDown ? 1 : 0);
+    for (auto& projectile : projectiles_) {
+        if (projectile.owner != *active || weaponSpec(projectile.weapon).guidance != Guidance::Guided) continue;
+        steerProjectile(projectile, static_cast<float>(yaw) * step, static_cast<float>(pitch) * step);
     }
 }
 
@@ -690,6 +803,7 @@ void World::healHog(std::size_t index, float amount, std::vector<GameEvent>& eve
     hog.health = std::min(hog.maxHealth, hog.health + amount);
     hog.poisoned = false;
     hog.asleep = false;
+    hog.confused = false;
     GameEvent healed;
     healed.type = GameEventType::Healed;
     healed.hog = index;
@@ -705,6 +819,7 @@ void World::afflict(std::size_t index, WeaponEffect effect) {
     case WeaponEffect::Poison: hog.poisoned = true; break;
     case WeaponEffect::Sleep: hog.asleep = true; break;
     case WeaponEffect::Madness: hog.madnessSecondsLeft = kMadnessSeconds; break;
+    case WeaponEffect::Confusion: hog.confused = true; break;
     case WeaponEffect::Heal:
     case WeaponEffect::None: break;
     }
@@ -847,6 +962,16 @@ void World::detonate(const Projectile& projectile, std::vector<GameEvent>& event
         }
     }
 
+    if (spec.hasPayload) {
+        // The mine shell leaves a mine where it burst (after the chain
+        // reaction above, which would set the new mine off at once).
+        glm::vec3 spot = projectile.position;
+        spot.y = map_.groundHeight(spot.x, spot.z, spot.y + kExplosionLift);
+        if (!map_.terrain().tileAt(spot.x, spot.z).isWater) {
+            projectiles_.push_back(launchProjectile(spec.payload, projectile.owner, spot, glm::vec3(0.0f), 0.0f));
+        }
+    }
+
     if (spec.bomblets > 0 && !projectile.bomblet) {
         for (int i = 0; i < spec.bomblets; ++i) {
             const float angle = glm::two_pi<float>() * static_cast<float>(i) / static_cast<float>(spec.bomblets);
@@ -964,10 +1089,26 @@ void World::turnBegan(std::vector<GameEvent>& events) {
     started.hog = turns_->activeHog();
     events.push_back(started);
 
+    // A flight still going on when the turn changed comes down by parachute.
+    flightEndsTurn_ = false;
+    for (auto& hog : hogs_) {
+        hog.controlsReversed = false;
+        if (hog.jetpackSecondsLeft > 0.0f) {
+            hog.jetpackSecondsLeft = 0.0f;
+            hog.parachute = true;
+            hog.motion.velocity = glm::vec3(0.0f);
+        }
+    }
+
     // The hog whose turn it is comes out of hiding, suffers its poison and,
-    // if asleep, misses the turn (the wiki's gases, darts and hide).
+    // if asleep, misses the turn; if confused, plays it with its controls
+    // reversed (the wiki's gases, darts and hide).
     if (const auto active = activeHog()) {
         Hog& hog = hogs_[*active];
+        if (hog.confused) {
+            hog.confused = false;
+            hog.controlsReversed = true;
+        }
         if (hog.hidden()) {
             hog.hideShield = 0.0f;
             GameEvent unhid;
@@ -1023,6 +1164,14 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
         if (active && i == *active && phase_ == MatchPhase::Playing) {
             movement = input.movement;
             movement.keepInPlayArea = true;
+            if (hogs_[i].controlsReversed) {
+                std::swap(movement.forward, movement.backward);
+                std::swap(movement.turnLeft, movement.turnRight);
+            }
+            if (hogs_[i].jetpackSecondsLeft > 0.0f && hogs_[i].alive) {
+                flyJetpack(i, movement, seconds, animations);
+                continue;
+            }
             canMove = turns_->canMove();
             if (hogs_[i].charging) {
                 // Charging a throw: the hog may turn to aim, not walk away.
@@ -1047,6 +1196,7 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
         addMovementEvents(moved, hogs_[i], i, events);
         if (moved.landed) {
             damageHog(hogs_, i, fallDamage(moved.fallHeight), events);
+            hogs_[i].parachute = false;
         }
         if (active && i == *active) {
             distanceMoved = moved.distanceMoved;
@@ -1062,6 +1212,7 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
             fireShot(events);
         }
     }
+    steerGuided(input, seconds);
     stepProjectiles(seconds, events);
     updateEffects(seconds);
     updateObjectives(events);
@@ -1076,6 +1227,12 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
         if (!hogs_[turns_->activeHog()].alive || matchIsDecided()) {
             // The active hog died (a mine, a fall) or the last enemy did:
             // let things settle, then move on.
+            phase_ = MatchPhase::Resolving;
+            settleSecondsLeft_ = kSettleSeconds;
+        } else if (flightEndsTurn_ && hogs_[*active].jetpackSecondsLeft <= 0.0f && !hogs_[*active].parachute &&
+                   !isAirborne(hogs_[*active])) {
+            // Down again after a jetpack flight: the turn is over.
+            flightEndsTurn_ = false;
             phase_ = MatchPhase::Resolving;
             settleSecondsLeft_ = kSettleSeconds;
         } else if (turns_->update(seconds, distanceMoved, hogs_)) {
@@ -1116,6 +1273,21 @@ std::vector<glm::vec3> World::aimPreview() const {
     if (spec.kind == WeaponKind::Thrown || spec.kind == WeaponKind::Shell) {
         const float power = spec.usesPower ? (hog.charging ? std::max(hog.power, kMinimumPower) : 1.0f) : 1.0f;
         return predictTrajectory(start, aimDirection(hog) * (spec.launchSpeed * power), spec.gravityFactor, map_);
+    }
+    if (spec.kind == WeaponKind::SpecialOps || spec.kind == WeaponKind::Airstrike) {
+        // A ring on the chosen spot.
+        const float power = hog.charging ? std::max(hog.power, kMinimumPower) : 1.0f;
+        const glm::vec3 spot = targetSpot(hog, spec, power);
+        std::vector<glm::vec3> ring;
+        constexpr int kRingPoints = 16;
+        constexpr float kRingRadius = 200.0f;
+        for (int i = 0; i < kRingPoints; ++i) {
+            const float angle = glm::two_pi<float>() * static_cast<float>(i) / kRingPoints;
+            glm::vec3 point = spot + glm::vec3(std::cos(angle), 0.0f, std::sin(angle)) * kRingRadius;
+            point.y = map_.groundHeight(point.x, point.z, spot.y + kRingRadius) + 20.0f;
+            ring.push_back(point);
+        }
+        return ring;
     }
     if (spec.kind == WeaponKind::Bullet) {
         const auto hit = traceBullet(start, aimDirection(hog), spec.range, map_, hogs_, *active);

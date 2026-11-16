@@ -50,6 +50,7 @@ inline constexpr float kTurnDegreesPerSecond = 150.0f;
 inline constexpr float kGravity = 2400.0f;        // units/s^2
 inline constexpr float kJumpUpSpeed = 900.0f;     // apex about 170 units above the take-off
 inline constexpr float kJumpForwardSpeed = kRunSpeed;
+inline constexpr float kParachuteSinkSpeed = 300.0f;  // falling under a parachute (Hog::parachute)
 
 // What the player asks the hog to do during one step.
 struct MovementInput {

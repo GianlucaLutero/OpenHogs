@@ -310,6 +310,8 @@ ShotPlanner::ShotPlanner(const World& world, std::size_t shooter) : shooter_(sho
     for (const WeaponId weapon : me.weapons) {
         // Medicine heals whoever it hits: never aimed at an enemy.
         if (weaponSpec(weapon).effect == WeaponEffect::Heal) continue;
+        // Missiles steer: the planner's arcs do not predict them.
+        if (weaponSpec(weapon).guidance != Guidance::None) continue;
         for (std::size_t target = 0; target < hogs.size(); ++target) {
             if (hogs[target].alive && !hogs[target].hidden() && hogs[target].team != me.team) {
                 pending_.push_back({weapon, target});
@@ -337,7 +339,10 @@ void ShotPlanner::step(const World& world) {
     case WeaponKind::Surrender:
     case WeaponKind::Shockwave:
     case WeaponKind::Hide:
-    case WeaponKind::PickPocket: break;  // never chosen as an attack
+    case WeaponKind::PickPocket:
+    case WeaponKind::Jetpack:
+    case WeaponKind::SpecialOps:
+    case WeaponKind::Airstrike: break;  // never chosen as an attack
     }
     if (plan && plan->score > 0.0f && (!best_ || plan->score > best_->score)) {
         best_ = plan;

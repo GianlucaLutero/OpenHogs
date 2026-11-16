@@ -39,11 +39,11 @@ TEST_CASE("Crates hold what their map object says", "[game][pickups]") {
     // Item 255 is health, PROPOINT gives promotion points, and other items
     // go through the executable's table: item 30 is the medicine ball
     // (weapon 33), item 13 the flame thrower (14), item 14 the rocket
-    // launcher (15), item 15 weapon 16, which OpenHogs does not make. Other
+    // launcher (15), item 46 weapon 68, which OpenHogs does not make. Other
     // objects are not pickups.
     std::vector<formats::MapObject> objects{crate("CRATE2", 255, 50), crate("PROPOINT", 1, 1),
                                             crate("CRATE1", 14, 3), crate("CRATE1", 30, 1),
-                                            crate("CRATE1", 15, 1)};
+                                            crate("CRATE1", 46, 1)};
     formats::MapObject tree;
     tree.modelName = "TREEG";
     objects.push_back(tree);
