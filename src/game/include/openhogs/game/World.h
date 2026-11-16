@@ -153,6 +153,7 @@ private:
     void refreshStockWeapons(int team);
     void useStock(std::size_t hogIndex);
     std::optional<glm::vec3> nearestShore(const glm::vec3& from) const;
+    void heal(std::size_t hogIndex, const WeaponSpec& spec, std::vector<GameEvent>& events);
     void fireMelee(std::size_t hogIndex, const WeaponSpec& spec, std::vector<GameEvent>& events);
     void fireShot(std::vector<GameEvent>& events);
     void stepProjectiles(double seconds, std::vector<GameEvent>& events);

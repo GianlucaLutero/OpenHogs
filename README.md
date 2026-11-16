@@ -75,8 +75,9 @@ animations.
 | `mission-objectives` | ✅ done | Mission objectives from the maps' script types: reaching a target cell or killing a marked enemy drops a reward crate or a promotion point (or costs points), group objectives pay for the last of the group, with the sergeant's comment |
 | `destructible-objects` | ✅ done | Buildings, vehicles and scenery (houses, walls, bridges, trees...) have the executable's health and are destroyed by explosions and bullets; their box goes, hogs on top fall, and objectives on them pay their reward |
 | `medals`             | ✅ done | The campaign's medals as the executable counts them (survival, special medals per mission, island bonus after every fifth mission) and the BATTLE RESULTS page after a skirmish, with the special awards (THE ANNIHLATOR!!! ... PIG OF THE BATTLE) |
-| `boot-camp`          | 🔍 in review | The Boot Camp opens the campaign: training mode on CAMP (weapons only from crates, never running out), the chain of hidden crates and dummies revealed group by group, and the instructor's tips with his voice |
-| fidelity blocks      | planned | `weapons-complete`, `version-variants`: missions and weapons exactly as in the original |
+| `boot-camp`          | ✅ done | The Boot Camp opens the campaign: training mode on CAMP (weapons only from crates, never running out), the chain of hidden crates and dummies revealed group by group, and the instructor's tips with his voice |
+| `weapons-complete`   | 🔍 in review (part 1) | Thirteen more weapons: cattle prod, super shotgun, roller and shrapnel grenades, airburst and super airburst, anti-personnel mine, super TNT (values from the executable's ammunition table), suicide, healing hands, self heal, skip turn and surrender |
+| fidelity blocks      | planned | the rest of `weapons-complete` (gases, missiles, shells, flame thrower, airstrikes, vehicles...), `version-variants`: missions and weapons exactly as in the original |
 | `release`            | planned | Packaged builds for Windows and Linux |
 
 ## Requirements

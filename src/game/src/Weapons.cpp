@@ -11,6 +11,8 @@ namespace openhogs::game {
 
 namespace {
 
+constexpr std::size_t kWeaponCount = 33;
+
 // Animation numbers (scene::animationName).
 constexpr std::size_t kUsingGrenade = 19;
 constexpr std::size_t kSwordKnife = 21;
@@ -82,7 +84,9 @@ constexpr std::size_t kDrawHandgun = 12, kDrawRifle = 13, kDrawMachineGun = 14, 
 // Putting a mine or TNT down (animation 77, unnamed in the lists).
 constexpr std::size_t kPlaceExplosive = 77;
 
-constexpr std::array<Presentation, 20> kPresentation{{
+constexpr std::size_t kSkipOrSurrender = 7;  // the "use" animation of SKIP TURN and SURRENDER
+
+constexpr std::array<Presentation, 33> kPresentation{{
     {WeaponId::Trotter, "", kDrawGrenade, kNone, kSwordKnife},
     {WeaponId::Knife, "WE_KNIFE", kDrawBlade, kNone, kSwordKnife},
     {WeaponId::Bayonet, "WE_RIF", kDrawMachineGun, kAimingMachineGun, kBayonet},
@@ -103,6 +107,19 @@ constexpr std::array<Presentation, 20> kPresentation{{
     {WeaponId::GrenadeLauncher, "grenlau", kDrawHeavy, kAimingHeavyWeapon, kNone},
     {WeaponId::Mine, "WE_MINE", kDrawGrenade, kNone, kPlaceExplosive},
     {WeaponId::Tnt, "WE_TNT", kDrawGrenade, kNone, kPlaceExplosive},
+    {WeaponId::CattleProd, "WE_PROD", kDrawMachineGun, kAimingMachineGun, kBayonet},
+    {WeaponId::SuperShotgun, "WE_BLUND", kDrawRifle, kAimingRifle, kNone},
+    {WeaponId::RollerGrenade, "WE_ROLL", kDrawGrenade, kNone, kUsingGrenade},
+    {WeaponId::ShrapnelGrenade, "WE_GREN", kDrawGrenade, kNone, kUsingGrenade},
+    {WeaponId::Airburst, "airbrst", kDrawHeavy, kAimingHeavyWeapon, kNone},
+    {WeaponId::SuperAirburst, "airbrst", kDrawHeavy, kAimingHeavyWeapon, kNone},
+    {WeaponId::AntiPersonnelMine, "WE_MINE", kDrawGrenade, kNone, kPlaceExplosive},
+    {WeaponId::SuperTnt, "WE_BANG", kDrawGrenade, kNone, kPlaceExplosive},
+    {WeaponId::Suicide, "", kDrawMachineGun, kAimingMachineGun, kNone},
+    {WeaponId::HealingHands, "", kDrawHeavy, kAimingHeavyWeapon, kNone},
+    {WeaponId::SelfHeal, "", kDrawHeavy, kAimingHeavyWeapon, kNone},
+    {WeaponId::SkipTurn, "", kNone, kNone, kSkipOrSurrender},
+    {WeaponId::Surrender, "", kNone, kNone, kSkipOrSurrender},
 }};
 
 // The original's presentation over the rules of `spec`.
@@ -117,7 +134,22 @@ void present(WeaponSpec& spec) {
     }
 }
 
-std::array<WeaponSpec, 20> makeWeapons() {
+WeaponSpec action(WeaponId id, WeaponKind kind, std::string_view name) {
+    WeaponSpec spec;
+    spec.id = id;
+    spec.kind = kind;
+    spec.fallbackName = name;
+    return spec;
+}
+
+// The ammunition values of warhogs_.exe (0x4C2030, 40-byte rows, one per
+// ammunition object, docs/formats/weapons.md): damage at +0x0C in 1/128
+// points, explosion radius at +0x08, taken here as 1/8 world units
+// (decision 121).
+constexpr float exeDamage(int value) { return static_cast<float>(value) / 128.0f; }
+constexpr float exeRadius(int value) { return static_cast<float>(value) / 8.0f; }
+
+std::array<WeaponSpec, kWeaponCount> makeWeapons() {
     using W = WeaponId;
     using K = WeaponKind;
 
@@ -162,7 +194,62 @@ std::array<WeaponSpec, 20> makeWeapons() {
     shotgun.pellets = 8;
     shotgun.knockback = 60.0f;  // per pellet
 
-    std::array<WeaponSpec, 20> table{{
+    // Weapons added with block weapons-complete (part 1). Their numbers
+    // come from the executable's ammunition rows where it has them (row
+    // given in each comment); the rest are OpenHogs' choices.
+    auto prod = melee(W::CattleProd, "CATTLE PROD", 35, 220, "I_STAB");  // no ammunition row
+    prod.knockback = 700.0f;
+
+    auto superShotgun = shotgun;  // ammunition 407: same pellets, both barrels
+    superShotgun.id = W::SuperShotgun;
+    superShotgun.fallbackName = "SUPER SHOTGUN";
+    superShotgun.shots = 2;
+    superShotgun.secondsBetweenShots = 0.15f;
+
+    auto roller = grenade;  // ammunition 419 (WE_ROLL): 40 points, radius 2600
+    roller.id = W::RollerGrenade;
+    roller.fallbackName = "ROLLER GRENADE";
+    roller.damage = exeDamage(5120);
+    roller.blastRadius = exeRadius(2600);
+    roller.bounciness = 0.8f;  // it rolls on
+
+    auto shrapnel = cluster;  // ammunition 420: 30 points, radius 2600
+    shrapnel.id = W::ShrapnelGrenade;
+    shrapnel.fallbackName = "SHRAPNEL GRENADE";
+    shrapnel.damage = exeDamage(3840);
+    shrapnel.blastRadius = exeRadius(2600);
+    shrapnel.bomblets = 8;
+
+    auto airburst = explosive(W::Airburst, K::Shell, "AIRBURST", exeDamage(5120), exeRadius(2600), 2600,
+                              "L_ARTIL");  // ammunition 388
+    auto superAirburst = airburst;          // ammunition 389: 50 points
+    superAirburst.id = W::SuperAirburst;
+    superAirburst.fallbackName = "SUPER AIRBURST";
+    superAirburst.damage = exeDamage(6400);
+
+    auto antiPersonnel = mine;  // ammunition 427: 25 points, radius 3900
+    antiPersonnel.id = W::AntiPersonnelMine;
+    antiPersonnel.fallbackName = "ANTI-P MINE";
+    antiPersonnel.damage = exeDamage(3200);
+    antiPersonnel.blastRadius = exeRadius(3900);
+
+    auto superTnt = tnt;  // ammunition 440 (WE_BANG): 200 points, radius 6500
+    superTnt.id = W::SuperTnt;
+    superTnt.fallbackName = "SUPER TNT";
+    superTnt.damage = exeDamage(25600);
+    superTnt.blastRadius = exeRadius(6500);
+
+    auto suicide = action(W::Suicide, K::Suicide, "SUICIDE");  // as a TNT charge at the hog's feet
+    suicide.damage = tnt.damage;
+    suicide.blastRadius = tnt.blastRadius;
+    suicide.knockback = tnt.knockback;
+    auto healingHands = action(W::HealingHands, K::Heal, "HEALING HANDS");  // ammunition 436: 40 points
+    healingHands.damage = exeDamage(5120);
+    healingHands.range = 300.0f;
+    auto selfHeal = action(W::SelfHeal, K::Heal, "SELF HEAL");  // ammunition 437: 40 points
+    selfHeal.damage = exeDamage(5120);
+
+    std::array<WeaponSpec, kWeaponCount> table{{
         melee(W::Trotter, "TROTTER", 15, 160, "P_PUNCH"),
         melee(W::Knife, "KNIFE", 25, 170, "I_STAB"),
         melee(W::Bayonet, "BAYONET", 30, 220, "I_STAB"),
@@ -183,12 +270,25 @@ std::array<WeaponSpec, 20> makeWeapons() {
         launcher,
         mine,
         tnt,
+        prod,
+        superShotgun,
+        roller,
+        shrapnel,
+        airburst,
+        superAirburst,
+        antiPersonnel,
+        superTnt,
+        suicide,
+        healingHands,
+        selfHeal,
+        action(W::SkipTurn, K::SkipTurn, "SKIP TURN"),
+        action(W::Surrender, K::Surrender, "SURRENDER"),
     }};
     for (auto& spec : table) present(spec);
     return table;
 }
 
-const std::array<WeaponSpec, 20>& weapons() {
+const std::array<WeaponSpec, kWeaponCount>& weapons() {
     static const auto table = makeWeapons();
     return table;
 }

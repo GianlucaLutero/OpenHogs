@@ -57,6 +57,7 @@ add_executable(openhogs_tests
     game/MatchSoundsTests.cpp
     game/MultiplayerTests.cpp
     game/TrainingTests.cpp
+    game/WeaponActionTests.cpp
     ui/TextLayoutTests.cpp
     video/BinkTests.cpp
     ui/MenuTests.cpp

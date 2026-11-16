@@ -327,7 +327,11 @@ void ShotPlanner::step(const World& world) {
     case WeaponKind::Shell: plan = planThrow(world, shooter_, spec, target); break;
     // Explosives put down would need the hog to walk away after using
     // them, which the rules do not allow yet.
-    case WeaponKind::Placed: break;
+    case WeaponKind::Placed:
+    case WeaponKind::Heal:
+    case WeaponKind::Suicide:
+    case WeaponKind::SkipTurn:
+    case WeaponKind::Surrender: break;  // never chosen as an attack
     }
     if (plan && plan->score > 0.0f && (!best_ || plan->score > best_->score)) {
         best_ = plan;

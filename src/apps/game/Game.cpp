@@ -77,6 +77,7 @@ game::TurnRules turnRules(const GameOptions& options) {
 constexpr double kTurnMessageSeconds = 2.5;
 constexpr double kEndMessageSeconds = -1.0;  // until the players leave
 constexpr double kTrainingTipSeconds = 8.0;
+constexpr glm::vec4 kHealColour{0.3f, 1.0f, 0.3f, 1.0f};
 
 } // namespace
 
@@ -368,7 +369,16 @@ void Game::handleEvents(const std::vector<game::GameEvent>& events) {
         case GameEventType::Footstep: playSound(game::footstepSoundName(event.surface)); break;
         case GameEventType::Landed: playSound(kLandingSound); break;
         case GameEventType::Splash: playSound(kSplashSound); break;
-        case GameEventType::Fired: playSound(game::weaponSpec(event.weapon).launchSound); break;
+        case GameEventType::Fired:
+            if (!game::weaponSpec(event.weapon).launchSound.empty()) playSound(game::weaponSpec(event.weapon).launchSound);
+            break;
+        case GameEventType::Healed:
+            // The health given back rises over the hog, in green.
+            if (event.hog < world_.hogs().size() && event.amount > 0.0f) {
+                hud_.addDamage(world_.hogs()[event.hog].position + glm::vec3(0.0f, kDamageNumberHeight, 0.0f),
+                               event.amount, kHealColour);
+            }
+            break;
         case GameEventType::Bounce: playSound(kBounceSound); break;
         case GameEventType::BulletHit: playSound(kBulletHitSound); break;
         case GameEventType::Explosion: playSound(kExplosionSound); break;

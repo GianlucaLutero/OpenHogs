@@ -37,11 +37,13 @@ OpenHogs identifies weapons by these entry numbers (`game::WeaponId`), so
 the names on screen come from the text table and a language pack
 translates them. Entries 89–95 before the block are the vehicles.
 
-Implemented so far: trotter, knife, bayonet, sword, pistol, rifle, rifle
-burst, machine gun, heavy machine gun, sniper rifle, shotgun, rocket
-launcher, grenade, cluster grenade, high-explosive grenade, mortar,
-bazooka, grenade launcher, mine, TNT. The others (gases, healing,
-airstrikes, vehicles...) are listed in `docs/open-decisions.md`.
+Implemented so far: trotter, knife, bayonet, sword, cattle prod, pistol,
+rifle, rifle burst, machine gun, heavy machine gun, sniper rifle, shotgun,
+super shotgun, rocket launcher, grenade, cluster, high-explosive, roller
+and shrapnel grenades, mortar, bazooka, grenade launcher, airburst, super
+airburst, mine, anti-personnel mine, TNT, super TNT, suicide, healing
+hands, self heal, skip turn and surrender. The others (gases, missiles,
+shells, airstrikes, vehicles...) are listed in `docs/open-decisions.md`.
 
 ## Models: `Chars/WEAPONS.MAD` and `.MTD`
 
@@ -98,6 +100,33 @@ and the rocket sits on the hog's chest.
 | MORTAR, BAZOOKA, GRENADE LAUNCHER | `mortr`, `bazookr`, `grenlau` | 15 | 26 | – |
 | AIRBURST | `airbrst` | 15 | 26 | – |
 | MINE, ANTI-P MINE, TNT, SUPER TNT | `WE_MINE`, `WE_TNT`, `WE_BANG` | 17 | – | 77 |
+
+Note: the table is 80 bytes a row but the first fields of a row belong
+to the row before: a weapon's aiming and "getting out" animations are the
+first two words of the *next* row (offsets +0x50 and +0x54 of its own).
+The word at +0x10 is the weapon's ammunition: an entry of the object
+table at 0x4D9680 (388 `WE_SUPAB` ... 442 `BULL1`), e.g. 400 for the
+pistol, 412 for the grenade, 434 for the rocket launcher, 440 for super
+TNT.
+
+### The ammunition table (executable)
+
+40-byte rows at 0x4C2030, one per ammunition object from 388 (row =
+object − 388), read by the ammunition's constructor (`FUN_00431f00`) and
+its explosion (`FUN_004327e0`):
+
+| Offset | Meaning (as far as read) |
+|--------|--------------------------|
+| +0x00 | launch speed, scaled by the power (× power >> 12) |
+| +0x04 | size of the explosion effect |
+| +0x08 | explosion radius (bullets 0; grenades 2600, rockets 3900 to 5200, super TNT 6500) |
+| +0x0C | damage in 1/128 points: pistol and rifle 20, burst 15, sniper 40, machine gun 4, heavy 8, shotgun 3 a pellet, grenade 30, high explosive 60, bazooka 40, mortar 50, rocket 50, TNT 50, super TNT 200, guided missile 75, 1000 lbs shell 100 |
+| +0x10 | 1 bullet or direct hit, 2 explosive, 8 mine or charge |
+| +0x18 | fuse (plus a random 0-7) |
+| +0x1C | how it moves (0-4) |
+
+OpenHogs takes the damage and (as 1/8 units) the radius of the weapons
+added from this table (decision 121).
 
 The **aiming animations** have 65 frames, one pose per angle: frame 0
 points straight up, 32 level, 64 straight down. The executable keeps the
