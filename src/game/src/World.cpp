@@ -328,6 +328,23 @@ void World::updateObjectives(std::vector<GameEvent>& events) {
     }
 }
 
+void World::recordDeeds(std::optional<std::size_t> active, const std::vector<GameEvent>& events) {
+    for (const auto& event : events) {
+        if (!active || event.hog >= hogs_.size()) continue;
+        if (event.type != GameEventType::Hurt && event.type != GameEventType::Died) continue;
+        HogRecord& record = hogs_[*active].record;
+        const bool friendly = hogs_[event.hog].team == hogs_[*active].team;
+        if (event.type == GameEventType::Hurt) {
+            (friendly ? record.friendDamage : record.enemyDamage) += event.amount;
+        } else if (friendly) {
+            ++record.friendsKilled;
+        } else {
+            ++record.enemiesKilled;
+            ++record.killsThisTurn;
+        }
+    }
+}
+
 void World::objectiveDone(const ObjectiveResult& result, std::vector<GameEvent>& events) {
     GameEvent event;
     event.type = GameEventType::ObjectiveDone;
@@ -622,6 +639,13 @@ void World::startNextTurn(std::vector<GameEvent>& events) {
 }
 
 void World::turnBegan(std::vector<GameEvent>& events) {
+    // The turn before is over: its kills count as one go (the executable keeps
+    // the best at hog + 0x1C6 when a turn ends).
+    for (auto& hog : hogs_) {
+        hog.record.mostKillsInATurn = std::max(hog.record.mostKillsInATurn, hog.record.killsThisTurn);
+        hog.record.killsThisTurn = 0;
+    }
+
     GameEvent started;
     started.type = GameEventType::TurnStarted;
     started.team = turns_->activeTeam();
@@ -701,6 +725,7 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
     stepProjectiles(seconds, events);
     updateEffects(seconds);
     updateObjectives(events);
+    recordDeeds(active, events);
 
     if (!turns_ || phase_ == MatchPhase::Over) {
         return events;

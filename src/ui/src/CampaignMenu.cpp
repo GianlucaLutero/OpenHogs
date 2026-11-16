@@ -4,6 +4,7 @@
 
 #include "openhogs/ui/TextLayout.h"
 
+#include <algorithm>
 #include <utility>
 
 namespace openhogs::ui {
@@ -141,8 +142,14 @@ void CampaignMenu::showResults(const game::Campaign& campaign, const MissionSumm
     } else if (!outcome.completed) {
         lines_.push_back(strings_.missionFailed);
     } else {
+        // The executable's medals (FUN_004845e0): level complete, survival
+        // (or NONE) and, where the mission offers any, the special medals.
         lines_.push_back(strings_.levelComplete);
-        if (outcome.survivalBonus) lines_.push_back(strings_.survivalBonus);
+        lines_.push_back(strings_.survivalBonus + (outcome.survivalBonus ? "" : ": " + strings_.none));
+        if (outcome.specialMedalsOffered > 0) {
+            lines_.push_back(strings_.specialBonus + " " + std::to_string(std::max(outcome.specialMedalsWon, 0)) + "/" +
+                             std::to_string(outcome.specialMedalsOffered));
+        }
         for (const auto& name : outcome.lostForGood) {
             lines_.push_back(strings_.rip + " " + name);
         }

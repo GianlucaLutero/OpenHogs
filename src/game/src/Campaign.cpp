@@ -82,6 +82,21 @@ bool conquersIsland(int missionNumber) {
     return campaignMission(missionNumber + 1).island != campaignMission(missionNumber).island;
 }
 
+bool earnsIslandBonus(int missionNumber) {
+    constexpr int kIslandBonusEvery = 5;
+    return missionNumber > 1 && missionNumber <= kMissionCount && missionNumber % kIslandBonusEvery == 0;
+}
+
+int specialMedals(int missionNumber) {
+    // warhogs_.exe at 0x4D3560, by mission (index 0 is Boot Camp). It
+    // matches the promotion points of each map: e.g. mission 24 (FOOT)
+    // has five hogs to lead to a point, mission 16 (MEDIX) two guns.
+    constexpr std::array<int, kMissionCount + 1> kSpecialMedals{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1,
+                                                                1, 1, 2, 2, 2, 2, 2, 3, 3, 4, 5, 0};
+    if (missionNumber < 0 || missionNumber > kMissionCount) return 0;
+    return kSpecialMedals[static_cast<std::size_t>(missionNumber)];
+}
+
 Campaign::Campaign(int nation, std::vector<std::string> names) : nation_(nation), names_(std::move(names)) {
     if (nation < 0 || nation >= kPlayableNations) {
         throw std::invalid_argument("A campaign is fought for one of the six nations");
@@ -151,10 +166,17 @@ MissionOutcome Campaign::recordMission(const MissionReport& report, std::size_t 
         squad_[report.deathOrder[i]].name = newRecruitName();
     }
 
-    outcome.survivalBonus = deaths == 0;
-    outcome.islandConquered = conquersIsland(nextMission_);
+    // The executable (FUN_004845e0): in the last mission, against five
+    // enemy teams, fewer than three deaths still earn the survival medal;
+    // mission 15 (BAY) gives one special medal to start with.
+    constexpr int kLastMissionDeathsAllowed = 2;
+    constexpr int kFreeSpecialMission = 15;
+    outcome.survivalBonus = nextMission_ == kMissionCount ? deaths <= kLastMissionDeathsAllowed : deaths == 0;
+    outcome.islandConquered = earnsIslandBonus(nextMission_);
+    outcome.specialMedalsOffered = specialMedals(nextMission_);
+    outcome.specialMedalsWon = report.pickedUpPoints + (nextMission_ == kFreeSpecialMission ? 1 : 0);
     outcome.pointsEarned = kMissionPoints + (outcome.survivalBonus ? kSurvivalPoints : 0) +
-                           (outcome.islandConquered ? kIslandPoints : 0) + report.pickedUpPoints;
+                           (outcome.islandConquered ? kIslandPoints : 0) + outcome.specialMedalsWon;
     points_ += outcome.pointsEarned;
     ++nextMission_;
     return outcome;

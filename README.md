@@ -73,8 +73,9 @@ animations.
 | `original-campaign-screens-2` | ✅ done | PROMOTE and CAREER PATH on the original's information board, with its hanging bar and the careers' blinking icons |
 | `mission-scripts`    | ✅ done (part 1) | Crates: health, weapons for the team's stock and promotion points, read from the maps' script parameters through the executable's item table; picked up by walking into them |
 | `mission-objectives` | ✅ done | Mission objectives from the maps' script types: reaching a target cell or killing a marked enemy drops a reward crate or a promotion point (or costs points), group objectives pay for the last of the group, with the sergeant's comment |
-| `destructible-objects` | 🔍 in review | Buildings, vehicles and scenery (houses, walls, bridges, trees...) have the executable's health and are destroyed by explosions and bullets; their box goes, hogs on top fall, and objectives on them pay their reward |
-| fidelity blocks      | planned | the rest of `mission-scripts` (medals, Boot Camp), `weapons-complete`, `version-variants`: missions and weapons exactly as in the original |
+| `destructible-objects` | ✅ done | Buildings, vehicles and scenery (houses, walls, bridges, trees...) have the executable's health and are destroyed by explosions and bullets; their box goes, hogs on top fall, and objectives on them pay their reward |
+| `medals`             | 🔍 in review | The campaign's medals as the executable counts them (survival, special medals per mission, island bonus after every fifth mission) and the BATTLE RESULTS page after a skirmish, with the special awards (THE ANNIHLATOR!!! ... PIG OF THE BATTLE) |
+| fidelity blocks      | planned | the rest of `mission-scripts` (Boot Camp), `weapons-complete`, `version-variants`: missions and weapons exactly as in the original |
 | `release`            | planned | Packaged builds for Windows and Linux |
 
 ## Requirements

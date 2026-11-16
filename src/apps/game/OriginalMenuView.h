@@ -121,6 +121,7 @@ private:
     void drawControls(render::UiRenderer& ui, const ui::Menu& menu, float originX);
     void drawCredits(render::UiRenderer& ui, float originX);
     void drawSquad(render::UiRenderer& ui, const ui::Menu& squad, float originX, bool active);
+    void drawTableRow(render::UiRenderer& ui, const std::string& line, float originX, float y);
     void drawHogPage(render::UiRenderer& ui, const ui::Menu& menu, float originX);
     void drawResults(render::UiRenderer& ui, const ui::Menu& menu, float originX);
     void drawPromotion(render::UiRenderer& ui, const ui::Menu& menu, float originX);

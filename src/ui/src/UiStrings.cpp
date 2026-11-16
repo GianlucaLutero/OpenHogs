@@ -77,6 +77,17 @@ constexpr std::size_t kGtMissionFailed = 188;
 constexpr std::size_t kGtMissionAborted = 189;
 constexpr std::size_t kGtLevelComplete = 190;
 constexpr std::size_t kGtSurvivalBonus = 191;
+constexpr std::size_t kGtSpecialBonus = 192;
+constexpr std::size_t kGtNone = 96;
+constexpr std::size_t kGtBattleResults = 195;
+constexpr std::size_t kGtEnemyGrilled = 196;
+constexpr std::size_t kGtFriendsFried = 197;
+constexpr std::size_t kGtVictoryBonus = 198;
+constexpr std::size_t kGtSpecialAwards = 199;
+constexpr std::size_t kGtTotal = 200;
+constexpr std::size_t kGtWins = 201;
+constexpr std::size_t kGtSpecialAward = 202;
+constexpr std::size_t kGtFirstAward = 203;  // to 208
 constexpr std::size_t kGtRetry = 193;
 constexpr std::size_t kGtEditSquad = 194;
 constexpr std::size_t kGtRip = 271;
@@ -224,6 +235,19 @@ UiStrings loadUiStrings(const std::vector<std::string>& frontEndText, const std:
     take(strings.missionAborted, gt, kGtMissionAborted);
     take(strings.levelComplete, gt, kGtLevelComplete);
     take(strings.survivalBonus, gt, kGtSurvivalBonus);
+    take(strings.specialBonus, gt, kGtSpecialBonus);
+    take(strings.none, gt, kGtNone);
+    take(strings.battleResults, gt, kGtBattleResults);
+    take(strings.enemyGrilled, gt, kGtEnemyGrilled);
+    take(strings.friendsFried, gt, kGtFriendsFried);
+    take(strings.victoryBonus, gt, kGtVictoryBonus);
+    take(strings.specialAwards, gt, kGtSpecialAwards);
+    take(strings.total, gt, kGtTotal);
+    take(strings.wins, gt, kGtWins);
+    take(strings.specialAward, gt, kGtSpecialAward);
+    for (std::size_t i = 0; i < strings.awardNames.size(); ++i) {
+        take(strings.awardNames[i], gt, kGtFirstAward + i);
+    }
     take(strings.retry, gt, kGtRetry);
     take(strings.editSquad, gt, kGtEditSquad);
     take(strings.rip, gt, kGtRip);

@@ -16,8 +16,10 @@
 // The rules follow the game's manual:
 //   - the squad has eight hogs; the first five (three in mission 1) go on
 //     each mission, the others stay in reserve;
-//   - finishing a mission earns one promotion point, one more if nobody
-//     died, five more for the last mission of an island;
+//   - finishing a mission earns one promotion point (LEVEL COMPLETE), one
+//     more if nobody died (SURVIVAL BONUS), one for each promotion point
+//     picked up (SPECIAL BONUS) and five more after missions 5, 10, 15, 20
+//     and 25 (the executable's rule, FUN_004845e0; see docs/formats/campaign.md);
 //   - points buy promotions (see Ranks.h);
 //   - losing three hogs in a mission costs the first one to die for good,
 //     four cost the first two; losing all of them fails the mission, which
@@ -72,6 +74,16 @@ std::span<const Mission> campaignMissions();
 // True for the last mission of an island (5, 10, 15, 20, 24 and 25).
 bool conquersIsland(int missionNumber);
 
+// True for the missions worth the island bonus. The executable gives it
+// after every fifth mission (5, 10, 15, 20, 25), so not after 24, which
+// ends Arstria.
+bool earnsIslandBonus(int missionNumber);
+
+// How many special medals (promotion points to pick up) mission `number`
+// offers, from the executable's table at 0x4D3560: 0 for the first eight,
+// up to 5 in mission 24. The results page shows that many medals.
+int specialMedals(int missionNumber);
+
 struct SquadMember {
     std::string name;
     RankId rank = RankId::Grunt;
@@ -90,7 +102,9 @@ struct MissionReport {
 struct MissionOutcome {
     bool completed = false;
     bool survivalBonus = false;
-    bool islandConquered = false;
+    bool islandConquered = false;   // the island bonus was earned
+    int specialMedalsWon = 0;       // promotion points picked up (can be fewer than 0)
+    int specialMedalsOffered = 0;   // specialMedals() of the mission
     int pointsEarned = 0;
     std::vector<std::string> lostForGood;  // names of the hogs that will not come back
 };

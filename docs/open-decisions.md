@@ -114,7 +114,7 @@ answer.
 | 43 | Match | Messages and pause. | "GET READY ..." for 2.5 s at each turn (fading out); the match pauses by itself when the window loses focus; the pause menu stops the turn clock and the camera. | `src/apps/game/Game.cpp` |
 | 45 | AI | Explosives put down (TNT, mines) are never used by the computer: the hog cannot walk away after using them. Without any worthwhile shot it ends its turn rather than firing at random. | Not used / turn ended. | `ShotPlanner::step`, `ComputerPlayer::decide` |
 | 46 | AI | Pace of the computer's turn. | It thinks for 1 s (planning one weapon and enemy per step meanwhile), then turns, picks the weapon and aims at the normal speeds; its random errors are seeded from the clock, so no two matches are the same. | `AiSettings`, `computerSettings()` in `src/apps/game/Game.cpp` |
-| 53 | Campaign | Newspapers after missions (`Papers/`), the debriefing pictures (`Debrief/`) and island bonuses ("five medals for every region conquered", from the Wikipedia article). | No newspapers or debriefing pictures yet (a text results page instead); +5 points for each island's last mission. | `ui::CampaignMenu`, `kIslandPoints` |
+| 53 | Campaign | Newspapers after missions (`Papers/`) and the debriefing pictures (`Debrief/`, with the 3D medals of the results page). | No newspapers or debriefing pictures yet: the results page writes its medals as words (SURVIVAL BONUS: NONE, SPECIAL BONUS 1/2). | `ui::CampaignMenu` |
 | 54 | Campaign | Saving: the original has numbered `savearmy` files, SAVE TEAM / LOAD SQUAD and renaming hogs. | One campaign, saved automatically to `saves/campaign.ini` after every change; no renaming yet. | `CampaignSession` |
 | 55 | Text | Words the game's tables do not have: "PROMOTION POINTS: n" and the end-of-campaign line. | English only (`UiStrings::promotionPoints`, `campaignComplete`). | `src/ui/include/openhogs/ui/UiStrings.h` |
 | 58 | Multiplayer | Not implemented yet: deathmatch limit, SELECT PIG (choose the hog each turn), team ranks (CHANGE RANKS), renaming teams, the generated levels (SURVIVAL / DEATHMATCH, CUSTOM / RANDOM / CODE) and network play. | – | `docs/formats/campaign.md`, `FrontEnd` |
@@ -125,6 +125,8 @@ answer.
 | 113 | Objectives | The sergeant's reminders about objectives still to do (sections 10 and 11, `FUN_00497f80`) and what type 9 does. | Not said; type 9 does nothing. Objective lines are said in turn (1 to 8) rather than at random. | `Sergeant::objective` |
 | 114 | Destruction | How much damage explosions and bullets do to objects, and what a destroyed object leaves (the original swaps some scenery for damaged models at 2/3 health, throws debris and passes leftover damage to a hog standing on it). | Objects take damage like hogs (all of it at the centre of a blast, none at the edge, measured to their box; a bullet's damage when it stops in their box) and simply disappear; buildings and vehicles blow up with an explosion sound and flash, scenery just goes. Hogs on top fall. | `World::damageObjects`, `game/Destructibles.h` |
 | 115 | Destruction | Crates, explosive drums and animals have health in the original too. | They cannot be destroyed yet. | `game::objectHealth` |
+| 116 | Awards | The executable skips the kill and 351-damage awards when the best hog is in the second team (it compares with 1 where -1 seems meant). | Not copied: every team can get every award. | `game::battleResults` |
+| 117 | Awards | Skirmish hogs have names in the original (the team's hog names); OpenHogs only names campaign hogs. The battle results table draws coloured boxes over the team columns. | The special award names the hog's team when the hog has no name; the boxes take each team's message colour. | `Application::battleResultLines`, `ui::battleResultLines` |
 
 ## Settled
 
@@ -135,4 +137,5 @@ answer.
 | – | Background sound of a match (decision 5, 61) | No continuous loop: occasional distant battles and sounds of nature, the day bank everywhere, as the executable (`docs/formats/audio.md`). |
 | – | Sounds for hurt, death, a new turn and victory (decision 30) | As the executable: voices, P_HMMM, the victory tune or the theme (`docs/formats/audio.md`). |
 | – | `fmv 02` and `fmv 09` are empty on PC (decision 62) | Skipped silently, as the PC plays nothing; a content pack can supply them. |
+| – | Island bonus (decision 53) | Five points after missions 5, 10, 15, 20 and 25, as the executable gives them (`docs/formats/campaign.md`, "Medals and points"). |
 | – | Menu background (decision 32) | The original's `pigbkpc1` picture, now that the `.mgl` compression is decoded (`docs/formats/mgl.md`); the menu panels follow in block `original-menus`. |

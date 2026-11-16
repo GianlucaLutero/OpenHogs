@@ -49,6 +49,7 @@ enum class FrontEndScreen {
     Controls,
     Credits,
     ConfirmQuit,
+    BattleResults,  // after a skirmish or a match between people
 };
 
 // Volume levels as shown by the sliders: 0 (silent) .. kMaxVolumeLevel.
@@ -121,6 +122,11 @@ public:
     // Goes back to the main menu (e.g. after a match).
     void showMainMenu();
 
+    // The BATTLE RESULTS page after a match: `lines` are written on it
+    // (see battleResultLines()); CONTINUE goes back to the main menu.
+    void showBattleResults(std::vector<std::string> lines);
+    const std::vector<std::string>& resultLines() const { return resultLines_; }
+
     // The teams of the level just chosen, the one that plays first first
     // (game::mapTeams). For ONE PLAYER the match starts straight away; for
     // MULTI-PLAYER the PLAYERS page opens. A map without teams goes back
@@ -160,6 +166,8 @@ private:
     Menu controls_;
     Menu credits_;
     Menu confirmQuit_;
+    Menu battleResults_;
+    std::vector<std::string> resultLines_;
 };
 
 } // namespace openhogs::ui

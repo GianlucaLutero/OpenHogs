@@ -134,6 +134,7 @@ private:
     void hurtSwimmers(double seconds, std::vector<GameEvent>& events);
     void collectPickups(std::vector<GameEvent>& events);
     void updateObjectives(std::vector<GameEvent>& events);
+    void recordDeeds(std::optional<std::size_t> active, const std::vector<GameEvent>& events);
     void objectiveDone(const ObjectiveResult& result, std::vector<GameEvent>& events);
     void damageObjects(const glm::vec3& centre, float radius, float damage, std::vector<GameEvent>& events);
     void damageMapObject(std::size_t object, float amount, std::vector<GameEvent>& events);

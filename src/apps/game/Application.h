@@ -100,6 +100,8 @@ private:
     void drawMenus(int width, int height);
     void drawLoading();
     void leaveMatch();
+    // The BATTLE RESULTS page of a match that was played to the end.
+    std::vector<std::string> battleResultLines(const game::World& world) const;
 
     const core::VirtualFileSystem& vfs_;
     std::vector<std::string> maps_;

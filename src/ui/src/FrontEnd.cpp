@@ -190,6 +190,7 @@ const Menu& FrontEnd::menu() const {
     case FrontEndScreen::Controls: return controls_;
     case FrontEndScreen::Credits: return credits_;
     case FrontEndScreen::ConfirmQuit: return confirmQuit_;
+    case FrontEndScreen::BattleResults: return battleResults_;
     }
     return main_;
 }
@@ -223,6 +224,12 @@ void FrontEnd::showMainMenu() {
     open(FrontEndScreen::Main);
 }
 
+void FrontEnd::showBattleResults(std::vector<std::string> lines) {
+    resultLines_ = std::move(lines);
+    battleResults_ = Menu(strings_.battleResults, {action(0, strings_.continueGame)});
+    open(FrontEndScreen::BattleResults);
+}
+
 FrontEndResult FrontEnd::handle(MenuInput input) {
     switch (screen_) {
     case FrontEndScreen::Main: return handleMain(main_.handle(input));
@@ -236,6 +243,13 @@ FrontEndResult FrontEnd::handle(MenuInput input) {
     case FrontEndScreen::Controls: return handleOptionPage(controls_.handle(input));
     case FrontEndScreen::Credits: return handleOptionPage(credits_.handle(input));
     case FrontEndScreen::ConfirmQuit: return handleConfirmQuit(confirmQuit_.handle(input));
+    case FrontEndScreen::BattleResults: {
+        const auto response = battleResults_.handle(input);
+        FrontEndResult result;
+        result.sound = soundFor(response);
+        if (response.type == Type::Activated || response.type == Type::Back) open(FrontEndScreen::Main);
+        return result;
+    }
     }
     return {};
 }

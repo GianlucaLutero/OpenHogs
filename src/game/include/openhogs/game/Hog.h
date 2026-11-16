@@ -46,11 +46,25 @@ struct HeldAnimation {
     float frame = 0.0f;  // Repeat::Hold: the frame shown (the aiming angle)
 };
 
+// What a hog did in the match, for the battle results (BattleAwards.h).
+// As in the executable, everything that happens in a hog's turn is put
+// down to that hog (hog + 0x1C6 ... 0x1D1, counted by FUN_00467ac0 and
+// FUN_00467db0).
+struct HogRecord {
+    int enemiesKilled = 0;
+    int friendsKilled = 0;       // its own team's hogs, itself included
+    float enemyDamage = 0.0f;    // health taken from enemies
+    float friendDamage = 0.0f;
+    int killsThisTurn = 0;
+    int mostKillsInATurn = 0;
+};
+
 struct Hog {
     const scene::CharacterClass* characterClass = nullptr;  // never null for spawned hogs
     int team = 0;                   // 0 to 7, from the object's team bit mask
     bool playerControlled = false;  // the map marks hogs meant for the player
     std::size_t object = 0;         // its map object (index in the .POG): objectives sit on it
+    HogRecord record;               // kills and damage it dealt
     glm::vec3 position{0.0f};       // where its feet are, world units
     float yawRadians = 0.0f;        // turn around the vertical axis, as for map objects
     AnimationPlayer animation;      // what its body is doing

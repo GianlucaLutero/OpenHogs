@@ -3,9 +3,11 @@
 #include "OriginalMenuView.h"
 
 #include "openhogs/game/Ranks.h"
+#include "openhogs/ui/BattleResultsPage.h"
 #include "openhogs/ui/HudLayout.h"
 
 #include <algorithm>
+#include <cstdlib>
 
 namespace openhogs::gameapp {
 
@@ -35,6 +37,14 @@ const glm::vec4 kInactiveLevelColour{45 * kTint, 45 * kTint, 40 * kTint, 1.0f};
 constexpr float kResultsScale = 0.8f;
 constexpr float kResultsTitleTop = 60.0f, kResultsLinesTop = 130.0f, kResultsChoicesTop = 360.0f;
 constexpr float kResultsLineStep = 30.0f;
+// More lines than fit above the choices are set closer together.
+constexpr std::size_t kResultsRoomyLines = 7;
+constexpr float kResultsTightStep = 27.0f;
+// Table rows of the BATTLE RESULTS page (FUN_00483cc0): labels from x 171,
+// team columns centred from x 313, 76 apart; the team boxes are 61 x 15.
+constexpr float kTableLabelX = 171.0f, kTableFirstColumnX = 313.0f, kTableColumnStep = 76.0f;
+constexpr float kTeamBoxWidth = 61.0f, kTeamBoxHeight = 15.0f;
+constexpr float kTableScale = 0.6f;
 // The credits, written in grey (tint 120 on every channel).
 const glm::vec4 kCreditsColour{120 * kTint, 120 * kTint, 120 * kTint, 1.0f};
 // The blinking value of VOLUME CONTROL (tint 200, brighter than the
@@ -445,16 +455,51 @@ void OriginalMenuView::drawResults(render::UiRenderer& ui, const ui::Menu& menu,
     ui.drawText(questionFont_, menu.title(), centre, kResultsTitleTop, style);
     style.colour = kCreditsColour;
     float y = kResultsLinesTop;
+    const float step = squadLines_.size() > kResultsRoomyLines ? kResultsTightStep : kResultsLineStep;
     for (const auto& line : squadLines_) {
-        ui.drawText(questionFont_, line, centre, y, style);
-        y += kResultsLineStep;
+        if (line.find('\t') != std::string::npos) {
+            drawTableRow(ui, line, originX, y);
+        } else {
+            style.align = render::TextAlign::Centre;
+            style.scale = kResultsScale;
+            ui.drawText(questionFont_, line, centre, y, style);
+        }
+        y += step;
     }
+    style.scale = kResultsScale;
     const auto& items = menu.items();
     y = kResultsChoicesTop;
     for (std::size_t i = 0; i < items.size(); ++i) {
         style.colour = i == menu.selectedIndex() ? kSelectedColour : kEntryColour;
         ui.drawText(questionFont_, items[i].label, centre, y, style);
         y += kResultsLineStep;
+    }
+}
+
+void OriginalMenuView::drawTableRow(render::UiRenderer& ui, const std::string& line, float originX, float y) {
+    // Cells split by tabs: the label, then one cell per team column.
+    std::vector<std::string> cells;
+    std::size_t start = 0;
+    while (true) {
+        const auto tab = line.find('\t', start);
+        cells.push_back(line.substr(start, tab == std::string::npos ? std::string::npos : tab - start));
+        if (tab == std::string::npos) break;
+        start = tab + 1;
+    }
+    render::TextStyle style;
+    style.scale = kTableScale;
+    style.colour = kCreditsColour;
+    style.align = render::TextAlign::Left;
+    ui.drawText(questionFont_, cells[0], originX + kTableLabelX, y, style);
+    style.align = render::TextAlign::Centre;
+    for (std::size_t i = 1; i < cells.size(); ++i) {
+        const float x = originX + kTableFirstColumnX + kTableColumnStep * static_cast<float>(i - 1);
+        if (!cells[i].empty() && cells[i][0] == ui::kColourBoxCell) {
+            const int nation = std::atoi(cells[i].c_str() + 1);
+            ui.drawRect(x - kTeamBoxWidth / 2.0f, y, kTeamBoxWidth, kTeamBoxHeight, ui::teamMessageColour(nation));
+        } else {
+            ui.drawText(questionFont_, cells[i], x, y, style);
+        }
     }
 }
 
