@@ -56,6 +56,16 @@ constexpr float kJetpackClimbSpeed = 500.0f;
 constexpr float kJetpackSinkSpeed = 120.0f;
 constexpr float kJetpackSpeed = 600.0f;
 constexpr float kGuidedDegreesPerSecond = 90.0f;
+// Getting into a building or vehicle: the hog must stand this close to it.
+// Driving: speed and turning of tanks and troop carriers.
+constexpr float kMountReach = 120.0f;
+constexpr float kDriveSpeed = 400.0f;
+constexpr float kDriveTurnDegreesPerSecond = 60.0f;
+// Shots from inside leave this far beyond the object's box.
+constexpr float kMountMuzzleClearance = 60.0f;
+// The eye of a hog looking through binoculars, and how narrow their view is.
+constexpr float kEyeHeight = 230.0f;
+
 // How far apart the bombs of an airstrike fall, as a share of their blast.
 constexpr float kAirstrikeSpacing = 0.8f;
 constexpr float kMadnessSeconds = 10.0f;
@@ -98,6 +108,10 @@ void addMovementEvents(const MovementEvents& movement, const Hog& hog, std::size
 } // namespace
 
 glm::vec3 muzzlePosition(const Hog& hog) {
+    if (hog.sheltered()) {
+        // From the barrel of the building or vehicle it is in.
+        return hog.position + glm::vec3(0.0f, hog.mountMuzzleHeight, 0.0f) + hogFacing(hog) * hog.mountMuzzleReach;
+    }
     return hog.position + glm::vec3(0.0f, kMuzzleHeight, 0.0f) + hogFacing(hog) * kMuzzleForward;
 }
 
@@ -112,6 +126,7 @@ World::World(MapCollision map, std::vector<Hog> hogs, TurnRules rules, std::vect
         turns_.emplace(hogs_, rules);
         hadSeveralTeams_ = turns_->teams().size() > 1;
     }
+    for (std::size_t i = 0; i < hogs_.size(); ++i) applyFooter(i);  // SKIP TURN for everyone
 }
 
 std::optional<std::size_t> World::activeHog() const {
@@ -244,10 +259,22 @@ int World::stock(int team, WeaponId weapon) const {
 
 void World::refreshStockWeapons(int team) {
     // Every hog of the team carries its own weapons, then the team's stock.
-    for (Hog& hog : hogs_) {
+    for (std::size_t index = 0; index < hogs_.size(); ++index) {
+        Hog& hog = hogs_[index];
         if (hog.team != team) continue;
+        if (hog.sheltered()) {
+            applyFooter(index);  // inside, only the object's weapons
+            continue;
+        }
+        // A weapon in hand stays in hand; an action (the fist of a hog with
+        // nothing else, SKIP TURN) gives way to the first weapon.
+        const bool heldAction = !hog.weapons.empty() &&
+                                hog.weaponSlot % hog.weapons.size() >=
+                                    hog.weapons.size() - std::min(hog.footerActions, hog.weapons.size());
+        const std::optional<WeaponId> selected =
+            heldAction ? std::nullopt : std::optional<WeaponId>(hog.selectedWeapon());
+        hog.footerActions = 0;  // dropped with the stock below, added again after
         if (hog.ownWeapons > hog.weapons.size()) hog.ownWeapons = hog.weapons.size();
-        const WeaponId selected = hog.selectedWeapon();
         hog.weapons.resize(hog.ownWeapons);
         for (const auto& [weapon, count] : stock_[team]) {
             if (count > 0 && std::find(hog.weapons.begin(), hog.weapons.end(), weapon) == hog.weapons.end()) {
@@ -255,15 +282,50 @@ void World::refreshStockWeapons(int team) {
             }
         }
         // Keep the same weapon in hand if it is still there.
-        const auto kept = std::find(hog.weapons.begin(), hog.weapons.end(), selected);
+        const auto kept = selected ? std::find(hog.weapons.begin(), hog.weapons.end(), *selected) : hog.weapons.end();
         hog.weaponSlot = kept != hog.weapons.end() ? static_cast<std::size_t>(kept - hog.weapons.begin()) : 0;
+        applyFooter(index);
     }
+}
+
+void World::applyFooter(std::size_t hogIndex) {
+    // The actions every hog has at the end of its list: its fists when it
+    // has nothing else, getting into the building or vehicle beside it (or
+    // out of the one it is in), and SKIP TURN, always in the menu's last
+    // place as in the original (seen in a PS1 playthrough).
+    Hog& hog = hogs_[hogIndex];
+    std::vector<WeaponId> footer;
+    const std::size_t kept = hog.weapons.size() - std::min(hog.footerActions, hog.weapons.size());
+    if (kept == 0 && !hog.sheltered()) footer.push_back(WeaponId::Trotter);  // nothing else: its fists
+    if (hog.sheltered()) {
+        const bool vehicle = mountSpec(mounts_[*hog.mount].kind).vehicle;
+        footer.push_back(vehicle ? WeaponId::VehicleInOut : WeaponId::BuildingInOut);
+    } else if (const auto near = freeMountNear(hog)) {
+        footer.push_back(mountSpec(mounts_[*near].kind).vehicle ? WeaponId::VehicleInOut : WeaponId::BuildingInOut);
+    }
+    if (std::find(hog.weapons.begin(), hog.weapons.begin() + static_cast<std::ptrdiff_t>(kept), WeaponId::SkipTurn) ==
+        hog.weapons.begin() + static_cast<std::ptrdiff_t>(kept)) {
+        footer.push_back(WeaponId::SkipTurn);
+    }
+    if (std::equal(hog.weapons.begin() + static_cast<std::ptrdiff_t>(kept), hog.weapons.end(), footer.begin(),
+                   footer.end())) {
+        return;  // already so
+    }
+    const WeaponId selected = hog.selectedWeapon();
+    hog.weapons.resize(kept);
+    hog.weapons.insert(hog.weapons.end(), footer.begin(), footer.end());
+    hog.footerActions = footer.size();
+    const auto still = std::find(hog.weapons.begin(), hog.weapons.end(), selected);
+    hog.weaponSlot = still != hog.weapons.end() ? static_cast<std::size_t>(still - hog.weapons.begin()) : 0;
 }
 
 void World::useStock(std::size_t hogIndex) {
     Hog& hog = hogs_[hogIndex];
     if (hog.weapons.empty()) return;
     const std::size_t slot = hog.weaponSlot % hog.weapons.size();
+    if (slot >= hog.weapons.size() - std::min(hog.footerActions, hog.weapons.size())) {
+        return;  // an action the world adds (SKIP TURN, getting in or out)
+    }
     if (hog.ownWeapons > hog.weapons.size() || slot < hog.ownWeapons) {
         useOwnWeapon(hog, slot);  // one of its own weapons
         return;
@@ -504,6 +566,17 @@ void World::damageMapObject(std::size_t object, float amount, std::vector<GameEv
     }
     map_.removeObject(object);  // whatever stood on it falls
     events.push_back(destroyed);
+
+    // A building or vehicle with a hog inside throws it out, hurt.
+    for (auto& mount : mounts_) {
+        if (mount.object != object) continue;
+        mount.destroyed = true;
+        if (mount.occupant) {
+            const std::size_t inside = *mount.occupant;
+            leaveMount(inside, events);
+            damageHog(hogs_, inside, mountSpec(mount.kind).damageWhenDestroyed, events);
+        }
+    }
 }
 
 void World::fire(std::size_t hogIndex, float power, std::vector<GameEvent>& events) {
@@ -626,6 +699,22 @@ void World::fire(std::size_t hogIndex, float power, std::vector<GameEvent>& even
         hog.held.reset();
         break;
     }
+    case WeaponKind::InOut:
+        // In or out of the building or vehicle; the turn goes on.
+        events.push_back(fired);
+        if (hog.sheltered()) {
+            leaveMount(hogIndex, events);
+        } else if (const auto near = freeMountNear(hog)) {
+            enterMount(hogIndex, *near, events);
+        }
+        break;
+    case WeaponKind::MapView:
+    case WeaponKind::Binoculars: {
+        // Switched on, or off again.
+        const auto wanted = spec.kind == WeaponKind::MapView ? Hog::Looking::AtTheMap : Hog::Looking::ThroughBinoculars;
+        hog.looking = hog.looking == wanted ? Hog::Looking::Normally : wanted;
+        break;
+    }
     case WeaponKind::Airstrike: {
         // Bombs fall in a line across the chosen spot, along the hog's aim.
         events.push_back(fired);
@@ -644,6 +733,202 @@ void World::fire(std::size_t hogIndex, float power, std::vector<GameEvent>& even
         break;
     }
     }
+}
+
+std::optional<std::size_t> World::freeMountNear(const Hog& hog) const {
+    if (!hog.alive || hog.sheltered()) return std::nullopt;
+    const glm::vec3 body = hog.position + glm::vec3(0.0f, 50.0f, 0.0f);
+    for (std::size_t i = 0; i < mounts_.size(); ++i) {
+        const Mount& mount = mounts_[i];
+        if (mount.destroyed || mount.occupant) continue;
+        if (const CollisionBox* box = mountBox(mount); box && box->distanceTo(body) <= kMountReach) return i;
+    }
+    return std::nullopt;
+}
+
+const CollisionBox* World::mountBox(const Mount& mount) const {
+    for (const auto& box : map_.boxes()) {
+        if (box.object == mount.object) return &box;
+    }
+    return nullptr;
+}
+
+void World::enterMount(std::size_t hogIndex, std::size_t mountIndex, std::vector<GameEvent>& events) {
+    Hog& hog = hogs_[hogIndex];
+    Mount& mount = mounts_[mountIndex];
+    const CollisionBox* box = mountBox(mount);
+    if (!box) return;
+    const MountSpec& spec = mountSpec(mount.kind);
+
+    // Its own weapons are put by; the object's take their place.
+    const std::size_t own = hog.weapons.size() - std::min(hog.footerActions, hog.weapons.size());
+    mount.savedWeapons.assign(hog.weapons.begin(), hog.weapons.begin() + static_cast<std::ptrdiff_t>(own));
+    mount.savedOwnWeapons = hog.ownWeapons;
+    mount.savedAmmo = hog.ownAmmo;
+    mount.savedSlot = hog.weaponSlot;
+    hog.weapons.clear();
+    hog.ownAmmo.clear();
+    for (const auto& [weapon, uses] : spec.arsenal) {
+        if (uses == 0) {
+            hog.weapons.push_back(weapon);
+        } else if (const auto left = mount.ammo.find(weapon); left != mount.ammo.end() && left->second > 0) {
+            hog.weapons.push_back(weapon);
+            hog.ownAmmo[weapon] = left->second;
+        }
+    }
+    hog.ownWeapons = hog.weapons.size();
+    hog.footerActions = 0;
+    hog.weaponSlot = 0;
+
+    mount.occupant = hogIndex;
+    hog.mount = mountIndex;
+    hog.position = glm::vec3(box->centre.x, box->bottom(), box->centre.z);
+    hog.motion.state = MotionState::Standing;
+    hog.motion.velocity = glm::vec3(0.0f);
+    if (spec.drivable) hog.yawRadians = box->yawRadians;  // facing the way it drives
+    hog.aimDegrees = std::clamp(hog.aimDegrees, spec.lowestAimDegrees, spec.highestAimDegrees);
+    hog.mountMuzzleHeight = box->halfSize.y * 1.4f;
+    hog.mountMuzzleReach = std::max(box->halfSize.x, box->halfSize.z) + kMountMuzzleClearance;
+    hog.drawnWeapon.reset();
+    hog.held.reset();
+    hog.hideShield = 0.0f;
+    applyFooter(hogIndex);
+
+    GameEvent mounted;
+    mounted.type = GameEventType::HogMounted;
+    mounted.hog = hogIndex;
+    mounted.object = mount.object;
+    mounted.position = hog.position;
+    events.push_back(mounted);
+}
+
+void World::leaveMount(std::size_t hogIndex, std::vector<GameEvent>& events) {
+    Hog& hog = hogs_[hogIndex];
+    if (!hog.mount) return;
+    Mount& mount = mounts_[*hog.mount];
+    const MountSpec& spec = mountSpec(mount.kind);
+
+    // The shots it did not fire stay with the object.
+    for (const auto& [weapon, uses] : spec.arsenal) {
+        if (uses == 0) continue;
+        const auto left = hog.ownAmmo.find(weapon);
+        mount.ammo[weapon] = left != hog.ownAmmo.end() ? left->second : 0;
+    }
+    hog.weapons = mount.savedWeapons;
+    hog.ownWeapons = mount.savedOwnWeapons;
+    hog.ownAmmo = mount.savedAmmo;
+    hog.weaponSlot = mount.savedSlot;
+    hog.footerActions = 0;
+
+    // Out beside it, on the side it faces if there is room.
+    glm::vec3 spot = hog.position;
+    if (const CollisionBox* box = mountBox(mount)) {
+        const float reach = std::max(box->halfSize.x, box->halfSize.z) + kHogRadius + 20.0f;
+        const glm::vec3 facing = hogFacing(hog);
+        const glm::vec3 side(-facing.z, 0.0f, facing.x);
+        for (const glm::vec3 way : {facing, side, -side, -facing}) {
+            const glm::vec3 candidate = glm::vec3(box->centre.x, 0.0f, box->centre.z) + way * reach;
+            if (!map_.terrain().contains(candidate.x, candidate.z)) continue;
+            const float ground = map_.groundHeight(candidate.x, candidate.z, box->top());
+            if (!map_.hitsObstacle(glm::vec3(candidate.x, ground + 50.0f, candidate.z))) {
+                spot = glm::vec3(candidate.x, ground, candidate.z);
+                break;
+            }
+        }
+    }
+    hog.mount.reset();
+    mount.occupant.reset();
+    hog.position = spot;
+    hog.motion.state = MotionState::Standing;
+    hog.drawnWeapon.reset();
+    hog.held.reset();
+    refreshStockWeapons(hog.team);
+
+    GameEvent dismounted;
+    dismounted.type = GameEventType::HogDismounted;
+    dismounted.hog = hogIndex;
+    dismounted.object = mount.object;
+    dismounted.position = hog.position;
+    events.push_back(dismounted);
+}
+
+void World::driveMount(std::size_t hogIndex, const MovementInput& input, double seconds) {
+    // Tanks and carriers: the movement keys drive them; its box moves with it.
+    Hog& hog = hogs_[hogIndex];
+    Mount& mount = mounts_[*hog.mount];
+    const auto dt = static_cast<float>(seconds);
+    const int turn = (input.turnLeft ? 1 : 0) - (input.turnRight ? 1 : 0);
+    const float dyaw = static_cast<float>(turn) * glm::radians(kDriveTurnDegreesPerSecond) * dt;
+    const int direction = (input.forward ? 1 : 0) - (input.backward ? 1 : 0);
+    if (turn == 0 && direction == 0) return;
+
+    auto boxes = map_.takeObject(mount.object);
+    if (boxes.empty()) return;
+    const float yaw = hog.yawRadians + dyaw;
+    const glm::vec3 facing{std::cos(yaw), 0.0f, -std::sin(yaw)};
+    const glm::vec3 step = facing * (kDriveSpeed * dt * static_cast<float>(direction));
+    const glm::vec3 centre = boxes.front().centre + step;
+    const float reach = std::max(boxes.front().halfSize.x, boxes.front().halfSize.z);
+    const glm::vec3 front = centre + facing * (reach * static_cast<float>(direction == 0 ? 0 : direction));
+    const auto& terrain = map_.terrain();
+    const float centreX = (terrain.minX() + terrain.maxX()) / 2.0f;
+    const float centreZ = (terrain.minZ() + terrain.maxZ()) / 2.0f;
+    const bool blocked =
+        !terrain.contains(front.x, front.z) || std::abs(front.x - centreX) > kPlayAreaHalfSize ||
+        std::abs(front.z - centreZ) > kPlayAreaHalfSize || terrain.tileAt(front.x, front.z).isWater ||
+        map_.hitsObstacle(glm::vec3(front.x, terrain.heightAt(front.x, front.z) + 50.0f, front.z));
+    const glm::vec3 move = blocked ? glm::vec3(0.0f) : step;
+    for (auto& box : boxes) {
+        box.centre += move;
+        box.centre.y = terrain.heightAt(box.centre.x, box.centre.z) + box.halfSize.y;
+        box.yawRadians += dyaw;
+    }
+    map_.addBoxes(boxes);
+    mount.moved += move;
+    mount.moved.y = boxes.front().centre.y - mount.origin.y;
+    mount.turned += dyaw;
+    hog.yawRadians = yaw;
+    hog.position = glm::vec3(boxes.front().centre.x, boxes.front().bottom(), boxes.front().centre.z);
+}
+
+void World::setMounts(const std::vector<std::pair<std::size_t, MountKind>>& mounts) {
+    mounts_.clear();
+    for (const auto& [object, kind] : mounts) {
+        Mount mount;
+        mount.object = object;
+        mount.kind = kind;
+        for (const auto& [weapon, uses] : mountSpec(kind).arsenal) {
+            if (uses > 0) mount.ammo[weapon] = uses;
+        }
+        if (const CollisionBox* box = mountBox(mount)) mount.origin = box->centre;
+        mounts_.push_back(std::move(mount));
+    }
+    // Hogs the map puts inside one start in it (the pillboxes' gunners).
+    std::vector<GameEvent> ignored;
+    for (std::size_t h = 0; h < hogs_.size(); ++h) {
+        if (!hogs_[h].alive || hogs_[h].sheltered()) continue;
+        for (std::size_t m = 0; m < mounts_.size(); ++m) {
+            const CollisionBox* box = mountBox(mounts_[m]);
+            if (!mounts_[m].occupant && box && box->footprintDistance(hogs_[h].position.x, hogs_[h].position.z) == 0.0f) {
+                enterMount(h, m, ignored);
+                break;
+            }
+        }
+    }
+    for (std::size_t h = 0; h < hogs_.size(); ++h) applyFooter(h);
+}
+
+std::optional<SightView> World::binocularView() const {
+    const auto active = activeHog();
+    if (!active || phase_ != MatchPhase::Playing) return std::nullopt;
+    const Hog& hog = hogs_[*active];
+    if (hog.looking != Hog::Looking::ThroughBinoculars) return std::nullopt;
+    return SightView{hog.position + glm::vec3(0.0f, kEyeHeight, 0.0f), aimDirection(hog)};
+}
+
+bool World::mapView() const {
+    const auto active = activeHog();
+    return active && phase_ == MatchPhase::Playing && hogs_[*active].looking == Hog::Looking::AtTheMap;
 }
 
 glm::vec3 World::targetSpot(const Hog& hog, const WeaponSpec& spec, float power) const {
@@ -734,7 +1019,7 @@ void World::pickPocket(std::size_t hogIndex, const WeaponSpec& spec, std::vector
     }
     if (!victim) return;
     Hog& target = hogs_[*victim];
-    const std::size_t own = std::min(target.ownWeapons, target.weapons.size());
+    const std::size_t own = target.ownCount();
     std::vector<std::size_t> candidates;
     for (std::size_t w = 0; w < own; ++w) {
         if (target.weapons[w] != WeaponId::Trotter) candidates.push_back(w);
@@ -745,7 +1030,7 @@ void World::pickPocket(std::size_t hogIndex, const WeaponSpec& spec, std::vector
     useOwnWeapon(target, slot);
 
     // The thief carries it among its own weapons, with one use.
-    const std::size_t thiefOwn = std::min(thief.ownWeapons, thief.weapons.size());
+    const std::size_t thiefOwn = thief.ownCount();
     const auto had = std::find(thief.weapons.begin(), thief.weapons.begin() + static_cast<std::ptrdiff_t>(thiefOwn), weapon);
     if (had == thief.weapons.begin() + static_cast<std::ptrdiff_t>(thiefOwn)) {
         thief.weapons.insert(thief.weapons.begin() + static_cast<std::ptrdiff_t>(thiefOwn), weapon);
@@ -1093,6 +1378,7 @@ void World::turnBegan(std::vector<GameEvent>& events) {
     flightEndsTurn_ = false;
     for (auto& hog : hogs_) {
         hog.controlsReversed = false;
+        hog.looking = Hog::Looking::Normally;
         if (hog.jetpackSecondsLeft > 0.0f) {
             hog.jetpackSecondsLeft = 0.0f;
             hog.parachute = true;
@@ -1108,6 +1394,13 @@ void World::turnBegan(std::vector<GameEvent>& events) {
         if (hog.confused) {
             hog.confused = false;
             hog.controlsReversed = true;
+        }
+        if (hog.sheltered()) {
+            // Tents heal the hog inside (the wiki: a medic tent 50 points,
+            // a mash tent all of them).
+            const MountKind kind = mounts_[*hog.mount].kind;
+            if (kind == MountKind::MedicTent) healHog(*active, 50.0f, events);
+            if (kind == MountKind::MashTent) healHog(*active, hog.maxHealth, events);
         }
         if (hog.hidden()) {
             hog.hideShield = 0.0f;
@@ -1162,6 +1455,12 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
                             hog.jetpackSecondsLeft <= 0.0f;
         sighting_ = input.sight && steady && phase_ == MatchPhase::Playing &&
                     weaponSpec(hog.selectedWeapon()).rifleView;
+        if (hog.sheltered()) {
+            const MountSpec& mount = mountSpec(mounts_[*hog.mount].kind);
+            hog.aimDegrees = std::clamp(hog.aimDegrees, mount.lowestAimDegrees, mount.highestAimDegrees);
+        }
+        if (input.weaponStep != 0) hog.looking = Hog::Looking::Normally;
+        applyFooter(*active);  // getting in appears and goes as it walks
     }
 
     float distanceMoved = 0.0f;
@@ -1179,12 +1478,32 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
                 flyJetpack(i, movement, seconds, animations);
                 continue;
             }
+            if (hogs_[i].sheltered()) {
+                // Inside: it turns to aim; a vehicle drives. Its animations
+                // still play (an action's motion holds the turn up).
+                Hog& inside = hogs_[i];
+                inside.animation.update(seconds, animations);
+                if (mountSpec(mounts_[*inside.mount].kind).drivable) {
+                    driveMount(i, movement, seconds);
+                } else {
+                    const int turn = (movement.turnLeft ? 1 : 0) - (movement.turnRight ? 1 : 0);
+                    inside.yawRadians += static_cast<float>(turn) * glm::radians(kDriveTurnDegreesPerSecond) *
+                                         static_cast<float>(seconds);
+                }
+                continue;
+            }
+            if (hogs_[i].looking != Hog::Looking::Normally) {
+                movement.forward = movement.backward = movement.jump = false;  // looking, not walking
+            }
             canMove = true;  // no movement allowance: only the clock limits the turn
             if (hogs_[i].charging || sighting_) {
                 // Charging a throw or looking through the sight: the hog may
                 // turn to aim, not walk away.
                 movement.forward = movement.backward = movement.jump = false;
             }
+        } else if (hogs_[i].sheltered()) {
+            hogs_[i].animation.update(seconds, animations);
+            continue;  // waits inside its building or vehicle
         } else if (hogs_[i].alive && hogs_[i].madnessSecondsLeft > 0.0f) {
             // Madness gas: it runs straight ahead until it wears off.
             hogs_[i].madnessSecondsLeft = std::max(0.0f, hogs_[i].madnessSecondsLeft - static_cast<float>(seconds));
@@ -1343,6 +1662,7 @@ World loadWorld(const core::VirtualFileSystem& vfs, std::string_view mapName, Tu
     std::vector<Objective> objectives;
     std::vector<Destructible> destructibles;
     std::vector<std::size_t> hidden;
+    std::vector<std::pair<std::size_t, MountKind>> mounts;
     std::size_t objectCount = 0;
     if (vfs.exists(base + ".pog")) {
         const auto objects = formats::parseMapObjects(vfs.readFile(base + ".pog"));
@@ -1353,6 +1673,7 @@ World loadWorld(const core::VirtualFileSystem& vfs, std::string_view mapName, Tu
             if (startsHidden(objects[i], isTrainingMap(mapName))) hidden.push_back(i);
         }
         destructibles = findDestructibles(objects);
+        mounts = findMounts(objects);
         objectCount = objects.size();
 
         // Only objects with a model in the map's archive get a collision box.
@@ -1372,6 +1693,7 @@ World loadWorld(const core::VirtualFileSystem& vfs, std::string_view mapName, Tu
     world.setDestructibles(std::move(destructibles));
     world.setTraining(isTrainingMap(mapName));
     world.hideObjects(hidden);
+    world.setMounts(mounts);
     return world;
 }
 

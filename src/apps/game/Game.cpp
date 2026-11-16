@@ -32,6 +32,7 @@ constexpr float kCameraTargetHeight = 180.0f;
 // The rifle sight magnifies: its view is this narrow (the ordinary
 // camera's is 60 degrees; decision 131).
 constexpr float kSightFieldOfViewDegrees = 25.0f;
+constexpr float kBinocularFieldOfViewDegrees = 12.0f;
 
 // Sounds of the match bank (Audio/sfxday.srl), by file name, for what happens in a match. The
 // choice is OpenHogs' own (docs/open-decisions.md).
@@ -103,6 +104,11 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Inter
     mapRenderer_ = std::make_unique<render::MapRenderer>(scene);
     for (const auto& object : mapRenderer_->objects()) {
         if (world_.isHidden(object.object)) mapRenderer_->hideObject(object.object);  // until revealed
+    }
+    for (const auto& mount : world_.mounts()) {
+        for (const auto& object : mapRenderer_->objects()) {
+            if (object.object == mount.object) mountTransforms_[mount.object] = object.transform;
+        }
     }
     hogRenderer_ = std::make_unique<render::CharacterRenderer>();
     effects_ = std::make_unique<render::EffectsRenderer>();
@@ -399,6 +405,8 @@ void Game::handleEvents(const std::vector<game::GameEvent>& events) {
             pickedUp(event);
             break;
         case GameEventType::ObjectiveDone: objectiveDone(event); break;
+        case GameEventType::HogMounted:
+        case GameEventType::HogDismounted: playSound("S_SELECT"); break;
         case GameEventType::HogHidden:
             if (event.hog < world_.hogs().size()) {
                 // The disguise: a crate where the hog stood (the wiki: a
@@ -470,6 +478,7 @@ void Game::step(double seconds) {
         input = decision.input;
     }
     handleEvents(world_.update(seconds, input, library_.animations()));
+    placeMounts();
     banner_.update(seconds);
     hud_.update(seconds, ui::describeTurn(world_, interface_.strings(), interface_.gameText()));
     audio_.update(seconds);
@@ -583,14 +592,42 @@ void Game::drawEffects(const render::Camera& camera, int width, int height) {
     const auto active = world_.activeHog();
     for (std::size_t i = 0; i < world_.hogs().size(); ++i) {
         const auto& hog = world_.hogs()[i];
-        if (!hog.alive) continue;
+        if (!hog.alive || hog.sheltered()) continue;
         effects_->drawHealthBar(hog.position + glm::vec3(0.0f, kHealthBarHeight, 0.0f), hog.health / hog.maxHealth,
                                 active == i ? kActiveHealthColour : kHealthColour);
     }
 }
 
+void Game::placeMounts() {
+    // A driven vehicle: its first placing, turned round its first centre
+    // and moved by as much as the world drove it.
+    for (const auto& mount : world_.mounts()) {
+        if (mount.moved == glm::vec3(0.0f) && mount.turned == 0.0f) continue;
+        const auto first = mountTransforms_.find(mount.object);
+        if (first == mountTransforms_.end()) continue;
+        const glm::mat4 turn = glm::translate(glm::mat4(1.0f), mount.origin) *
+                               glm::rotate(glm::mat4(1.0f), mount.turned, glm::vec3(0.0f, 1.0f, 0.0f)) *
+                               glm::translate(glm::mat4(1.0f), -mount.origin);
+        mapRenderer_->moveObject(mount.object, glm::translate(glm::mat4(1.0f), mount.moved) * turn * first->second);
+    }
+}
+
 render::Camera Game::sceneCamera() const {
     render::Camera camera;
+    if (world_.mapView()) {
+        // MAP VIEW: the whole map from high above.
+        const auto& terrain = world_.terrain();
+        camera.frame({terrain.minX(), 0.0f, terrain.minZ()}, {terrain.maxX(), 2000.0f, terrain.maxZ()});
+        return camera;
+    }
+    if (const auto look = world_.binocularView()) {
+        // Through binoculars: from the hog's eyes, much magnified.
+        camera.position = look->eye;
+        camera.yawDegrees = glm::degrees(std::atan2(look->direction.x, -look->direction.z));
+        camera.pitchDegrees = glm::degrees(std::asin(std::clamp(look->direction.y, -1.0f, 1.0f)));
+        camera.fieldOfViewDegrees = kBinocularFieldOfViewDegrees;
+        return camera;
+    }
     if (const auto sight = world_.sightView()) {
         // Through the rifle sight: from the muzzle along the line of fire,
         // magnified.
@@ -609,7 +646,7 @@ render::Camera Game::sceneCamera() const {
 
 void Game::drawScene(int width, int height) {
     const render::Camera camera = sceneCamera();
-    const bool sighting = world_.sightView().has_value();
+    const bool sighting = world_.sightView().has_value() || world_.binocularView().has_value();
 
     render::DrawOptions options;
     options.showMarkers = false;  // the hogs themselves stand where the markers were
@@ -618,6 +655,7 @@ void Game::drawScene(int width, int height) {
     for (std::size_t i = 0; i < world_.hogs().size(); ++i) {
         if (world_.hogs()[i].hidden()) continue;  // its disguise (a crate) is drawn instead
         if (sighting && world_.activeHog() == i) continue;  // we look out of its eyes
+        if (world_.hogs()[i].sheltered()) continue;         // inside a building or vehicle
         drawHog(camera, width, height, world_.hogs()[i], i);
     }
     drawWeapons(camera, width, height);
@@ -631,6 +669,7 @@ void Game::drawHud(int width, int height) {
     hud_.drawDamageNumbers(interface_.renderer(), camera.projectionMatrix(aspect) * camera.viewMatrix(),
                            camera.position);
     if (world_.sightView()) hud_.drawRifleSight(interface_.renderer());
+    if (world_.binocularView()) hud_.drawRifleSight(interface_.renderer(), false);  // the round view, no crosshair
     hud_.draw(interface_, ui::describeTurn(world_, interface_.strings(), interface_.gameText()));
     if (const auto& message = banner_.current()) {
         // Turn messages fade out over their last quarter.

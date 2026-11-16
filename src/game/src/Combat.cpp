@@ -37,8 +37,8 @@ float fallDamage(float height) {
 
 void damageHog(std::vector<Hog>& hogs, std::size_t index, float amount, std::vector<GameEvent>& events) {
     Hog& hog = hogs[index];
-    if (!hog.alive || amount <= 0.0f) {
-        return;
+    if (!hog.alive || amount <= 0.0f || hog.sheltered()) {
+        return;  // inside a building or vehicle, the object takes the harm
     }
     if (hog.hidden()) {
         // Its disguise takes the damage first; when it breaks, the hog shows.
@@ -100,7 +100,7 @@ void explode(std::vector<Hog>& hogs, const glm::vec3& centre, float radius, floa
     }
     for (std::size_t i = 0; i < hogs.size(); ++i) {
         Hog& hog = hogs[i];
-        if (!hog.alive) {
+        if (!hog.alive || hog.sheltered()) {
             continue;
         }
         const glm::vec3 offset = hogCentre(hog) - centre;
@@ -129,7 +129,7 @@ BulletHit traceBullet(const glm::vec3& start, const glm::vec3& direction, float 
         const glm::vec3 point = start + direction * travelled;
         hit.point = point;
         for (std::size_t i = 0; i < hogs.size(); ++i) {
-            if (i != shooter && hogs[i].alive && insideHog(hogs[i], point)) {
+            if (i != shooter && hogs[i].alive && !hogs[i].sheltered() && insideHog(hogs[i], point)) {
                 hit.hog = i;
                 return hit;
             }

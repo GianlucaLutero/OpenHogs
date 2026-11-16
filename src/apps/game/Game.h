@@ -191,6 +191,10 @@ private:
 
     // GPU resources (the application keeps the OpenGL context alive).
     std::unique_ptr<render::MapRenderer> mapRenderer_;
+    // Where the map first placed each building or vehicle hogs can get
+    // into, to place the driven ones from (map object -> transform).
+    std::map<std::size_t, glm::mat4> mountTransforms_;
+    void placeMounts();
     std::unique_ptr<render::CharacterRenderer> hogRenderer_;
     std::unique_ptr<render::EffectsRenderer> effects_;
     std::unique_ptr<render::CharacterTextureSet> weaponTextures_;

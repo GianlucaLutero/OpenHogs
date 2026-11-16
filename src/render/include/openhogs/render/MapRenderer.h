@@ -47,6 +47,9 @@ public:
     // always loads the crate models the map's archive has).
     void addObject(const scene::ModelInstance& instance);
 
+    // Places map object `object` anew (a vehicle being driven).
+    void moveObject(std::size_t object, const glm::mat4& transform);
+
 private:
     // One textured group of triangles on the GPU.
     struct GpuPart {

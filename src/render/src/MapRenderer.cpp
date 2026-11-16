@@ -63,6 +63,12 @@ void MapRenderer::addObject(const scene::ModelInstance& instance) {
     }
 }
 
+void MapRenderer::moveObject(std::size_t object, const glm::mat4& transform) {
+    for (auto& instance : objects_) {
+        if (instance.object == object) instance.transform = transform;
+    }
+}
+
 std::vector<MapRenderer::GpuPart> MapRenderer::uploadMesh(const scene::Mesh& mesh) const {
     std::vector<GpuPart> parts;
     for (const auto& part : mesh) {

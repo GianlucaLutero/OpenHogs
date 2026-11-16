@@ -21,6 +21,7 @@
 
 #include <glm/glm.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <map>
 #include <optional>
@@ -110,6 +111,28 @@ struct Hog {
     // when it lands).
     float jetpackSecondsLeft = 0.0f;
     bool parachute = false;
+
+    // Inside a building or vehicle (index into World::mounts()): safe from
+    // harm, using the object's weapons. Empty when out in the open.
+    std::optional<std::size_t> mount;
+    bool sheltered() const { return mount.has_value(); }
+    // Inside, its shots leave from the object's barrel: this high above the
+    // hog's position and this far ahead (World::muzzlePosition).
+    float mountMuzzleHeight = 0.0f;
+    float mountMuzzleReach = 0.0f;
+    // How many entries at the end of `weapons` are actions the world adds
+    // by itself (getting in or out, SKIP TURN), not the hog's own.
+    std::size_t footerActions = 0;
+    // How many entries at the start of `weapons` are its own (the rest are
+    // the team's stock, then the actions above).
+    std::size_t ownCount() const {
+        const std::size_t listed = weapons.size() - std::min(footerActions, weapons.size());
+        return std::min(ownWeapons, listed);
+    }
+
+    // MAP VIEW or BINOCULARS switched on (Weapons.h): how the player looks.
+    enum class Looking { Normally, AtTheMap, ThroughBinoculars };
+    Looking looking = Looking::Normally;
     bool hidden() const { return hideShield > 0.0f; }
 
     float aimDegrees = 15.0f;       // above the horizon

@@ -118,6 +118,11 @@ TEST_CASE("Weapons: the table is complete and consistent", "[game][weapons]") {
             break;
         case WeaponKind::SkipTurn:
         case WeaponKind::Surrender:
+        case WeaponKind::MapView:
+        case WeaponKind::Binoculars:
+            break;
+        case WeaponKind::InOut:
+            CHECK_FALSE(spec.endsTurn);  // getting in or out leaves the turn going on
             break;
         }
     }

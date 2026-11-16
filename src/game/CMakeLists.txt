@@ -10,10 +10,11 @@
 #   AnimationPlayer    - plays and cross-fades a hog's animations
 #   IdleAnimator       - what a hog does while standing around
 #   HogMovement        - walking, turning, jumping, falling, swimming
-#   TurnSystem         - whose turn it is, time and movement left
+#   TurnSystem         - whose turn it is and the time left
 #   Weapons            - what each weapon does, who carries which
 #   Combat             - damage, death, explosions, bullets
 #   Projectiles        - grenades, shells, TNT and mines in flight or lying
+#   Mounts             - the buildings and vehicles a hog can get into
 #   World              - the map, the hogs and the turns of the match
 #   ChaseCamera        - the camera that follows the active hog
 #   ComputerPlayer     - the computer opponent: plans and plays a turn
@@ -48,6 +49,7 @@ add_library(openhogs_game STATIC
     src/Training.cpp
     src/TurnSystem.cpp
     src/Objectives.cpp
+    src/Mounts.cpp
     src/Pickups.cpp
     src/Weapons.cpp
     src/World.cpp)
