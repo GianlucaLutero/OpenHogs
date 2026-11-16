@@ -20,7 +20,7 @@ using C = Career;
 // models: the PC files have one model per career line, not per rank; the
 // Commando wears the saboteur's (as do the maps' commandos) and the Hero
 // the legend's (docs/open-decisions.md).
-const std::array<RankSpec, 15> kRanks{{
+const std::array<RankSpec, 16> kRanks{{
     {R::Grunt, "grunt", 63, "GRUNT", C::None, 0, 50, "grunt", {W::Bayonet, W::Rifle, W::Grenade}, {{W::Grenade, 3}}},
     {R::Gunner, "gunner", 64, "GUNNER", C::HeavyWeapons, 1, 75, "heavy", {W::Trotter, W::Pistol, W::Bazooka}, {}},
     {R::Bombardier, "bombardier", 65, "BOMBARDIER", C::HeavyWeapons, 2, 90, "heavy",
@@ -63,6 +63,12 @@ const std::array<RankSpec, 15> kRanks{{
       W::Airburst, W::Tnt, W::Jetpack, W::SelfHeal, W::Hide, W::SpecialOps, W::Airstrike},
      {{W::HeavyMachineGun, 1}, {W::MedicineDart, 3}, {W::ClusterGrenade, 1}, {W::PoisonGas, 1}, {W::Airburst, 1},
       {W::Tnt, 1}, {W::Jetpack, 1}, {W::SelfHeal, 1}, {W::SpecialOps, 1}, {W::Airstrike, 1}}},
+    {R::Legend, "legend", 79, "LEGEND", C::Officer, 6, 200, "legend",
+     {W::Sword, W::HeavyMachineGun, W::Tranquiliser, W::ClusterGrenade, W::PoisonGas, W::Bazooka, W::Airburst,
+      W::Tnt, W::Jetpack, W::SelfHeal, W::Shockwave, W::SpecialOps, W::Airstrike, W::FireRainAirstrike},
+     {{W::HeavyMachineGun, 1}, {W::Tranquiliser, 1}, {W::ClusterGrenade, 1}, {W::PoisonGas, 1}, {W::Airburst, 1},
+      {W::Tnt, 1}, {W::Jetpack, 3}, {W::SelfHeal, 1}, {W::SpecialOps, 1}, {W::Airstrike, 1},
+      {W::FireRainAirstrike, 1}}},
 }};
 
 } // namespace
@@ -92,7 +98,9 @@ std::vector<RankId> promotionsFrom(RankId rank) {
     case Career::None:
         return {R::Gunner, R::Orderly, R::Scout, R::Sapper};
     case Career::Officer:
-        return rank == R::Commando ? std::vector<RankId>{R::Hero} : std::vector<RankId>{};
+        if (rank == R::Commando) return {R::Hero};
+        if (rank == R::Hero) return {R::Legend};
+        return {};
     default:
         break;
     }
@@ -110,6 +118,21 @@ std::vector<RankId> promotionsFrom(RankId rank) {
 
 int promotionCost(RankId rank) {
     return rankSpec(rank).level;
+}
+
+std::optional<RankId> rankFromMapType(int typeId) {
+    // The rank names are gtext 63 (GRUNT) to 79 (LEGEND), in the order the
+    // maps number them.
+    constexpr int kFirstRankEntry = 63;
+    for (const auto& spec : kRanks) {
+        if (static_cast<int>(spec.textEntry) == kFirstRankEntry + typeId) return spec.id;
+    }
+    return std::nullopt;
+}
+
+RankId hardModeRank(RankId rank) {
+    const auto next = promotionsFrom(rank);
+    return next.empty() ? rank : next.front();
 }
 
 } // namespace openhogs::game

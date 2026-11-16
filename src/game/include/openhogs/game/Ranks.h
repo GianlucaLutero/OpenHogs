@@ -8,11 +8,11 @@
 //
 //                 ┌─ Heavy weapons: Gunner → Bombardier → Pyrotechnic ─┐
 //     Grunt ──────┼─ Medic:         Orderly → Medic → Surgeon         ─┼── Commando → Hero
-//                 ├─ Espionage:     Scout → Sniper → Spy              ─┤
+//                 ├─ Espionage:     Scout → Sniper → Spy              ─┤      (→ Legend)
 //                 └─ Engineer:      Sapper → Engineer → Saboteur      ─┘
 //
 // Health, weapons and their number of uses follow the Hogs of War Wiki's
-// rank pages (the Legend, a rank OpenHogs does not have, is left out).
+// rank pages, the Legend (level 6) included.
 // The names are entries of the game text table gtext (63 GRUNT ... 79
 // LEGEND), so language packs translate them.
 
@@ -34,7 +34,7 @@ enum class RankId {
     Orderly, Medic, Surgeon,          // medic
     Scout, Sniper, Spy,               // espionage
     Sapper, Engineer, Saboteur,       // engineer
-    Commando, Hero,                   // officers
+    Commando, Hero, Legend,           // officers
 };
 
 enum class Career { None, HeavyWeapons, Medic, Espionage, Engineer, Officer };
@@ -67,5 +67,15 @@ std::vector<RankId> promotionsFrom(RankId rank);
 // Promotion points a promotion to `rank` costs: its level (1 for a first
 // career rank ... 5 for Hero), so higher ranks are worth saving for.
 int promotionCost(RankId rank);
+
+// The rank a map gives a hog: the map object's type field (offset 46) is
+// the rank's place in the text table after GRUNT (0 GRUNT, 1 GUNNER ...
+// 4 COMMANDO ... 14 HERO, 16 LEGEND). Empty for a value with no rank
+// (15 is ACE, which no rank uses and no map gives).
+std::optional<RankId> rankFromMapType(int typeId);
+
+// The rank of an enemy in the PlayStation's hard mode: one promotion up
+// (the first choice from Grunt, the Gunner); the top rank stays.
+RankId hardModeRank(RankId rank);
 
 } // namespace openhogs::game

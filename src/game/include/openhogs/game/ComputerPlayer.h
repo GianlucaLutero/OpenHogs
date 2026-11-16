@@ -41,6 +41,7 @@ struct AiSettings {
     float powerError = 0.04f;         // up to this much off in throw power
     float minimumScore = 8.0f;        // a shot must be worth at least this much damage
     float approachDistance = 600.0f;  // runs until this close to the enemy
+    bool walks = true;                // walks closer first (the PlayStation's AI; not the PC's)
     std::uint32_t seed = 1;           // the random errors are reproducible
 };
 

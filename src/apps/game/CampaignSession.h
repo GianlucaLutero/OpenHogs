@@ -27,6 +27,8 @@
 
 #include <filesystem>
 #include <map>
+#include "openhogs/game/GameVersion.h"
+
 #include <memory>
 #include <optional>
 #include <string>
@@ -35,7 +37,10 @@ namespace openhogs::gameapp {
 
 class CampaignSession {
 public:
-    CampaignSession(const core::VirtualFileSystem& vfs, Interface& userInterface, std::filesystem::path savePath);
+    // `rules`: with the PlayStation's, winning the campaign starts its hard
+    // mode (game/GameVersion.h).
+    CampaignSession(const core::VirtualFileSystem& vfs, Interface& userInterface, std::filesystem::path savePath,
+                    game::VersionRules rules = {});
 
     static bool hasSave(const std::filesystem::path& savePath);
 
@@ -73,6 +78,7 @@ private:
     const core::VirtualFileSystem& vfs_;
     Interface& interface_;
     std::filesystem::path savePath_;
+    game::VersionRules rules_;
     std::optional<game::Campaign> campaign_;
     std::unique_ptr<ui::CampaignMenu> menu_;
     std::map<std::string, std::size_t> slotsByMap_;  // places for the player's team, per map

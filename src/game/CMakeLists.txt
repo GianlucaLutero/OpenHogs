@@ -15,6 +15,7 @@
 #   Combat             - damage, death, explosions, bullets
 #   Projectiles        - grenades, shells, TNT and mines in flight or lying
 #   Mounts             - the buildings and vehicles a hog can get into
+#   GameVersion        - where the PC and PlayStation rules differ
 #   World              - the map, the hogs and the turns of the match
 #   ChaseCamera        - the camera that follows the active hog
 #   ComputerPlayer     - the computer opponent: plans and plays a turn
@@ -50,6 +51,7 @@ add_library(openhogs_game STATIC
     src/TurnSystem.cpp
     src/Objectives.cpp
     src/Mounts.cpp
+    src/GameVersion.cpp
     src/Pickups.cpp
     src/Weapons.cpp
     src/World.cpp)

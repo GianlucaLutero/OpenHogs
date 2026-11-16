@@ -199,11 +199,18 @@ int Campaign::enemyNation(int missionNumber, std::size_t enemy) const {
     return others[(first + enemy) % others.size()];
 }
 
+void Campaign::startHardMode() {
+    if (!finished() || hardMode_) return;
+    hardMode_ = true;
+    nextMission_ = 1;  // the Boot Camp is not played again
+}
+
 std::string Campaign::save() const {
     std::ostringstream out;
     out << "; OpenHogs campaign\n[" << kSection << "]\n";
     out << "Nation = " << nation_ << "\n";
     out << "NextMission = " << nextMission_ << "\n";
+    out << "HardMode = " << (hardMode_ ? 1 : 0) << "\n";
     out << "Points = " << points_ << "\n";
     out << "Names = ";
     for (std::size_t i = 0; i < names_.size(); ++i) {
@@ -231,6 +238,7 @@ Campaign loadCampaign(const core::IniFile& ini) {
     campaign.nation_ = ini.getInt(kSection, "Nation", -1);
     campaign.nextMission_ = ini.getInt(kSection, "NextMission", 1);  // saves from before the Boot Camp: mission 1
     campaign.points_ = ini.getInt(kSection, "Points", 0);
+    campaign.hardMode_ = ini.getInt(kSection, "HardMode", 0) != 0;
     campaign.names_ = ini.getList(kSection, "Names");
     campaign.fallen_ = ini.getList(kSection, "Fallen");
     if (campaign.nation_ < 0 || campaign.nation_ >= kPlayableNations || campaign.nextMission_ < kBootCampMission ||
@@ -255,12 +263,35 @@ std::size_t playerSlots(const std::vector<Hog>& hogs) {
     return static_cast<std::size_t>(std::count_if(hogs.begin(), hogs.end(), [](const Hog& hog) { return hog.playerControlled; }));
 }
 
+namespace {
+
+// An enemy of a mission: the rank its map object gives it, with that rank's
+// health and weapons (one rank higher in hard mode, in that rank's body).
+void giveMapRank(Hog& hog, bool hardMode) {
+    const auto mapRank = rankFromMapType(hog.mapRank);
+    if (!mapRank) return;  // keeps its class's loadout
+    const RankId rank = hardMode ? hardModeRank(*mapRank) : *mapRank;
+    const RankSpec& spec = rankSpec(rank);
+    if (rank != *mapRank) {
+        if (const auto* body = scene::findCharacterClass(spec.classId)) hog.characterClass = body;
+    }
+    hog.rank = rank;
+    hog.maxHealth = spec.maxHealth;
+    hog.health = spec.maxHealth;
+    hog.weapons = spec.weapons;
+    hog.ownAmmo = std::map<WeaponId, int>(spec.uses.begin(), spec.uses.end());
+    hog.weaponSlot = 0;
+}
+
+} // namespace
+
 int deploySquad(std::vector<Hog>& hogs, const Campaign& campaign, std::size_t deployed) {
     int team = -1;
     std::size_t placed = 0;
     std::vector<Hog> result;
     for (auto& hog : hogs) {
         if (!hog.playerControlled) {
+            giveMapRank(hog, campaign.hardMode());
             result.push_back(std::move(hog));
             continue;
         }

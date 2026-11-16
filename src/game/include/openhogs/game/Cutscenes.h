@@ -8,7 +8,9 @@
 //   - in the campaign, after the last mission of an island, when the next
 //     mission is 6, 11, 16 or 21: FMV 03, 04, 05, 06; before mission 25
 //     (Arstria conquered): FMV 07;
-//   - when the campaign is won: FMV 08, then FMV 09.
+//   - when the campaign is won: FMV 08, then FMV 09 (the PlayStation's
+//     hard-mode ending: after the first victory there it plays FMV 08
+//     alone and the hard mode begins).
 //
 // In the PC release FMV 02 and FMV 09 are one-byte placeholders (the
 // PlayStation version has them); a player skips over files that cannot be
@@ -26,7 +28,8 @@ std::vector<std::string> introCutscenes();
 
 // The videos to play after a campaign mission was completed: `nextMission`
 // is the mission now ahead (Campaign::nextMission(), 26 when the campaign
-// is won).
-std::vector<std::string> campaignCutscenes(int nextMission);
+// is won). `hardModeEnding` false leaves out FMV 09 (the PlayStation
+// rules, when the hard mode is still to come).
+std::vector<std::string> campaignCutscenes(int nextMission, bool hardModeEnding = true);
 
 } // namespace openhogs::game

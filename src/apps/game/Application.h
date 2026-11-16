@@ -20,6 +20,7 @@
 #include "CampaignSession.h"
 #include "CutscenePlayer.h"
 #include "Game.h"
+#include "openhogs/game/GameVersion.h"
 #include "Interface.h"
 #include "FrontEndPictures.h"
 #include "MenuBackground.h"
@@ -50,6 +51,7 @@ struct ApplicationOptions {
     std::vector<std::string> maps;  // the levels offered by the menu
     std::filesystem::path savePath = "saves/campaign.ini";
     bool intro = true;  // play the original's start-up videos first
+    game::GameVersion version = game::GameVersion::Pc;  // whose rules: [Game] Version
 };
 
 class Application {
@@ -123,6 +125,7 @@ private:
     bool inCampaign_ = false;      // the campaign pages are shown (or its match played)
     bool campaignMatch_ = false;   // the match being played is a campaign mission
     std::filesystem::path savePath_;
+    game::VersionRules versionRules_;
     std::unique_ptr<Game> game_;
     std::unique_ptr<CutscenePlayer> cutscenes_;  // videos being played over everything
 };
