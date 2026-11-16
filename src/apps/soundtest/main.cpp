@@ -196,7 +196,8 @@ void playOnSpeakers(audio::Mixer& mixer, double seconds) {
     }
 }
 
-int run(const Options& options) {
+int run(Options options) {
+    if (!options.gameFolder) options.configPath = apps::findConfig(options.configPath);
     const auto vfs = apps::openGameFiles(options.gameFolder, options.configPath);
     audio::Volumes volumes;
     if (!options.gameFolder) {
