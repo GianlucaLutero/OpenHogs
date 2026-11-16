@@ -54,7 +54,7 @@ public:
 
     // The rifle sight over the view: black around a round hole and the
     // crosshair (ui/RifleSight.h).
-    void drawRifleSight(render::UiRenderer& ui) const;
+    void drawRifleSight(render::UiRenderer& ui, bool crosshair = true) const;
 
 private:
     const render::UiImage* picture(std::string_view name) const;

@@ -23,6 +23,7 @@
 #include "openhogs/game/Hog.h"
 #include "openhogs/game/HogMovement.h"
 #include "openhogs/game/MapCollision.h"
+#include "openhogs/game/Mounts.h"
 #include "openhogs/game/Objectives.h"
 #include "openhogs/game/Pickups.h"
 #include "openhogs/game/Projectiles.h"
@@ -134,6 +135,17 @@ public:
     // the view is. The hog can then turn and aim but not walk.
     std::optional<SightView> sightView() const;
 
+    // The buildings and vehicles hogs can get into (Mounts.h), and where
+    // each is now. Set by loadWorld from the map's objects; a hog standing
+    // inside one when the match starts is put in it.
+    void setMounts(const std::vector<std::pair<std::size_t, MountKind>>& mounts);
+    const std::vector<Mount>& mounts() const { return mounts_; }
+
+    // While the active hog's player looks through binoculars: the view.
+    std::optional<SightView> binocularView() const;
+    // While the active hog's player looks at the whole map (MAP VIEW).
+    bool mapView() const;
+
     // Picks another hog of the active team (only before the active hog has
     // moved). Returns true if the active hog changed.
     bool switchHog(int step);
@@ -176,6 +188,12 @@ private:
     void flyJetpack(std::size_t index, const MovementInput& input, double seconds,
                     const std::vector<formats::Animation>& animations);
     void steerGuided(const PlayerInput& input, double seconds);
+    std::optional<std::size_t> freeMountNear(const Hog& hog) const;
+    const CollisionBox* mountBox(const Mount& mount) const;
+    void enterMount(std::size_t hogIndex, std::size_t mountIndex, std::vector<GameEvent>& events);
+    void leaveMount(std::size_t hogIndex, std::vector<GameEvent>& events);
+    void driveMount(std::size_t hogIndex, const MovementInput& input, double seconds);
+    void applyFooter(std::size_t hogIndex);
     void fireMelee(std::size_t hogIndex, const WeaponSpec& spec, std::vector<GameEvent>& events);
     void fireShot(std::vector<GameEvent>& events);
     void stepProjectiles(double seconds, std::vector<GameEvent>& events);
@@ -224,7 +242,8 @@ private:
     std::vector<GameEvent> pendingEvents_;  // from endTurn(), reported by the next update()
     bool fireWasHeld_ = false;
     bool flightEndsTurn_ = false;
-    bool sighting_ = false;  // the active hog's player looks through the rifle sight  // a jetpack flight is on: the turn ends when the hog is down
+    bool sighting_ = false;  // the active hog's player looks through the rifle sight
+    std::vector<Mount> mounts_;  // a jetpack flight is on: the turn ends when the hog is down
     // Bullet spread: seeded with a fixed value, so a match replays the same
     // way (and tests are reproducible).
     std::mt19937 random_{20261111};

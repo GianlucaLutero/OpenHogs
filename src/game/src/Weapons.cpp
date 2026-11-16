@@ -11,7 +11,7 @@ namespace openhogs::game {
 
 namespace {
 
-constexpr std::size_t kWeaponCount = 56;
+constexpr std::size_t kWeaponCount = 61;
 
 // Animation numbers (scene::animationName).
 constexpr std::size_t kUsingGrenade = 19;
@@ -90,6 +90,7 @@ constexpr std::size_t kSkipOrSurrender = 7;
 constexpr std::size_t kShockwaveUse = 81;
 constexpr std::size_t kSpecialOpsUse = 78;
 constexpr std::size_t kFireRainUse = 79;
+constexpr std::size_t kLookingUse = 80;  // MAP VIEW and BINOCULARS
 
 constexpr std::array<Presentation, kWeaponCount> kPresentation{{
     {WeaponId::Trotter, "", kDrawGrenade, kNone, kSwordKnife},
@@ -150,6 +151,11 @@ constexpr std::array<Presentation, kWeaponCount> kPresentation{{
     {WeaponId::SpecialOps, "", kDrawGrenade, kNone, kSpecialOpsUse},
     {WeaponId::Airstrike, "", kDrawGrenade, kNone, kShockwaveUse},
     {WeaponId::FireRainAirstrike, "", kDrawGrenade, kNone, kFireRainUse},
+    {WeaponId::VehicleInOut, "", kDrawGrenade, kNone, kShockwaveUse},
+    {WeaponId::BuildingInOut, "", kDrawGrenade, kNone, kShockwaveUse},
+    {WeaponId::EjectPig, "", kDrawGrenade, kNone, kNone},
+    {WeaponId::MapView, "", kDrawGrenade, kNone, kLookingUse},
+    {WeaponId::Binoculars, "", kDrawGrenade, kNone, kLookingUse},
 }};
 
 // The original's presentation over the rules of `spec`.
@@ -383,6 +389,14 @@ std::array<WeaponSpec, kWeaponCount> makeWeapons() {
     fireRain.knockback = 300.0f;
     fireRain.shots = 12;
 
+    // Getting in and out of buildings and vehicles (Mounts.h), and the
+    // two ways of looking: none of them ends the turn.
+    const auto keepsTurn = [&](WeaponId id, WeaponKind kind, std::string_view name) {
+        auto spec = action(id, kind, name);
+        spec.endsTurn = false;
+        return spec;
+    };
+
     std::array<WeaponSpec, kWeaponCount> table{{
         melee(W::Trotter, "TROTTER", 15, 160, "P_PUNCH"),
         melee(W::Knife, "KNIFE", 25, 170, "I_STAB"),
@@ -440,6 +454,11 @@ std::array<WeaponSpec, kWeaponCount> makeWeapons() {
         specialOps,
         airstrike,
         fireRain,
+        keepsTurn(W::VehicleInOut, K::InOut, "VEHICLE INOUT"),
+        keepsTurn(W::BuildingInOut, K::InOut, "BUILDING INOUT"),
+        keepsTurn(W::EjectPig, K::InOut, "EJECT PIG"),
+        keepsTurn(W::MapView, K::MapView, "MAP VIEW"),
+        keepsTurn(W::Binoculars, K::Binoculars, "BINOCULARS"),
     }};
     for (auto& spec : table) {
         present(spec);

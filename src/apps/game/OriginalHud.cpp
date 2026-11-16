@@ -46,11 +46,12 @@ OriginalHud::OriginalHud(const core::VirtualFileSystem& vfs) {
     }
 }
 
-void OriginalHud::drawRifleSight(render::UiRenderer& ui) const {
+void OriginalHud::drawRifleSight(render::UiRenderer& ui, bool crosshair) const {
     ui.drawTriangles(ui::sightMaskTriangles(ui.canvasWidth()), kSightBlack);
-    if (const auto* crosshair = picture("croshair")) {
+    if (!crosshair) return;
+    if (const auto* picture = this->picture("croshair")) {
         const glm::vec2 corner = ui::crosshairCorner(ui.canvasWidth());
-        ui.drawImage(*crosshair, corner.x, corner.y, ui::kCrosshairSize, ui::kCrosshairSize);
+        ui.drawImage(*picture, corner.x, corner.y, ui::kCrosshairSize, ui::kCrosshairSize);
     }
 }
 

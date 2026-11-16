@@ -36,7 +36,7 @@ constexpr float kLowestHeight = -20000.0f;
 bool touchesHog(const Projectile& projectile, const std::vector<Hog>& hogs) {
     for (std::size_t i = 0; i < hogs.size(); ++i) {
         const Hog& hog = hogs[i];
-        if (!hog.alive || (i == projectile.owner && projectile.ageSeconds < kOwnerSafeSeconds)) {
+        if (!hog.alive || hog.sheltered() || (i == projectile.owner && projectile.ageSeconds < kOwnerSafeSeconds)) {
             continue;
         }
         const glm::vec3& p = projectile.position;
@@ -93,7 +93,7 @@ const Hog* nearestEnemy(const Projectile& projectile, const std::vector<Hog>& ho
     const Hog* nearest = nullptr;
     float best = 0.0f;
     for (const auto& hog : hogs) {
-        if (!hog.alive || hog.team == team || hog.hidden()) continue;
+        if (!hog.alive || hog.team == team || hog.hidden() || hog.sheltered()) continue;
         const float distance = glm::length(hog.position - projectile.position);
         if (!nearest || distance < best) {
             nearest = &hog;

@@ -61,6 +61,7 @@ add_executable(openhogs_tests
     game/WeaponEffectTests.cpp
     game/WeaponReachTests.cpp
     game/RifleSightTests.cpp
+    game/MountTests.cpp
     ui/TextLayoutTests.cpp
     video/BinkTests.cpp
     ui/MenuTests.cpp

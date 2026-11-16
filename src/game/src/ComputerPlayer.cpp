@@ -95,7 +95,7 @@ float explosionValue(const World& world, std::size_t shooter, const glm::vec3& c
         const float damage = spec.damage * (1.0f - distance / spec.blastRadius);
         if (hog.team == hogs[shooter].team) {
             value -= kFriendlyFireWeight * damageValue(hog, damage);
-        } else if (!hog.hidden()) {
+        } else if (!hog.hidden() && !hog.sheltered()) {
             value += damageValue(hog, damage);
         }
     }
@@ -287,7 +287,7 @@ std::optional<std::size_t> nearestEnemy(const World& world, std::size_t shooter)
     float nearestDistance = std::numeric_limits<float>::max();
     for (std::size_t i = 0; i < hogs.size(); ++i) {
         // A hiding hog is not seen (the wiki: the AI ignores it).
-        if (!hogs[i].alive || hogs[i].hidden() || hogs[i].team == hogs[shooter].team) continue;
+        if (!hogs[i].alive || hogs[i].hidden() || hogs[i].sheltered() || hogs[i].team == hogs[shooter].team) continue;
         const float distance = horizontalDistance(hogs[i].position, hogs[shooter].position);
         if (distance < nearestDistance) {
             nearestDistance = distance;
@@ -313,7 +313,7 @@ ShotPlanner::ShotPlanner(const World& world, std::size_t shooter) : shooter_(sho
         // Missiles steer: the planner's arcs do not predict them.
         if (weaponSpec(weapon).guidance != Guidance::None) continue;
         for (std::size_t target = 0; target < hogs.size(); ++target) {
-            if (hogs[target].alive && !hogs[target].hidden() && hogs[target].team != me.team) {
+            if (hogs[target].alive && !hogs[target].hidden() && !hogs[target].sheltered() && hogs[target].team != me.team) {
                 pending_.push_back({weapon, target});
             }
         }
@@ -342,7 +342,10 @@ void ShotPlanner::step(const World& world) {
     case WeaponKind::PickPocket:
     case WeaponKind::Jetpack:
     case WeaponKind::SpecialOps:
-    case WeaponKind::Airstrike: break;  // never chosen as an attack
+    case WeaponKind::Airstrike:
+    case WeaponKind::InOut:
+    case WeaponKind::MapView:
+    case WeaponKind::Binoculars: break;  // never chosen as an attack
     }
     if (plan && plan->score > 0.0f && (!best_ || plan->score > best_->score)) {
         best_ = plan;

@@ -47,6 +47,8 @@ enum class GameEventType {
     HogUnhidden,  // hog: who came out (its turn, or its disguise broke)
     TurnSlept,    // hog: asleep, it misses this turn
     PickedPocket, // hog: who was robbed; weapon: what of
+    HogMounted,   // hog: who got in; object: into which building or vehicle
+    HogDismounted,// hog: who got out (or was thrown out); object: of which
 };
 
 struct GameEvent {

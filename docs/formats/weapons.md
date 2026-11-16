@@ -46,8 +46,9 @@ hands, self heal, skip turn, surrender, flame thrower, medicine dart,
 tranquiliser, freeze, madness, poison and confusion gas, medicine ball,
 pick pocket, hide, shockwave, guided and homing missiles, the six shells
 (long range, mine, gas, fire rain, 1000 lbs, shock), jetpack, special
-ops, airstrike and F-rain airstrike. The others (vehicles, map view,
-binoculars) are listed in `docs/open-decisions.md`.
+ops, airstrike and F-rain airstrike, vehicle and building in/out, map
+view and binoculars. EJECT PIG is not (`docs/open-decisions.md`).
+Buildings and vehicles bring their own weapons (`game::Mounts`).
 Behaviour not found in the executable (lasting effects, healing amounts,
 the ranks' number of uses) follows the Hogs of War Wiki.
 
