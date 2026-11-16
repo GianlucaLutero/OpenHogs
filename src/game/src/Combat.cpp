@@ -125,6 +125,7 @@ BulletHit traceBullet(const glm::vec3& start, const glm::vec3& direction, float 
         }
         for (const auto& box : map.boxes()) {
             if (insideBox(box, point)) {
+                hit.object = box.object;
                 return hit;
             }
         }

@@ -34,6 +34,10 @@ enum class GameEventType {
     // dropped (World::pickups()), if `dropped`; amount: promotion points
     // lost; sergeantSection: his comment, or -1.
     ObjectiveDone,
+    // A map object was destroyed (Destructibles.h). object: which (index
+    // in the .POG); position: its centre; amount: 1 if it blew up (a
+    // building or vehicle), 0 if it just went (scenery).
+    ObjectDestroyed,
 };
 
 struct GameEvent {
@@ -45,6 +49,7 @@ struct GameEvent {
     float amount = 0.0f;
     int team = -1;
     std::size_t pickup = 0;
+    std::size_t object = 0;
     bool dropped = false;
     int sergeantSection = -1;
 };

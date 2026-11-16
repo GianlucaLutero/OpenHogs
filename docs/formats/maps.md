@@ -83,7 +83,8 @@ Record (94 bytes), main fields:
 | 46 | `int16` | type id |
 | 48 | `int16` x 3 | collision box size along the model's Z, Y, X axes, in steps of 64 units (*verified*, see below) |
 | 54 | `int16` | unknown (1 for some bridge parts) |
-| 56 | `int16`, `uint8` | unknown |
+| 56 | `uint16` | health in points; 255 = the default of the object's kind (see "Destructible objects") |
+| 58 | `uint8` | bits 0-3: in which games the object appears, by number of players (used when bit 5 is set); bit 6: scenery that cannot be destroyed |
 | 59 | `uint8` | team bit mask (01, 02, 04... one bit per team) |
 | 60 | `int16` | script type (mission objective role, e.g. 20 = tutorial target) |
 | 62 | `uint8` | script group |
@@ -125,7 +126,37 @@ the script position). Counted on the PC maps:
 | 19 | `CRATE1`, `CRATE2`, `PROPOINT`, `SIGN` | pickup; in the campaign a crate with a group is also an objective (type 21) |
 | 20-23 | `DUMMY`, trees, bridges in `CAMP` | Boot Camp |
 
-### Objectives
+### Destructible objects
+
+The executable's object table (pointers at 0x4D9680, 466 names) sorts
+model names into kinds, between marker entries: buildings 1-6
+(`BIG_GUN`, `M_TENT1`, `M_TENT2`, `PILLBOX`, `SHELTER`, `TENT_S`),
+bunkers, gun barrels, pickups 20-25, scenery 28-379, animals, ammunition,
+vehicles 445-451 (`AMLAUNCH`, `AM_TANK`, `BOAT`, `TANK`, `CARRY`,
+`AIRSHIP1`, `PP1`) and hogs 454-463. The map loader (`FUN_004a5250`)
+looks each object's name up there (`FUN_004a6d20`) and creates it with
+the class of its kind (object + 0x38: 0x1359 building, 0x135A scenery,
+0x1358 vehicle, 0x135B pickup, 0x1357 hog).
+
+Every building, vehicle and scenery object has health at object + 0x4C,
+in 1/128 points like a hog's:
+
+| Kind | Table | Values (points) |
+|------|-------|-----------------|
+| buildings | 0x4C2E08, 8-byte rows | `BIG_GUN` 200, `M_TENT1` 30, `M_TENT2` 40, `PILLBOX` 100, `SHELTER` 100, `TENT_S` 25 |
+| vehicles | 0x4D94A0, 12-byte rows | 150, `AIRSHIP1` and `PP1` 1 |
+| scenery | 0x4D6D18, one int per entry | 60 for most (the village houses `S1F01PPP` ...), 1 targets and dummies, 10 dugouts, 50 bridges, bushes, small trees, flowers and grass, 80 trees and cacti, 100 walls, fences, gates, machines, 150 `TUN`, 200 `BOOTS` |
+
+When offset 56 of the map object is not 255, it replaces the default
+(`health = value << 7`, even 0). The damage method (virtual slot 13,
+`0x43F6C0` for buildings, `0x48D990` for scenery) subtracts the damage,
+shows the damage number, adds the damage to the attacking hog's total
+(hog + 0x1D4) and, once less than one point (127/128) is left, sets the
+health to 0 and marks the object destroyed. Scenery whose offset-58 bit 6
+is set returns at once and takes no damage. The explosion code that calls
+the method has not been read; OpenHogs damages objects as it damages hogs
+(decision 114).
+
 
 Each objective is a 20-byte node hung on its object (object + 0x48),
 made by `FUN_004a7130`:

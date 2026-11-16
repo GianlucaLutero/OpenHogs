@@ -38,7 +38,8 @@ MapObject readObject(core::BinaryReader& reader) {
     object.boxSizeY = reader.readI16();
     object.boxSizeX = reader.readI16();
     reader.skip(2);
-    reader.skip(3);  // unknown 16-bit + 8-bit fields
+    object.health = reader.readU16();         // offset 56
+    object.presence = reader.readU8();        // offset 58
     object.team = reader.readU8();            // offset 59
     object.scriptType = reader.readI16();     // offset 60
     object.scriptGroup = reader.readU8();     // offset 62

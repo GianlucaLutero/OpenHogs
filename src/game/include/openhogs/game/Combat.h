@@ -43,6 +43,7 @@ void explode(std::vector<Hog>& hogs, const glm::vec3& centre, float radius, floa
 struct BulletHit {
     glm::vec3 point{0.0f};           // where the bullet stopped
     std::optional<std::size_t> hog;  // the hog it hit, if any
+    std::optional<std::size_t> object;  // or the map object whose box stopped it
 };
 
 // Follows a bullet from `start` along `direction` (unit vector) for up to

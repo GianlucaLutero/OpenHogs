@@ -18,6 +18,9 @@ namespace openhogs::core {
 // Returns a copy with ASCII letters converted to lower case.
 std::string toLower(std::string_view text);
 
+// Returns a copy with ASCII letters converted to upper case.
+std::string toUpper(std::string_view text);
+
 // Returns a copy without leading and trailing spaces, tabs and line breaks.
 std::string trim(std::string_view text);
 

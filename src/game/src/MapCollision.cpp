@@ -62,6 +62,12 @@ std::vector<CollisionBox> collisionBoxes(const std::vector<formats::MapObject>& 
 MapCollision::MapCollision(TerrainHeightField terrain, std::vector<CollisionBox> boxes)
     : terrain_(std::move(terrain)), boxes_(std::move(boxes)) {}
 
+float CollisionBox::distanceTo(const glm::vec3& point) const {
+    const float across = footprintDistance(point.x, point.z);
+    const float above = std::max({point.y - top(), bottom() - point.y, 0.0f});
+    return std::sqrt(across * across + above * above);
+}
+
 void MapCollision::removeObject(std::size_t object) {
     std::erase_if(boxes_, [object](const CollisionBox& box) { return box.object == object; });
 }

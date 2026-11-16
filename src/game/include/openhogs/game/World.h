@@ -18,6 +18,7 @@
 #pragma once
 
 #include "openhogs/core/VirtualFileSystem.h"
+#include "openhogs/game/Destructibles.h"
 #include "openhogs/game/GameEvents.h"
 #include "openhogs/game/Hog.h"
 #include "openhogs/game/HogMovement.h"
@@ -82,6 +83,9 @@ public:
     // Sets the objectives; `objectCount` is how many objects the map has,
     // so reward crates get object numbers after them.
     void setObjectives(std::vector<Objective> objectives, std::size_t objectCount);
+    // The objects weapons can destroy; destroyed ones stay, marked.
+    const std::vector<Destructible>& destructibles() const { return destructibles_; }
+    void setDestructibles(std::vector<Destructible> destructibles) { destructibles_ = std::move(destructibles); }
     // How many of a weapon a team has from crates (beyond its hogs' own).
     int stock(int team, WeaponId weapon) const;
 
@@ -131,6 +135,8 @@ private:
     void collectPickups(std::vector<GameEvent>& events);
     void updateObjectives(std::vector<GameEvent>& events);
     void objectiveDone(const ObjectiveResult& result, std::vector<GameEvent>& events);
+    void damageObjects(const glm::vec3& centre, float radius, float damage, std::vector<GameEvent>& events);
+    void damageMapObject(std::size_t object, float amount, std::vector<GameEvent>& events);
     void refreshStockWeapons(int team);
     void useStock(std::size_t hogIndex);
     std::optional<glm::vec3> nearestShore(const glm::vec3& from) const;
@@ -150,6 +156,7 @@ private:
     std::map<int, int> nations_;  // team -> nation, where not the default
     std::vector<Pickup> pickups_;
     std::vector<Objective> objectives_;
+    std::vector<Destructible> destructibles_;
     std::size_t nextDropObject_ = 0;  // the object number of the next reward crate
     std::map<int, std::map<WeaponId, int>> stock_;  // team -> weapon -> how many, from crates
     std::optional<TurnSystem> turns_;
