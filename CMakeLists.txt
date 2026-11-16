@@ -57,3 +57,7 @@ if(OPENHOGS_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
+
+# --- Packaging -------------------------------------------------------------
+# Install rules and the release archive (cmake/OpenHogsPackaging.cmake).
+include(OpenHogsPackaging)

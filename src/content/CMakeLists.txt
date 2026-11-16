@@ -4,11 +4,13 @@
 #   ContentPack     - one pack in content/packs/<id>/ described by pack.ini
 #   ContentManager  - decides which packs are active and builds the
 #                     VirtualFileSystem (game folder + active packs on top)
+#   ConfigLocation  - finds config/openhogs.ini, creating it the first time
 
 add_library(openhogs_content STATIC
     src/ContentConfig.cpp
     src/ContentPack.cpp
-    src/ContentManager.cpp)
+    src/ContentManager.cpp
+    src/ConfigLocation.cpp)
 
 add_library(OpenHogs::content ALIAS openhogs_content)
 

@@ -79,9 +79,9 @@ animations.
 | `weapons-complete`   | ✅ done (parts 1–3; vehicles to come) | Part 1 (done): cattle prod, super shotgun, roller and shrapnel grenades, airburst and super airburst, anti-personnel mine, super TNT, suicide, healing hands, self heal, skip turn and surrender. Part 2: flame thrower (sweeping burst), medicine dart and ball, tranquiliser, poison, freeze and madness gas with lasting effects, pick pocket, hide, shockwave; healing cures; the campaign ranks' loadouts with a number of uses per mission, as on the Hogs of War Wiki. Part 3: guided missile (steered in flight) and homing missile, the six shells (long range, mine, gas, fire rain, 1000 lbs, shock), confusion gas, jetpack, special ops, airstrike and fire-rain airstrike on a spot chosen with the power |
 | `rifle-sight`        | ✅ done | The original's rifle sight: hold `V` (or the right mouse button) with a gun to aim in first person along the barrel, inside the black mask with the round hole and the crosshair (from the executable's `hole` model and `croshair.tim`); no movement allowance any more: as in the original, the hog may move until its turn ends |
 | `weapons-complete`   | ✅ done (part 4) | Buildings and vehicles: get into artillery guns, pillboxes, shelters and tents (medic and mash tents heal), tanks and troop carriers with VEHICLE/BUILDING INOUT; the object takes the harm and throws the hog out hurt when destroyed; inside, its own weapons (shells, heavy machine gun and flame thrower, bazooka and airburst) whose shots stay with it; tanks and carriers drive. SKIP TURN always last in the list; MAP VIEW and BINOCULARS |
-| `version-variants`   | 🔍 in review | The PC's or the PlayStation's rules (`[Game] Version`, `--rules`): computer hogs that walk, looping turn tunes and the PlayStation's hard mode (the campaign again with every enemy one rank higher, ending with FMV 09); the campaign's enemies now have the ranks their maps give them, with the Legend as the rank after Hero |
+| `version-variants`   | ✅ done | The PC's or the PlayStation's rules (`[Game] Version`, `--rules`): computer hogs that walk, looping turn tunes and the PlayStation's hard mode (the campaign again with every enemy one rank higher, ending with FMV 09); the campaign's enemies now have the ranks their maps give them, with the Legend as the rank after Hero |
 | fidelity blocks      | ✅ done | the PC and PlayStation differences OpenHogs knows are in `version-variants`; what is left is in `docs/open-decisions.md` |
-| `release`            | planned | Packaged builds for Windows and Linux |
+| `release`            | 🔍 in review | Packaged builds for Windows and Linux: install rules and CPack archives, a release workflow on version tags, `config/openhogs.ini` found next to the programs and created from the default on the first run, `--version`, `CHANGELOG.md` |
 
 ## Requirements
 
@@ -101,16 +101,34 @@ animations.
 
 ## Installation
 
-There is no release yet, so OpenHogs has to be built from source.
+### From a release (Windows or Linux)
 
-### 1. Get the source
+1. Download the archive for your system from the
+   [Releases page](https://github.com/GianlucaLutero/OpenHogs/releases):
+   `OpenHogs-<version>-windows-x64.zip` or
+   `OpenHogs-<version>-linux-x86_64.tar.gz`.
+2. Unpack it anywhere (not inside the game's folder). It contains the
+   game `openhogs`, the viewers and tools, `config/`, `content/`, the
+   documentation and the licences; nothing of the original game.
+3. Start `openhogs` (double-click `openhogs.exe` on Windows). The first
+   time it creates `config/openhogs.ini` from `openhogs.default.ini`,
+   which points at the usual Steam folder. If your game is elsewhere (GOG,
+   another drive), edit `Directory` in `config/openhogs.ini` (see
+   *Configure* below) and start it again.
+
+Your settings (`config/openhogs.ini`) and campaign (`saves/`) stay in that
+folder; a newer release can be unpacked over it without losing them.
+
+### From source
+
+#### 1. Get the source
 
 ```sh
 git clone https://github.com/GianlucaLutero/OpenHogs.git
 cd OpenHogs
 ```
 
-### 2. Build
+#### 2. Build
 
 **Windows (Visual Studio 2022 or newer)**: open the folder with *File → Open → Folder*
 and Visual Studio configures CMake automatically. Or, from a command
@@ -145,7 +163,7 @@ The first build takes a few minutes because SDL3 is compiled from source.
 To build only the command-line tools, without SDL3 and the viewer, add
 `-DOPENHOGS_BUILD_VIEWER=OFF` to the first command.
 
-### 3. Run the tests (optional)
+#### 3. Run the tests (optional)
 
 ```sh
 ctest --test-dir build --output-on-failure -C Release
@@ -155,10 +173,25 @@ Every pull request is also built and tested automatically on
 Windows (Visual Studio), with warnings in OpenHogs code treated as errors
 (the Linux jobs with GCC and Clang are temporarily switched off). See `.github/workflows/build.yml`.
 
-### 4. Configure
+#### 4. Package (optional)
 
-Copy `config/openhogs.default.ini` to `config/openhogs.ini` and set the
-folder of your installation:
+```sh
+cmake --install build --config Release --prefix OpenHogs   # the release folder
+cd build && cpack -C Release                               # the .zip / .tar.gz
+```
+
+Pushing a version tag (`git tag v0.1.0 && git push origin v0.1.0`) makes
+GitHub build, test and package OpenHogs for Windows and Linux and publish
+the archives as a release (`.github/workflows/release.yml`); the version
+is the one in `CMakeLists.txt`, the notes are `CHANGELOG.md`.
+
+### Configure
+
+`config/openhogs.ini` holds your settings. The programs look for it in
+`config/` under the current folder and, failing that, next to
+themselves; the first time, they create it from
+`config/openhogs.default.ini` (or copy that file yourself). Set the folder
+of your installation:
 
 ```ini
 [Game]
@@ -592,7 +625,8 @@ The original game files come back automatically. See
 ```
 OpenHogs/
 ├── CMakeLists.txt        top-level build script
-├── cmake/                CMake helpers
+├── CHANGELOG.md          what each release brought
+├── cmake/                CMake helpers (dependencies, warnings, packaging)
 ├── config/               user configuration (openhogs.default.ini)
 ├── content/              replaceable content: packs, languages (see content/README.md)
 │   ├── packs/_template/  starting point for a new pack

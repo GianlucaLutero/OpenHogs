@@ -25,6 +25,7 @@ add_executable(openhogs_tests
     content/ContentConfigTests.cpp
     content/ContentPackTests.cpp
     content/ContentManagerTests.cpp
+    content/ConfigLocationTests.cpp
     formats/MglPictureTests.cpp
     formats/GameTextTests.cpp
     formats/MapFormatsTests.cpp

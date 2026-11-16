@@ -6,7 +6,10 @@
 // Without --map the game starts on the main menu.
 //
 // Options:
-//   --config <file>      OpenHogs configuration (default: config/openhogs.ini)
+//   --config <file>      OpenHogs configuration (default: config/openhogs.ini, also
+//                        looked up next to the program; created from
+//                        openhogs.default.ini the first time)
+//   --version            print the version and exit
 //   --game <folder>      use this game folder directly, without config or packs
 //   --map <name>         skip the menus and play this map, e.g. ESTU
 //   --list-maps          print the names of the maps, then exit
@@ -38,6 +41,7 @@
 #include "openhogs/apps/GameFiles.h"
 #include "openhogs/audio/AudioSettings.h"
 #include "openhogs/core/IniFile.h"
+#include "openhogs/core/Version.h"
 #include "openhogs/game/GameVersion.h"
 #include "openhogs/scene/MapScene.h"
 
@@ -83,6 +87,7 @@ void printUsage() {
     std::cout << "OpenHogs\n\n"
                  "Usage: openhogs [options]\n\n"
                  "  --config <file>      configuration file (default: config/openhogs.ini)\n"
+                 "  --version            print the version and exit\n"
                  "  --game <folder>      read this game folder directly (no config, no packs)\n"
                  "  --map <name>         skip the menus and play this map, e.g. ESTU\n"
                  "  --list-maps          list the maps\n"
@@ -214,7 +219,8 @@ std::optional<Options> parseArguments(const std::vector<std::string>& args) {
     return options;
 }
 
-int runGame(const Options& options) {
+int runGame(Options options) {
+    if (!options.gameFolder) options.configPath = apps::findConfig(options.configPath);
     const auto vfs = apps::openGameFiles(options.gameFolder, options.configPath);
     const auto maps = scene::listMaps(vfs);
     if (maps.empty()) {
@@ -299,6 +305,10 @@ int runGame(const Options& options) {
 
 int main(int argc, char* argv[]) {
     const std::vector<std::string> args(argv + 1, argv + argc);
+    if (!args.empty() && args[0] == "--version") {
+        std::cout << "OpenHogs " << core::kVersion << "\n";
+        return 0;
+    }
     const auto options = parseArguments(args);
     if (!options || (!args.empty() && args[0] == "--help")) {
         printUsage();

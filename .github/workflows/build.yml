@@ -62,3 +62,8 @@ jobs:
 
       - name: Test
         run: ${{ matrix.test }}
+
+      # The release archive is made by release.yml; here only the install
+      # rules are checked, so a broken package is noticed in review.
+      - name: Check the package
+        run: cmake --install build --config Release --prefix staging

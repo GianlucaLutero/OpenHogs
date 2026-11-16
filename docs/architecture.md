@@ -30,6 +30,11 @@ listed before it below.
 No module opens game files directly. They ask the `VirtualFileSystem`
 built by the `content` module:
 
+The configuration itself is found by `content::locateConfig`: under the
+current folder or next to the program, created from
+`openhogs.default.ini` the first time (a released package ships only the
+default, so unpacking a new release keeps the user's settings).
+
 ```
 config/openhogs.ini ──► ContentConfig
 content/packs/*     ──► discoverPacks ──► selectActivePacks ──► buildFileSystem ──► VirtualFileSystem

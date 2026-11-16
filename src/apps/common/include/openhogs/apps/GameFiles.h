@@ -20,6 +20,11 @@
 namespace openhogs::apps {
 
 // Throws std::runtime_error with a hint if the configuration is missing.
+// The configuration file to use for `requested` (content/ConfigLocation.h):
+// looked up next to the program too, and created from the default the
+// first time, with a note on the console.
+std::filesystem::path findConfig(const std::filesystem::path& requested);
+
 core::VirtualFileSystem openGameFiles(const std::optional<std::filesystem::path>& gameFolder,
                                       const std::filesystem::path& configPath);
 

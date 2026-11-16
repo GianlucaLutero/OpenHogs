@@ -2,15 +2,30 @@
 
 #include "openhogs/apps/GameFiles.h"
 
+#include "openhogs/content/ConfigLocation.h"
 #include "openhogs/content/ContentManager.h"
+
+#include <SDL3/SDL.h>
 
 #include <iostream>
 #include <stdexcept>
 
 namespace openhogs::apps {
 
+std::filesystem::path findConfig(const std::filesystem::path& requested) {
+    std::optional<std::filesystem::path> programFolder;
+    if (const char* base = SDL_GetBasePath()) programFolder = std::filesystem::path(base);
+    const auto location = content::locateConfig(requested, programFolder);
+    if (location.createdFromDefault) {
+        std::cout << "Created " << location.path.string()
+                  << " from openhogs.default.ini: edit it if your game is not in the Steam folder.\n";
+    }
+    return location.path;
+}
+
 core::VirtualFileSystem openGameFiles(const std::optional<std::filesystem::path>& gameFolder,
-                                      const std::filesystem::path& configPath) {
+                                      const std::filesystem::path& requestedConfig) {
+    const auto configPath = gameFolder ? requestedConfig : findConfig(requestedConfig);
     if (gameFolder) {
         core::VirtualFileSystem vfs;
         vfs.mount(content::kGameLayerName, *gameFolder);
