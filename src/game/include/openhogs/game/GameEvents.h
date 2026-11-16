@@ -42,6 +42,7 @@ enum class GameEventType {
     // A Boot Camp instruction (Training.h). text: gtext entry; speechLine:
     // the instructor's line.
     TrainingTip,
+    Healed,  // hog: who; amount: health given back (healing hands, self heal)
 };
 
 struct GameEvent {

@@ -35,6 +35,7 @@ enum class WeaponId {
     Knife = 98,
     Bayonet = 99,
     Sword = 100,
+    CattleProd = 101,
     Pistol = 102,
     Rifle = 103,
     RifleBurst = 104,
@@ -42,18 +43,36 @@ enum class WeaponId {
     HeavyMachineGun = 106,
     SniperRifle = 107,
     Shotgun = 108,
+    SuperShotgun = 109,
     RocketLauncher = 111,
     Grenade = 115,
     ClusterGrenade = 116,
     HighExplosiveGrenade = 117,
+    RollerGrenade = 118,
+    ShrapnelGrenade = 123,
     Mortar = 124,
     Bazooka = 125,
     GrenadeLauncher = 126,
+    Airburst = 127,
+    SuperAirburst = 128,
     Mine = 131,
+    AntiPersonnelMine = 132,
     Tnt = 133,
+    SuperTnt = 134,
+    Suicide = 142,
+    HealingHands = 143,
+    SelfHeal = 144,
+    SkipTurn = 156,
+    Surrender = 157,
 };
 
-enum class WeaponKind { Melee, Bullet, Thrown, Shell, Placed };
+// Melee, Bullet, Thrown, Shell and Placed hurt; the others are actions:
+//   - Heal: health for the hog itself (range 0) or the nearest friend in
+//     reach (healing hands);
+//   - Suicide: the hog blows itself up (blastRadius, damage);
+//   - SkipTurn: the turn ends at once;
+//   - Surrender: the team gives up: all its hogs fall.
+enum class WeaponKind { Melee, Bullet, Thrown, Shell, Placed, Heal, Suicide, SkipTurn, Surrender };
 
 struct WeaponSpec {
     WeaponId id = WeaponId::Trotter;

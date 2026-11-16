@@ -528,7 +528,60 @@ void World::fire(std::size_t hogIndex, float power, std::vector<GameEvent>& even
         projectiles_.push_back(launchProjectile(spec.id, hogIndex, spot, glm::vec3(0.0f), 0.0f));
         break;
     }
+    case WeaponKind::Heal:
+        events.push_back(fired);
+        heal(hogIndex, spec, events);
+        break;
+    case WeaponKind::Suicide: {
+        // The hog goes up like a charge at its feet, taking itself with it.
+        events.push_back(fired);
+        const glm::vec3 centre = hog.position + glm::vec3(0.0f, kExplosionLift, 0.0f);
+        GameEvent explosion;
+        explosion.type = GameEventType::Explosion;
+        explosion.position = centre;
+        explosion.weapon = spec.id;
+        events.push_back(explosion);
+        explosions_.push_back({centre, spec.blastRadius, 0.0f});
+        damageHog(hogs_, hogIndex, hogs_[hogIndex].health, events);
+        explode(hogs_, centre, spec.blastRadius, spec.damage, spec.knockback, events);
+        damageObjects(centre, spec.blastRadius, spec.damage, events);
+        break;
     }
+    case WeaponKind::SkipTurn:
+        break;  // the turn ends as after any shot
+    case WeaponKind::Surrender:
+        // The whole team gives up.
+        for (std::size_t i = 0; i < hogs_.size(); ++i) {
+            if (hogs_[i].team == hog.team && hogs_[i].alive) damageHog(hogs_, i, hogs_[i].health, events);
+        }
+        break;
+    }
+}
+
+void World::heal(std::size_t hogIndex, const WeaponSpec& spec, std::vector<GameEvent>& events) {
+    // Self heal helps the hog itself; healing hands the nearest living
+    // friend within reach (or the hog itself when there is none).
+    std::size_t patient = hogIndex;
+    if (spec.range > 0.0f) {
+        float nearest = spec.range;
+        for (std::size_t i = 0; i < hogs_.size(); ++i) {
+            if (i == hogIndex || !hogs_[i].alive || hogs_[i].team != hogs_[hogIndex].team) continue;
+            const float distance = glm::length(hogs_[i].position - hogs_[hogIndex].position);
+            if (distance <= nearest) {
+                nearest = distance;
+                patient = i;
+            }
+        }
+    }
+    Hog& hog = hogs_[patient];
+    const float before = hog.health;
+    hog.health = std::min(hog.maxHealth, hog.health + spec.damage);
+    GameEvent healed;
+    healed.type = GameEventType::Healed;
+    healed.hog = patient;
+    healed.amount = hog.health - before;
+    healed.position = hog.position;
+    events.push_back(healed);
 }
 
 void World::fireMelee(std::size_t hogIndex, const WeaponSpec& spec, std::vector<GameEvent>& events) {

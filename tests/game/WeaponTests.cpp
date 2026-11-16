@@ -92,6 +92,15 @@ TEST_CASE("Weapons: the table is complete and consistent", "[game][weapons]") {
             CHECK((spec.fuseSeconds > 0.0f || spec.triggerRadius > 0.0f));
             CHECK(spec.blastRadius > 0.0f);
             break;
+        case WeaponKind::Heal:
+            CHECK(spec.damage > 0.0f);  // the health it gives
+            break;
+        case WeaponKind::Suicide:
+            CHECK(spec.blastRadius > 0.0f);
+            break;
+        case WeaponKind::SkipTurn:
+        case WeaponKind::Surrender:
+            break;
         }
     }
     for (const auto& characterClass : scene::characterClasses()) {
