@@ -78,8 +78,9 @@ animations.
 | `boot-camp`          | ✅ done | The Boot Camp opens the campaign: training mode on CAMP (weapons only from crates, never running out), the chain of hidden crates and dummies revealed group by group, and the instructor's tips with his voice |
 | `weapons-complete`   | ✅ done (parts 1–3; vehicles to come) | Part 1 (done): cattle prod, super shotgun, roller and shrapnel grenades, airburst and super airburst, anti-personnel mine, super TNT, suicide, healing hands, self heal, skip turn and surrender. Part 2: flame thrower (sweeping burst), medicine dart and ball, tranquiliser, poison, freeze and madness gas with lasting effects, pick pocket, hide, shockwave; healing cures; the campaign ranks' loadouts with a number of uses per mission, as on the Hogs of War Wiki. Part 3: guided missile (steered in flight) and homing missile, the six shells (long range, mine, gas, fire rain, 1000 lbs, shock), confusion gas, jetpack, special ops, airstrike and fire-rain airstrike on a spot chosen with the power |
 | `rifle-sight`        | ✅ done | The original's rifle sight: hold `V` (or the right mouse button) with a gun to aim in first person along the barrel, inside the black mask with the round hole and the crosshair (from the executable's `hole` model and `croshair.tim`); no movement allowance any more: as in the original, the hog may move until its turn ends |
-| `weapons-complete`   | 🔍 in review (part 4) | Buildings and vehicles: get into artillery guns, pillboxes, shelters and tents (medic and mash tents heal), tanks and troop carriers with VEHICLE/BUILDING INOUT; the object takes the harm and throws the hog out hurt when destroyed; inside, its own weapons (shells, heavy machine gun and flame thrower, bazooka and airburst) whose shots stay with it; tanks and carriers drive. SKIP TURN always last in the list; MAP VIEW and BINOCULARS |
-| fidelity blocks      | planned | `version-variants`: missions and weapons exactly as in the original |
+| `weapons-complete`   | ✅ done (part 4) | Buildings and vehicles: get into artillery guns, pillboxes, shelters and tents (medic and mash tents heal), tanks and troop carriers with VEHICLE/BUILDING INOUT; the object takes the harm and throws the hog out hurt when destroyed; inside, its own weapons (shells, heavy machine gun and flame thrower, bazooka and airburst) whose shots stay with it; tanks and carriers drive. SKIP TURN always last in the list; MAP VIEW and BINOCULARS |
+| `version-variants`   | 🔍 in review | The PC's or the PlayStation's rules (`[Game] Version`, `--rules`): computer hogs that walk, looping turn tunes and the PlayStation's hard mode (the campaign again with every enemy one rank higher, ending with FMV 09); the campaign's enemies now have the ranks their maps give them, with the Legend as the rank after Hero |
+| fidelity blocks      | ✅ done | the PC and PlayStation differences OpenHogs knows are in `version-variants`; what is left is in `docs/open-decisions.md` |
 | `release`            | planned | Packaged builds for Windows and Linux |
 
 ## Requirements
@@ -162,7 +163,15 @@ folder of your installation:
 ```ini
 [Game]
 Directory = C:\Program Files (x86)\Steam\steamapps\common\HogsofWar
+; pc (default) or ps1: whose rules to follow where the releases differ
+Version = pc
 ```
+
+With `Version = ps1` the computer's hogs walk to better places before
+they shoot (on PC they never do), the computer's turn tune loops, and
+winning the campaign starts the PlayStation's hard mode: the campaign
+again from mission 1 with the same squad and every enemy one rank
+higher.
 
 ## Usage
 
@@ -249,6 +258,7 @@ build\bin\Release\openhogs.exe --map ESTU
 | `--hog <n>` | hog to start on (1 = the first hog of the map) |
 | `--computer others` / `--computer all` | with `--map`: the computer plays every team but the first, or every team (to watch a match) |
 | `--no-sound` | play without sound |
+| `--rules pc` / `--rules ps1` | the PC's or the PlayStation's rules for this run (instead of `[Game] Version`) |
 | `--screenshot <file>` | save the match (or, without `--map`, the menu) as an image and exit; `--seconds <s>` lets it run for a while first, `--auto-walk` makes the active hog run meanwhile, `--weapon <n>` and `--fire-at <s>` make it pick its n-th weapon and fire, `--pause` shows the pause menu, `--menu-keys down,enter` presses menu keys first |
 | `--game <folder>` / `--config <file>` / `--size <W>x<H>` | as for the other programs |
 
@@ -634,7 +644,7 @@ OpenHogs builds on the work of others. Thank you!
 | [GLM](https://github.com/g-truc/glm) | G-Truc Creation (Christophe Riccio) and contributors | MIT | Vector and matrix maths (downloaded at build time). |
 | [glad](https://github.com/Dav1dde/glad) | David Herberth | generated code: WTFPL or CC0-1.0; `khrplatform.h`: Apache-2.0 (Khronos Group) | OpenGL 3.3 function loader, generated into `third_party/glad`. |
 | [stb_vorbis](https://github.com/nothings/stb) | Sean Barrett and contributors | public domain (Unlicense) or MIT, at your choice | Decodes the Ogg Vorbis music. Copied unmodified into `third_party/stb_vorbis` (v1.22). |
-| [Hogs of War Wiki](https://hogsofwar.fandom.com/wiki/HOGS_OF_WAR_Wiki) | its Fandom contributors | CC BY-SA 3.0 (consulted, not copied) | Reference for weapon behaviour (damage, healing, gases' lasting effects, what keeps the turn), each rank's weapons and number of uses, and the buildings and vehicles (weapons, health, harm when destroyed). |
+| [Hogs of War Wiki](https://hogsofwar.fandom.com/wiki/HOGS_OF_WAR_Wiki) | its Fandom contributors | CC BY-SA 3.0 (consulted, not copied) | Reference for weapon behaviour (damage, healing, gases' lasting effects, what keeps the turn), each rank's weapons and number of uses, the buildings and vehicles (weapons, health, harm when destroyed), the Legend rank, the hard mode and how the PC and PlayStation versions differ. |
 | [Hogs of War walkthrough (SuperCheats)](https://www.supercheats.com/playstation/walkthroughs/hogsofwar-walkthrough02.txt) | its anonymous author | all rights reserved (consulted, not copied) | Reference for the ranks' health and weapons and the order and names of the 25 missions, checked against the tables in the game's executable. |
 | [Hogs of War (Wikipedia)](https://en.wikipedia.org/wiki/Hogs_of_War) | Wikipedia contributors | CC BY-SA 4.0 (consulted, not copied) | The islands and the medals for conquering a region. |
 | [Ghidra](https://github.com/NationalSecurityAgency/ghidra) | National Security Agency and contributors | Apache-2.0 | Used as a tool to study the original executable (`tools/ghidra`); nothing it produces is part of OpenHogs. |

@@ -18,6 +18,7 @@
 //   --seconds <s>        with --screenshot: let the match (or the menu) run this long first
 //   --auto-walk          with --screenshot: the active hog runs forward meanwhile
 //   --sight              with --screenshot: look through the rifle sight
+//   --rules <pc|ps1>     the PC's or the PlayStation's rules (else [Game] Version)
 //   --weapon <n>         with --screenshot: the active hog selects its n-th weapon (1 = first)
 //   --fire-at <s>        with --screenshot: the active hog fires at s seconds
 //   --computer <who>     with --map: "others" = the computer plays every team
@@ -37,6 +38,7 @@
 #include "openhogs/apps/GameFiles.h"
 #include "openhogs/audio/AudioSettings.h"
 #include "openhogs/core/IniFile.h"
+#include "openhogs/game/GameVersion.h"
 #include "openhogs/scene/MapScene.h"
 
 // SDL_main.h turns main() into the right entry point on every platform
@@ -65,6 +67,7 @@ struct Options {
     bool sound = true;
     bool autoWalk = false;
     bool sight = false;
+    std::optional<game::GameVersion> version;  // --rules
     std::optional<std::size_t> weaponSlot;  // 1-based, as typed
     std::optional<double> fireAt;
     bool pause = false;
@@ -90,6 +93,7 @@ void printUsage() {
                  "  --seconds <s>        with --screenshot: let the match (or the menu) run this long first\n"
                  "  --auto-walk          with --screenshot: the active hog runs forward meanwhile\n"
                  "  --sight              with --screenshot: look through the rifle sight (with a gun)\n"
+                 "  --rules <pc|ps1>     the PC's or the PlayStation's rules (default: [Game] Version, else pc)\n"
                  "  --weapon <n>         with --screenshot: the active hog selects its n-th weapon\n"
                  "  --fire-at <s>        with --screenshot: the active hog fires at s seconds\n"
                  "  --computer <who>     with --map: others (computer plays all teams but the first) or all\n"
@@ -195,6 +199,9 @@ std::optional<Options> parseArguments(const std::vector<std::string>& args) {
                 const auto keys = parseMenuKeys(value);
                 if (!keys) return std::nullopt;
                 options.menuKeys = *keys;
+            } else if (arg == "--rules") {
+                options.version = game::parseGameVersion(value);
+                if (!options.version) return std::nullopt;
             } else if (arg == "--size") {
                 if (!parseSize(value, options.width, options.height)) return std::nullopt;
             } else {
@@ -233,8 +240,14 @@ int runGame(const Options& options) {
     // The campaign is saved next to the configuration folder: saves/campaign.ini.
     appOptions.savePath = options.configPath.parent_path().parent_path() / "saves" / "campaign.ini";
     if (!options.gameFolder) {
-        appOptions.volumes = audio::volumesFromIni(core::IniFile::load(options.configPath));
+        const auto ini = core::IniFile::load(options.configPath);
+        appOptions.volumes = audio::volumesFromIni(ini);
+        const std::string version = ini.getString("Game", "Version", "pc");
+        const auto parsed = game::parseGameVersion(version);
+        if (!parsed) throw std::runtime_error("[Game] Version must be pc or ps1, got " + version);
+        appOptions.version = *parsed;
     }
+    if (options.version) appOptions.version = *options.version;
     gameapp::Application app(vfs, appOptions);
 
     if (options.mapName) {

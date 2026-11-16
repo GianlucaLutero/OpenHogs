@@ -157,7 +157,10 @@ frame sequences for their moving parts: see [front-end.md](front-end.md).
 ## Differences between versions
 
 Collected from guides, reviews and fan sites (see the README's Credits);
-they decide what block `version-variants` has to offer.
+they decide what block `version-variants` has to offer. OpenHogs follows
+the PC by default and the PlayStation with `[Game] Version = ps1`
+(`game::GameVersion`): the computer's hogs walk, the turn tunes loop and
+the hard mode follows the first victory.
 
 | Version | Notes |
 |---------|-------|

@@ -42,8 +42,8 @@ std::unique_ptr<render::UiImage> loadPicture(const core::VirtualFileSystem& vfs,
 } // namespace
 
 CampaignSession::CampaignSession(const core::VirtualFileSystem& vfs, Interface& userInterface,
-                                 std::filesystem::path savePath)
-    : vfs_(vfs), interface_(userInterface), savePath_(std::move(savePath)) {
+                                 std::filesystem::path savePath, game::VersionRules rules)
+    : vfs_(vfs), interface_(userInterface), savePath_(std::move(savePath)), rules_(rules) {
     menu_ = std::make_unique<ui::CampaignMenu>(
         interface_.strings(), [this](const game::Campaign& campaign) { return deploymentFor(campaign); });
 }
@@ -191,8 +191,14 @@ std::vector<std::string> CampaignSession::missionEnded(const Game& game) {
         report.deathOrder = game.squadDeaths();
         report.pickedUpPoints = game.promotionPoints();
         summary.outcome = campaign_->recordMission(report, *played_->deployed);
+        if (report.won) {
+            // The PlayStation: the first victory leads into the hard mode,
+            // whose own ending (FMV 09) waits for the second.
+            const bool hardModeNext = rules_.hardMode && campaign_->finished() && !campaign_->hardMode();
+            videos = game::campaignCutscenes(campaign_->nextMission(), !hardModeNext);
+            if (hardModeNext) campaign_->startHardMode();
+        }
         save();
-        if (report.won) videos = game::campaignCutscenes(campaign_->nextMission());
     }
     played_.reset();
     menu_->showResults(*campaign_, summary);

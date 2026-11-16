@@ -22,9 +22,12 @@ std::vector<std::string> introCutscenes() {
     return {stream("infologo"), stream("sheff"), stream("fmv 01"), stream("fmv 02")};
 }
 
-std::vector<std::string> campaignCutscenes(int nextMission) {
+std::vector<std::string> campaignCutscenes(int nextMission, bool hardModeEnding) {
     if (nextMission > kMissionCount) {
-        return {stream("fmv 08"), stream("fmv 09")};  // the campaign is won
+        // The campaign is won; fmv 09 ends the hard mode (PlayStation only:
+        // on PC it is an empty placeholder, which the player skips).
+        if (!hardModeEnding) return {stream("fmv 08")};
+        return {stream("fmv 08"), stream("fmv 09")};
     }
     if (nextMission == kMissionCount) {
         return {stream("fmv 07")};  // Arstria conquered, the Isle of Swill ahead

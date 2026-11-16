@@ -50,13 +50,14 @@ audio::Volumes toVolumes(const ui::VolumeLevels& levels) {
 
 Application::Application(const core::VirtualFileSystem& vfs, ApplicationOptions options)
     : vfs_(vfs), maps_(std::move(options.maps)), width_(options.width), height_(options.height),
-      window_("OpenHogs", options.width, options.height, options.hiddenWindow), savePath_(options.savePath) {
+      window_("OpenHogs", options.width, options.height, options.hiddenWindow), savePath_(options.savePath),
+      versionRules_(game::versionRules(options.version)) {
     sounds_ = options.sound ? std::make_unique<SoundPlayer>(vfs, options.volumes) : std::make_unique<SoundPlayer>();
     gamepads_ = std::make_unique<Gamepads>();
     interface_ = std::make_unique<Interface>(vfs);
     frontEnd_ = std::make_unique<ui::FrontEnd>(interface_->strings(), maps_, toVolumeLevels(options.volumes));
     frontEnd_->setSavedCampaign(CampaignSession::hasSave(savePath_));
-    campaign_ = std::make_unique<CampaignSession>(vfs, *interface_, savePath_);
+    campaign_ = std::make_unique<CampaignSession>(vfs, *interface_, savePath_, versionRules_);
 
     if (options.intro) {
         playCutscenes(game::introCutscenes());
@@ -101,7 +102,9 @@ void Application::drawLoading() {
 void Application::startMatch(const GameOptions& options) {
     drawLoading();
     game_.reset();  // free the previous match first
-    game_ = std::make_unique<Game>(vfs_, options, *interface_, *sounds_, *gamepads_);
+    GameOptions withRules = options;
+    withRules.versionRules = versionRules_;
+    game_ = std::make_unique<Game>(vfs_, withRules, *interface_, *sounds_, *gamepads_);
     originalMenu_->reset();  // back in the menus, the panel drops in again
 }
 

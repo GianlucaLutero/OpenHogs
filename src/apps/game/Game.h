@@ -45,6 +45,7 @@
 #include "openhogs/game/ChaseCamera.h"
 #include "openhogs/game/ComputerPlayer.h"
 #include "openhogs/game/FixedTimestep.h"
+#include "openhogs/game/GameVersion.h"
 #include "openhogs/game/World.h"
 #include "openhogs/render/CharacterRenderer.h"
 #include "openhogs/render/EffectsRenderer.h"
@@ -82,6 +83,10 @@ struct GameOptions {
     int suddenDeathRound = 0;  // 0 = none (multiplayer field conditions)
     std::function<void(std::vector<game::Hog>&)> prepareHogs;
     std::map<int, int> teamNations;
+
+    // PC or PlayStation rules (game/GameVersion.h): whether the computer's
+    // hogs walk and the turn tunes loop. Set by the application.
+    game::VersionRules versionRules;
 };
 
 // What the match asks of the application after an input event.

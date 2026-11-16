@@ -121,6 +121,13 @@ public:
     int nation() const { return nation_; }
     int nextMission() const { return nextMission_; }  // kMissionCount + 1 when finished
     bool finished() const { return nextMission_ > kMissionCount; }
+
+    // The PlayStation's hard mode (New Game+): once the campaign is won,
+    // it starts again from mission 1 with the same squad, and every enemy
+    // is one rank higher. startHardMode() does nothing unless finished()
+    // and not already in hard mode.
+    bool hardMode() const { return hardMode_; }
+    void startHardMode();
     int points() const { return points_; }
     const std::vector<SquadMember>& squad() const { return squad_; }
 
@@ -154,6 +161,7 @@ private:
 
     int nation_ = 0;
     int nextMission_ = kBootCampMission;
+    bool hardMode_ = false;
     int points_ = 0;
     std::vector<SquadMember> squad_;
     std::vector<std::string> names_;
@@ -167,7 +175,9 @@ Campaign loadCampaign(const core::IniFile& ini);
 // Puts the first `deployed` squad hogs in place of the player's team on a
 // map: the map's hogs marked for the player, in order, take the squad's
 // names, ranks, health, weapons and body models; the map's extra player
-// hogs are removed. Returns the player's team (-1 if the map has none).
+// hogs are removed. The enemies take the ranks the map gives them (one
+// higher in hard mode), with those ranks' health and weapons. Returns the
+// player's team (-1 if the map has none).
 int deploySquad(std::vector<Hog>& hogs, const Campaign& campaign, std::size_t deployed);
 
 // Places for the player's team on a map: its hogs marked for the player.

@@ -63,9 +63,10 @@ constexpr glm::vec4 kPauseShade{0.0f, 0.0f, 0.0f, 0.4f};
 
 // The computer opponent's settings. Its random errors are seeded from the
 // clock, so it does not play every match the same way.
-game::AiSettings computerSettings() {
+game::AiSettings computerSettings(const game::VersionRules& rules) {
     game::AiSettings settings;
     settings.seed = static_cast<std::uint32_t>(SDL_GetTicksNS());
+    settings.walks = rules.computerWalks;  // the PC's computer hogs never walk
     return settings;
 }
 
@@ -94,9 +95,9 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Inter
     : mapName_(options.mapName), library_(vfs),
       world_(game::loadWorld(vfs, options.mapName, turnRules(options), options.prepareHogs)),
       pauseMenu_(userInterface.strings()), hud_(vfs),
-      computerTeams_(options.computerTeams.begin(), options.computerTeams.end()), computer_(computerSettings()),
+      computerTeams_(options.computerTeams.begin(), options.computerTeams.end()), computer_(computerSettings(options.versionRules)),
       interface_(userInterface), sounds_(sounds), gamepads_(gamepads),
-      audio_(sounds, world_, [this](int team) { return isComputerTeam(team); }) {
+      audio_(sounds, world_, [this](int team) { return isComputerTeam(team); }, options.versionRules.turnTuneLoops) {
     const auto scene = scene::loadMapScene(vfs, options.mapName);
     for (const auto& warning : scene.warnings) {
         std::cerr << "Warning: " << warning << "\n";

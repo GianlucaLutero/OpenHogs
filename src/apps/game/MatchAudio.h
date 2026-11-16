@@ -33,7 +33,10 @@ namespace openhogs::gameapp {
 class MatchAudio {
 public:
     // `isComputerTeam` tells which teams the computer plays.
-    MatchAudio(SoundPlayer& sounds, const game::World& world, std::function<bool(int)> isComputerTeam);
+    // `loopTurnTune`: the PlayStation keeps the team's tune going through
+    // its turn; the PC plays it once.
+    MatchAudio(SoundPlayer& sounds, const game::World& world, std::function<bool(int)> isComputerTeam,
+               bool loopTurnTune = false);
 
     // The match has started (its first turn too).
     void matchStarted();
@@ -59,6 +62,7 @@ private:
     std::vector<game::HogSpeech> speech_;
     game::Sergeant sergeant_;
     game::MusicDirector music_;
+    bool loopTurnTune_ = false;
     game::AmbienceScheduler ambience_;
 
     int people_ = 0;              // teams played by a person

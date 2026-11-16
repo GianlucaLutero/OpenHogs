@@ -123,6 +123,9 @@ struct Hog {
     // How many entries at the end of `weapons` are actions the world adds
     // by itself (getting in or out, SKIP TURN), not the hog's own.
     std::size_t footerActions = 0;
+    // The rank the map gave it (its object's type field, see
+    // rankFromMapType); -1 when not from a map.
+    int mapRank = -1;
     // How many entries at the start of `weapons` are its own (the rest are
     // the team's stock, then the actions above).
     std::size_t ownCount() const {

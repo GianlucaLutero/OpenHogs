@@ -80,7 +80,7 @@ Record (94 bytes), main fields:
 | 32 | `int16` x 3 | position X, Y (height), Z — same space as the terrain |
 | 38 | `int16` | id |
 | 40 | `int16` x 3 | rotation around X, Y, Z in 1/4096 of a turn |
-| 46 | `int16` | type id |
+| 46 | `int16` | type id; for hogs, their rank: its place in gtext after GRUNT (0 GRUNT, 1 GUNNER, 2 BOMBARDIER, 3 PYROTECHNIC, 4 COMMANDO, 5 SAPPER, 6 ENGINEER, 7 SABOTEUR, 8 SCOUT, 9 SNIPER, 10 SPY, 11 ORDERLY, 12 MEDIC, 13 SURGEON, 14 HERO, 15 ACE, 16 LEGEND), passed by the loader (`FUN_004a5250`) to the hog's constructor (`FUN_00466950`). It matches the models: `GR_ME` 0, `HV_ME` 1–3, `SA_ME` 5, `SB_ME` 10, `SN_ME` 8, `SP_ME` 9, `ME_ME` 11–13, `CO_ME` 4, `LE_ME` 14, `AC_ME` 16; no map uses 15 |
 | 48 | `int16` x 3 | collision box size along the model's Z, Y, X axes, in steps of 64 units (*verified*, see below) |
 | 54 | `int16` | unknown (1 for some bridge parts) |
 | 56 | `uint16` | health in points; 255 = the default of the object's kind (see "Destructible objects") |

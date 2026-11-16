@@ -76,6 +76,7 @@ std::vector<Hog> spawnHogs(const std::vector<formats::MapObject>& objects, const
         hog.team = object.team == 0 ? 0 : std::countr_zero(object.team);
         hog.playerControlled = (object.flags & kPlayerFlag) != 0;
         hog.object = index;
+        hog.mapRank = object.typeId;
         hog.yawRadians = angleToRadians(object.angleY);
 
         const auto x = static_cast<float>(object.x);

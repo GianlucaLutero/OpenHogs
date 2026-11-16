@@ -398,7 +398,7 @@ void ComputerPlayer::decide(const World& world, ComputerDecision& decision) {
         enter(Stage::Turning);
         return;
     }
-    if (!hasApproached_) {
+    if (!hasApproached_ && settings_.walks) {
         approachTarget_ = nearestEnemy(world, hog_);
         if (approachTarget_) {
             const Hog& hog = world.hogs()[hog_];

@@ -149,6 +149,19 @@ Every campaign map marks the player's hogs (POG flag bit 0): three in
 ESTU (mission 1), five everywhere else. The enemy is one other team, except FINAL
 (mission 25), which has five enemy teams. CAMP has a single hog.
 
+The enemies' ranks come from the map too: a hog object's type field
+(offset 46, see [maps.md](maps.md)) is its rank, so each mission's
+enemies have the health and weapons of their rank (OpenHogs:
+`game::deploySquad`, `rankFromMapType`).
+
+**Hard mode** (PlayStation only; the Hogs of War Wiki): once the
+campaign is won it starts again from mission 1 with the same squad, and
+every enemy is one rank higher — grunts become gunners, snipers spies,
+commandos heroes (the wiki notes a few missions where this does not
+happen, mission 18's spies and mission 20). It ends with `fmv 09`, a
+one-byte placeholder on PC. OpenHogs offers it with `[Game] Version =
+ps1` (`game::GameVersion`, `Campaign::startHardMode`).
+
 ## Pictures
 
 | File | Size | Use |

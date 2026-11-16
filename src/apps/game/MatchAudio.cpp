@@ -19,8 +19,10 @@ constexpr std::string_view kPainSound = "P_OWW";  // when the hog cannot say its
 
 } // namespace
 
-MatchAudio::MatchAudio(SoundPlayer& sounds, const game::World& world, std::function<bool(int)> isComputerTeam)
-    : sounds_(sounds), world_(world), isComputerTeam_(std::move(isComputerTeam)), random_(std::random_device{}()) {
+MatchAudio::MatchAudio(SoundPlayer& sounds, const game::World& world, std::function<bool(int)> isComputerTeam,
+                       bool loopTurnTune)
+    : sounds_(sounds), world_(world), isComputerTeam_(std::move(isComputerTeam)), random_(std::random_device{}()),
+      loopTurnTune_(loopTurnTune) {
     // Each hog gets a voice: campaign hogs by their place in the squad,
     // the others by their place in their team.
     std::map<int, int> hogsSeen;  // per team
@@ -64,7 +66,8 @@ void MatchAudio::turnStarted() {
         // The computer's hog thinks aloud and its nation's tune plays.
         const float pitch = static_cast<float>(90 + random_() % 16) / 100.0f;
         sounds_.play(SoundBankId::Match, kThinkingSound, kThinkingVolume, pitch);
-        sounds_.playMusic(music_.computerTurnStarted(turnTeam_, world_.nationOf(turnTeam_)), kBattleTuneVolume);
+        sounds_.playMusic(music_.computerTurnStarted(turnTeam_, world_.nationOf(turnTeam_)), kBattleTuneVolume,
+                          loopTurnTune_);
     }
 }
 

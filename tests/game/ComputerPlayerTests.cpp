@@ -6,6 +6,7 @@
 // own hogs makes the game unplayable against it.
 
 #include "openhogs/game/ComputerPlayer.h"
+#include "openhogs/game/GameVersion.h"
 
 #include "GameTestSupport.h"
 
@@ -147,6 +148,23 @@ TEST_CASE("Out of reach, the computer runs towards the enemy", "[game][ai]") {
     const float after = glm::length(world.hogs()[1].position - world.hogs()[0].position);
     CHECK(after < before - 1000.0f);
     CHECK(world.turns()->activeTeam() == 1);
+}
+
+TEST_CASE("With the PC's rules the computer's hogs never walk", "[game][ai]") {
+    // The PC release's computer hogs shoot from where they stand (the
+    // PlayStation's walk): out of reach, it ends its turn on the spot.
+    const auto map = flatMap();
+    World world(map, standoff(map, 3000, {WeaponId::Trotter}));
+    AiSettings settings = perfect();
+    settings.walks = versionRules(GameVersion::Pc).computerWalks;
+    ComputerPlayer computer(settings);
+    const glm::vec3 before = world.hogs()[1].position;
+    playComputerTurn(world, computer);
+    CHECK(glm::length(world.hogs()[1].position - before) < 1.0f);
+    CHECK(world.turns()->activeTeam() == 1);
+    CHECK(versionRules(GameVersion::PlayStation).computerWalks);
+    CHECK(parseGameVersion("PS1") == GameVersion::PlayStation);
+    CHECK_FALSE(parseGameVersion("n64"));
 }
 
 TEST_CASE("With nothing useful to do, the computer ends its turn", "[game][ai]") {

@@ -6,6 +6,7 @@
 // may only show up many missions later.
 
 #include "openhogs/game/Campaign.h"
+#include "openhogs/game/Cutscenes.h"
 #include "openhogs/game/Ranks.h"
 
 #include "openhogs/core/BinaryReader.h"  // FormatError
@@ -154,12 +155,14 @@ TEST_CASE("Losing every hog or the battle fails the mission without changes", "[
 
 TEST_CASE("Promotions follow the career tree and cost points", "[game][campaign]") {
     // A grunt picks one of four careers; then each career climbs to
-    // Commando and Hero. Higher ranks cost more, and nobody can skip one.
+    // Commando, Hero and Legend. Higher ranks cost more, and nobody can
+    // skip one.
     CHECK(promotionsFrom(RankId::Grunt).size() == 4);
     CHECK(promotionsFrom(RankId::Gunner) == std::vector<RankId>{RankId::Bombardier});
     CHECK(promotionsFrom(RankId::Saboteur) == std::vector<RankId>{RankId::Commando});
     CHECK(promotionsFrom(RankId::Commando) == std::vector<RankId>{RankId::Hero});
-    CHECK(promotionsFrom(RankId::Hero).empty());
+    CHECK(promotionsFrom(RankId::Hero) == std::vector<RankId>{RankId::Legend});
+    CHECK(promotionsFrom(RankId::Legend).empty());
     CHECK(promotionCost(RankId::Scout) == 1);
     CHECK(promotionCost(RankId::Hero) == 5);
 
@@ -255,4 +258,49 @@ TEST_CASE("The squad takes the places of the map's player hogs", "[game][campaig
     CHECK(hogs[1].squadIndex == 1u);
     CHECK(hogs[2].team == 1);
     CHECK_FALSE(hogs[2].squadIndex);
+}
+
+TEST_CASE("Enemies take the ranks the map gives them, one higher in hard mode", "[game][campaign]") {
+    // The map's type field names the rank (0 GRUNT ... 4 COMMANDO ...
+    // 16 LEGEND), so a mission's enemies have the health and weapons the
+    // designers chose. The PlayStation's hard mode promotes every enemy
+    // once: grunts become gunners, snipers spies, commandos heroes.
+    CHECK(rankFromMapType(0) == RankId::Grunt);
+    CHECK(rankFromMapType(4) == RankId::Commando);
+    CHECK(rankFromMapType(9) == RankId::Sniper);
+    CHECK(rankFromMapType(16) == RankId::Legend);
+    CHECK_FALSE(rankFromMapType(15));  // ACE: no such rank
+    CHECK(hardModeRank(RankId::Grunt) == RankId::Gunner);
+    CHECK(hardModeRank(RankId::Sniper) == RankId::Spy);
+    CHECK(hardModeRank(RankId::Commando) == RankId::Hero);
+    CHECK(hardModeRank(RankId::Legend) == RankId::Legend);
+
+    const auto map = flatMap();
+    std::vector<Hog> hogs{makeHog(map, 0, 0, 0), makeHog(map, 500, 0, 1)};
+    hogs[0].playerControlled = true;
+    hogs[1].mapRank = 9;  // a sniper
+    Campaign campaign = britishCampaign();
+    auto normal = hogs;
+    deploySquad(normal, campaign, 1);
+    CHECK(normal[1].rank == RankId::Sniper);
+    CHECK(normal[1].maxHealth == Approx(rankSpec(RankId::Sniper).maxHealth));
+    CHECK(normal[1].weapons == rankSpec(RankId::Sniper).weapons);
+}
+
+TEST_CASE("The hard mode starts once the campaign is won, and is saved", "[game][campaign]") {
+    // Only a finished campaign can start it, back at mission 1 (no second
+    // Boot Camp); the save remembers it.
+    Campaign campaign = britishCampaign();
+    campaign.startHardMode();
+    CHECK_FALSE(campaign.hardMode());  // not won yet
+
+    MissionReport won;
+    won.won = true;
+    while (!campaign.finished()) campaign.recordMission(won, 1);
+    campaign.startHardMode();
+    CHECK(campaign.hardMode());
+    CHECK(campaign.nextMission() == 1);
+    const Campaign loaded = loadCampaign(IniFile::parse(campaign.save()));
+    CHECK(loaded.hardMode());
+    CHECK(campaignCutscenes(kMissionCount + 1, false).size() == 1);  // FMV 08 alone before the hard mode
 }
