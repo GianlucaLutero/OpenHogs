@@ -111,10 +111,7 @@ void Gamepads::addHeldControls(game::PlayerInput& input) const {
     input.aimUp |= aim < 0.0f;
     input.aimDown |= aim > 0.0f;
     input.fire |= anyButton(SDL_GAMEPAD_BUTTON_WEST) || strongestAxis(SDL_GAMEPAD_AXIS_RIGHT_TRIGGER) > 0.0f;
-}
-
-float Gamepads::cameraTurn() const {
-    return strongestAxis(SDL_GAMEPAD_AXIS_RIGHTX);
+    input.sight |= strongestAxis(SDL_GAMEPAD_AXIS_LEFT_TRIGGER) > 0.0f;
 }
 
 } // namespace openhogs::gameapp

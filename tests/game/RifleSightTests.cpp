@@ -81,3 +81,23 @@ TEST_CASE("A shot fired through the sight hits what the crosshair is on", "[game
     run(world, PlayerInput{}, 10);
     CHECK(world.hogs()[1].health < kMaxHealth);
 }
+
+TEST_CASE("The mouse looks around only through the sight", "[game][sight]") {
+    // Through the sight the mouse turns the hog and raises its aim (the
+    // owner's choice, decision 131); outside it the same movement must do
+    // nothing, or every mouse twitch would spoil a careful aim.
+    const auto map = flatMap();
+    World world = duelWith(map, WeaponId::SniperRifle);
+    PlayerInput look;
+    look.lookYawDegrees = 10.0f;
+    look.lookPitchDegrees = 5.0f;
+    const float yawBefore = world.hogs()[0].yawRadians;
+    run(world, look, 1);
+    CHECK(world.hogs()[0].yawRadians == Approx(yawBefore));
+    CHECK(world.hogs()[0].aimDegrees == Approx(0.0f));
+
+    look.sight = true;
+    run(world, look, 1);
+    CHECK(world.hogs()[0].yawRadians == Approx(yawBefore + glm::radians(10.0f)));
+    CHECK(world.hogs()[0].aimDegrees == Approx(5.0f));
+}

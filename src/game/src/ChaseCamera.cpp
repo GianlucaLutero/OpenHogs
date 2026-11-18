@@ -9,8 +9,6 @@ namespace openhogs::game {
 
 namespace {
 
-constexpr float kMinPitchDegrees = -85.0f;  // almost straight down
-constexpr float kMaxPitchDegrees = 10.0f;   // slightly from below
 constexpr float kMinDistance = 300.0f;
 constexpr float kMaxDistance = 6000.0f;
 
@@ -34,11 +32,6 @@ glm::vec3 direction(float yawDegrees, float pitchDegrees) {
 }
 
 } // namespace
-
-void ChaseCamera::orbit(float yawDeltaDegrees, float pitchDeltaDegrees) {
-    yawDegrees_ = std::fmod(yawDegrees_ + yawDeltaDegrees, 360.0f);
-    pitchDegrees_ = std::clamp(pitchDegrees_ + pitchDeltaDegrees, kMinPitchDegrees, kMaxPitchDegrees);
-}
 
 void ChaseCamera::zoom(float factor) {
     distance_ = std::clamp(distance_ * factor, kMinDistance, kMaxDistance);

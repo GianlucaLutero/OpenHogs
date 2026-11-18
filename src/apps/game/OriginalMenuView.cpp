@@ -7,6 +7,7 @@
 #include "openhogs/ui/HudLayout.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 
 namespace openhogs::gameapp {
@@ -40,6 +41,9 @@ constexpr float kResultsLineStep = 30.0f;
 // More lines than fit above the choices are set closer together.
 constexpr std::size_t kResultsRoomyLines = 7;
 constexpr float kResultsTightStep = 27.0f;
+// A CONTROLS row waiting for a key blinks: shown, then hidden, in this cycle
+// (the original blinks it too; its rate is not decoded).
+constexpr double kBlinkSeconds = 0.5;
 // Table rows of the BATTLE RESULTS page (FUN_00483cc0): labels from x 171,
 // team columns centred from x 313, 76 apart; the team boxes are 61 x 15.
 constexpr float kTableLabelX = 171.0f, kTableFirstColumnX = 313.0f, kTableColumnStep = 76.0f;
@@ -105,6 +109,7 @@ void OriginalMenuView::update(double seconds) {
     }
     if (screen_ == OriginalScreen::Controls) {
         controlsBoard_.advance(seconds);
+        blinkSeconds_ = waitingRow_ ? blinkSeconds_ + seconds : 0.0;
         return;
     }
     if (screen_ == OriginalScreen::Credits) {
@@ -342,6 +347,9 @@ void OriginalMenuView::drawControls(render::UiRenderer& ui, const ui::Menu& menu
         style.colour = first + row == menu.selectedIndex() ? kLevelSelectedColour : kLevelColour;
         const auto action = controlsBoard_.actionLine(row);
         ui.drawText(questionFont_, item.label, originX + action.centreX, action.top, style);
+        // The row waiting for a key blinks: its key is hidden half the time.
+        const bool hidden = waitingRow_ == first + row && std::fmod(blinkSeconds_, kBlinkSeconds) >= kBlinkSeconds / 2.0;
+        if (hidden) continue;
         const auto key = controlsBoard_.keyLine(row);
         ui.drawText(questionFont_, item.detail, originX + key.centreX, key.top, style);
     }

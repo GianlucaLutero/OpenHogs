@@ -332,6 +332,27 @@ TEST_CASE("CONTROLS and CREDITS open from OPTIONS and lead back to it", "[ui][fr
     CHECK(frontEnd.screen() == FrontEndScreen::Options);
 }
 
+TEST_CASE("CONTROLS gives a control the next key pressed, and Escape cancels", "[ui][frontend]") {
+    // The original lets every key be changed on CONTROLS: the chosen row
+    // waits for a key. The change must show at once and be reported for
+    // saving; Escape must leave the keys as they were, never bind itself.
+    auto frontEnd = makeFrontEnd();
+    press(frontEnd, {MenuInput::Down, MenuInput::Down, MenuInput::Confirm});  // OPTIONS
+    press(frontEnd, {MenuInput::Down, MenuInput::Confirm});                   // CONTROLS
+    press(frontEnd, {MenuInput::Down, MenuInput::Confirm});                   // BACK (walk back)
+    REQUIRE(frontEnd.waitingForKey() == Control::Backward);
+
+    const auto result = frontEnd.keyPressed("K");
+    CHECK(result.request == FrontEndResult::Request::ControlsChanged);
+    CHECK_FALSE(frontEnd.waitingForKey());
+    CHECK(frontEnd.menu().items()[1].detail == "K");
+    CHECK(frontEnd.menu().selectedIndex() == 1);  // still on its row
+
+    press(frontEnd, {MenuInput::Confirm});
+    CHECK(frontEnd.keyPressed("Escape").request == FrontEndResult::Request::None);
+    CHECK(frontEnd.keyBindings().keys(Control::Backward) == std::vector<std::string>{"K"});
+}
+
 TEST_CASE("FIELD CONDITIONS is shown over the level list and the team holders follow the choices", "[ui][frontend]") {
     // The original writes FIELD CONDITIONS on the level panel, so the level
     // list must be known while it is open; the MULTI-PLAYER page reports

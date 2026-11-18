@@ -286,3 +286,22 @@ TEST_CASE("SoundLibrary: finds music tracks and loads sounds through the VFS", "
     CHECK(library.load("audio/boom.wav") == sound);  // cached, decoded once
     CHECK_THROWS(library.loadFromBank(bank, 1));
 }
+
+// VOLUME CONTROL saves its changes into openhogs.ini: what is written must
+// read back as the same volumes, or the next start would sound different.
+TEST_CASE("AudioSettings: saved volumes read back the same", "[audio][settings]") {
+    Volumes volumes;
+    volumes.master = 0.6f;
+    volumes.speech = 0.0f;
+    volumes.music = 0.85f;
+    volumes.mode = SoundMode::Mono;
+    std::string text;
+    for (const auto& [key, value] : volumesToIni(volumes)) text = core::setIniValue(text, "Audio", key, value);
+
+    const auto read = volumesFromIni(core::IniFile::parse(text));
+    CHECK(read.master == Approx(0.6f));
+    CHECK(read.effects == 1.0f);
+    CHECK(read.speech == 0.0f);
+    CHECK(read.music == Approx(0.85f));
+    CHECK(read.mode == SoundMode::Mono);
+}

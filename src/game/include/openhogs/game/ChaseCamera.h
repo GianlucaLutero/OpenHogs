@@ -1,11 +1,12 @@
 // ChaseCamera.h
 //
-// The camera of the game: it orbits around a target (the selected hog),
+// The camera of the game: it stays behind a target (the selected hog),
 // follows it smoothly and never goes under the ground.
 //
-// The player turns the camera around the target and zooms; the camera
-// itself glides towards a new target instead of jumping, so switching hog
-// reads as a movement across the map.
+// The game swings it round behind the hog as the hog turns (the owner
+// chose a camera fixed behind the hog, decision 15); the player only
+// zooms. It glides towards a new target instead of jumping, so switching
+// hog reads as a movement across the map.
 //
 // The result is a plain position and two angles, with the convention of
 // render::Camera (yaw 0 looks towards -Z, positive pitch looks up), so this
@@ -27,10 +28,6 @@ struct CameraPose {
 
 class ChaseCamera {
 public:
-    // Turns the camera around the target. Pitch is limited so the camera
-    // stays between a low angle and almost straight above.
-    void orbit(float yawDeltaDegrees, float pitchDeltaDegrees);
-
     // Multiplies the distance to the target (below 1 = closer), within limits.
     void zoom(float factor);
 

@@ -11,6 +11,7 @@
 #   FloatingNumbers - damage numbers rising above hurt hogs
 #   Hud           - what the HUD shows; messages for game events
 #   HudLayout     - the original HUD's layout and moving parts (from the executable)
+#   KeyBindings   - which keys do what in a match (the CONTROLS screen, [Controls])
 #   RifleSight    - the original rifle sight: the round hole and the crosshair
 #   OriginalMenu  - the original list menu's layout and animation (from the executable)
 #   OriginalDialog - the original yes/no question's layout and animation
@@ -29,6 +30,7 @@ add_library(openhogs_ui STATIC
     src/FrontEnd.cpp
     src/Hud.cpp
     src/HudLayout.cpp
+    src/KeyBindings.cpp
     src/RifleSight.cpp
     src/Menu.cpp
     src/OriginalDialog.cpp

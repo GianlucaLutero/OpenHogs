@@ -46,6 +46,7 @@
 #include "openhogs/ui/OriginalVolume.h"
 
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -93,6 +94,10 @@ public:
     // The credits rows (name, job) for the CREDITS page.
     void setCredits(std::vector<std::pair<std::string, std::string>> rows) { creditRows_ = std::move(rows); }
 
+    // CONTROLS: the row (index in the menu) waiting for a key, which
+    // blinks as in the original; nothing when none waits.
+    void setWaitingRow(std::optional<std::size_t> row) { waitingRow_ = row; }
+
     // Who plays each team on the MULTI-PLAYER page.
     void setTeamPlayers(const std::vector<ui::OriginalTeamHolders::Player>& players) { holders_.setPlayers(players); }
 
@@ -137,6 +142,8 @@ public:
 private:
 
     FrontEndPictures& pictures_;
+    std::optional<std::size_t> waitingRow_;
+    double blinkSeconds_ = 0.0;  // clock of the waiting row's blinking
     const render::UiFont& font_;
     const render::UiFont& questionFont_;
     ui::OriginalMenu animation_;

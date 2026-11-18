@@ -163,4 +163,105 @@ std::vector<std::string> IniFile::getList(std::string_view section, std::string_
     return items;
 }
 
+namespace {
+
+// The section a "[Name]" line opens (lower case), or nothing for other lines.
+std::optional<std::string> sectionOpenedBy(const std::string& trimmedLine) {
+    if (trimmedLine.size() < 2 || trimmedLine.front() != '[' || trimmedLine.back() != ']') {
+        return std::nullopt;
+    }
+    return toLower(trim(trimmedLine.substr(1, trimmedLine.size() - 2)));
+}
+
+// The key a "Key = Value" line sets (lower case), or nothing for other lines.
+std::optional<std::string> keySetBy(const std::string& trimmedLine) {
+    if (isCommentOrBlank(trimmedLine) || trimmedLine.front() == '[') {
+        return std::nullopt;
+    }
+    const auto equals = trimmedLine.find('=');
+    if (equals == std::string::npos) {
+        return std::nullopt;
+    }
+    return toLower(trim(trimmedLine.substr(0, equals)));
+}
+
+std::vector<std::string> splitLines(std::string_view text) {
+    std::vector<std::string> lines;
+    std::istringstream stream{std::string(text)};
+    std::string line;
+    while (std::getline(stream, line)) {
+        if (!line.empty() && line.back() == '\r') line.pop_back();  // Windows line ends
+        lines.push_back(line);
+    }
+    return lines;
+}
+
+std::string joinLines(const std::vector<std::string>& lines) {
+    std::string text;
+    for (const auto& line : lines) {
+        text += line;
+        text += '\n';
+    }
+    return text;
+}
+
+} // namespace
+
+std::string setIniValue(std::string_view text, std::string_view section, std::string_view key,
+                        std::string_view value) {
+    std::vector<std::string> lines = splitLines(text);
+    const std::string wantedSection = toLower(section);
+    const std::string wantedKey = toLower(key);
+    const std::string newLine = std::string(key) + " = " + std::string(value);
+
+    bool inSection = false;
+    std::optional<std::size_t> sectionHeader;  // line of "[Section]", if found
+    std::optional<std::size_t> lastKeyLine;    // its last key line: a missing key goes after it
+    for (std::size_t i = 0; i < lines.size(); ++i) {
+        const std::string line = trim(lines[i]);
+        if (const auto opened = sectionOpenedBy(line)) {
+            if (inSection) break;  // the wanted section has ended
+            inSection = *opened == wantedSection;
+            if (inSection) sectionHeader = i;
+            continue;
+        }
+        if (!inSection) continue;
+        if (const auto found = keySetBy(line)) {
+            if (*found == wantedKey) {
+                lines[i] = newLine;
+                return joinLines(lines);
+            }
+            lastKeyLine = i;
+        }
+    }
+    if (sectionHeader) {
+        // The section exists but has no such key yet.
+        const std::size_t after = lastKeyLine.value_or(*sectionHeader);
+        lines.insert(lines.begin() + static_cast<std::ptrdiff_t>(after) + 1, newLine);
+    } else {
+        // No such section: add it at the end, after a blank line.
+        if (!lines.empty() && !trim(lines.back()).empty()) lines.emplace_back();
+        lines.push_back("[" + std::string(section) + "]");
+        lines.push_back(newLine);
+    }
+    return joinLines(lines);
+}
+
+void updateIniFile(const std::filesystem::path& path, std::string_view section,
+                   const std::vector<std::pair<std::string, std::string>>& values) {
+    std::string text;
+    if (std::ifstream file(path, std::ios::binary); file) {
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        text = buffer.str();
+    }
+    for (const auto& [key, value] : values) {
+        text = setIniValue(text, section, key, value);
+    }
+    std::ofstream out(path, std::ios::binary | std::ios::trunc);
+    if (!out || !(out << text)) {
+        throw std::runtime_error("Cannot write INI file: " + path.string());
+    }
+}
+
 } // namespace openhogs::core
