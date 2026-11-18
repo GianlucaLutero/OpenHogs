@@ -12,6 +12,9 @@
 //   time runs out, when the player ends it, or once the shot of the turn
 //   is over (the world decides that, see World).
 // - Dead hogs are skipped, and so are teams with no hog left.
+// - With SELECT PIG (a FIELD CONDITIONS setting) each turn begins with up
+//   to 10 seconds to choose the hog, as the original's manual says; the
+//   turn clock waits meanwhile. Choosing ends when the hog moves.
 //
 // The values of TurnRules are OpenHogs' own until the original's are known
 // (see docs/open-decisions.md).
@@ -30,7 +33,16 @@ struct TurnRules {
     // Sudden death: when this round begins every hog is left with one
     // point of health (0 = never). A round is one turn of every team.
     int suddenDeathRound = 0;
+    // DEATHMATCH LIMIT: killed hogs come back and the first team to this
+    // many points wins (2 for a kill, -1 for a loss, see World). 0 = the
+    // usual match: the last team standing wins.
+    int deathmatchLimit = 0;
+    // SELECT PIG: the turn starts with time to choose the hog.
+    bool selectPig = false;
 };
+
+// How long SELECT PIG gives to choose (the manual: "only 10 seconds").
+inline constexpr double kSelectPigSeconds = 10.0;
 
 class TurnSystem {
 public:
@@ -50,8 +62,11 @@ public:
 
     double secondsLeft() const { return secondsLeft_; }
 
-    // The player may pick another hog until the active one has moved.
-    bool canSwitchHog() const { return !hasMoved_; }
+    // The player may pick another hog until the active one has moved
+    // (with SELECT PIG: also only while the choosing time lasts).
+    bool canSwitchHog() const { return !hasMoved_ && (!rules_.selectPig || choosingSecondsLeft_ > 0.0); }
+    // SELECT PIG: still choosing the hog (the turn clock waits).
+    bool choosingHog() const { return rules_.selectPig && canSwitchHog(); }
 
     // Picks the next (+1) or previous (-1) hog of the active team, if
     // canSwitchHog(). Returns true if the active hog changed.
@@ -80,6 +95,7 @@ private:
     int turnNumber_ = 0;
     double secondsLeft_ = 0.0;
     bool hasMoved_ = false;
+    double choosingSecondsLeft_ = 0.0;  // SELECT PIG
 };
 
 } // namespace openhogs::game

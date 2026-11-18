@@ -216,6 +216,8 @@ bool Application::handleFrontEndResult(const ui::FrontEndResult& result) {
         options.teamNations = result.settings.teamNations;
         options.turnSeconds = result.settings.turnSeconds;
         options.suddenDeathRound = result.settings.suddenDeathRound;
+        options.deathmatchLimit = result.settings.deathmatchLimit;
+        options.selectPig = result.settings.selectPig;
         const auto conditions = result.settings.conditions;
         options.prepareHogs = [conditions](std::vector<game::Hog>& hogs) { game::applyFieldConditions(hogs, conditions); };
         try {

@@ -98,7 +98,7 @@ void printUsage() {
                  "  --seconds <s>        with --screenshot: let the match (or the menu) run this long first\n"
                  "  --auto-walk          with --screenshot: the active hog runs forward meanwhile\n"
                  "  --sight              with --screenshot: look through the rifle sight (with a gun)\n"
-                 "  --rules <pc|ps1>     the PC's or the PlayStation's rules (default: [Game] Version, else pc)\n"
+                 "  --rules <pc|ps1>     the PC's or the PlayStation's rules (default: [Game] Version, else ps1)\n"
                  "  --weapon <n>         with --screenshot: the active hog selects its n-th weapon\n"
                  "  --fire-at <s>        with --screenshot: the active hog fires at s seconds\n"
                  "  --computer <who>     with --map: others (computer plays all teams but the first) or all\n"
@@ -252,7 +252,7 @@ int runGame(Options options) {
         // Volumes and keys changed in the menus are saved back into the
         // file (not for screenshots, whose menu keys are scripted).
         if (!screenshotOnly) appOptions.configPath = options.configPath;
-        const std::string version = ini.getString("Game", "Version", "pc");
+        const std::string version = ini.getString("Game", "Version", "ps1");
         const auto parsed = game::parseGameVersion(version);
         if (!parsed) throw std::runtime_error("[Game] Version must be pc or ps1, got " + version);
         appOptions.version = *parsed;

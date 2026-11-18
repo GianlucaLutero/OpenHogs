@@ -87,6 +87,8 @@ struct GameOptions {
     // player's squad takes their place) and the nation each team fights for.
     std::optional<double> turnSeconds;
     int suddenDeathRound = 0;  // 0 = none (multiplayer field conditions)
+    int deathmatchLimit = 0;   // FIELD CONDITIONS: points to win; 0 = last team standing
+    bool selectPig = false;    // FIELD CONDITIONS: time to choose the hog at each turn
     std::function<void(std::vector<game::Hog>&)> prepareHogs;
     std::map<int, int> teamNations;
 

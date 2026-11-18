@@ -50,12 +50,12 @@ constexpr std::string_view kPickupSound = "I_PICKUP";
 constexpr glm::vec4 kAimColour{1.0f, 1.0f, 1.0f, 1.0f};
 constexpr glm::vec4 kTracerColour{1.0f, 0.95f, 0.5f, 1.0f};
 constexpr glm::vec4 kShellColour{0.25f, 0.25f, 0.2f, 1.0f};
-constexpr glm::vec4 kHealthColour{0.2f, 0.85f, 0.2f, 1.0f};
-constexpr glm::vec4 kActiveHealthColour{1.0f, 0.85f, 0.1f, 1.0f};
-constexpr float kHealthBarHeight = 380.0f;  // above the feet
+// The label over the hog in play (its name and health) starts this far
+// above its feet, just over its head.
+constexpr float kHogLabelHeight = 330.0f;
 
 // HUD layout, in canvas units (the screen is render::kCanvasHeight tall).
-constexpr float kDamageNumberHeight = 450.0f;  // above the feet, over the health bar
+constexpr float kDamageNumberHeight = 450.0f;  // above the feet, by the label
 constexpr float kBannerY = 140.0f;  // the executable writes match messages at y = 140
 constexpr glm::vec4 kPauseShade{0.0f, 0.0f, 0.0f, 0.4f};
 
@@ -74,6 +74,8 @@ game::TurnRules turnRules(const GameOptions& options) {
         rules.turnSeconds = *options.turnSeconds;
     }
     rules.suddenDeathRound = options.suddenDeathRound;
+    rules.deathmatchLimit = options.deathmatchLimit;
+    rules.selectPig = options.selectPig;
     return rules;
 }
 
@@ -431,7 +433,10 @@ void Game::handleEvents(const std::vector<game::GameEvent>& events) {
                 mapRenderer_->addObject({"CRATE1", scene::objectTransform(disguise), kDisguiseObject + event.hog});
             }
             break;
-        case GameEventType::HogUnhidden: mapRenderer_->hideObject(kDisguiseObject + event.hog); break;
+        case GameEventType::HogUnhidden:
+        case GameEventType::Respawned:  // back as it began (deathmatch): no disguise left
+            mapRenderer_->hideObject(kDisguiseObject + event.hog);
+            break;
         case GameEventType::PickedPocket: playSound("I_PICKUP"); break;
         case GameEventType::TurnSlept: break;  // the turn simply passes
         case GameEventType::ObjectRevealed: mapRenderer_->showObject(event.object); break;
@@ -595,13 +600,6 @@ void Game::drawEffects(const render::Camera& camera, int width, int height) {
         effects_->drawExplosion(explosion.position, explosion.radius,
                                 explosion.ageSeconds / game::kExplosionEffectSeconds);
     }
-    const auto active = world_.activeHog();
-    for (std::size_t i = 0; i < world_.hogs().size(); ++i) {
-        const auto& hog = world_.hogs()[i];
-        if (!hog.alive || hog.sheltered()) continue;
-        effects_->drawHealthBar(hog.position + glm::vec3(0.0f, kHealthBarHeight, 0.0f), hog.health / hog.maxHealth,
-                                active == i ? kActiveHealthColour : kHealthColour);
-    }
 }
 
 void Game::placeMounts() {
@@ -674,9 +672,19 @@ void Game::drawHud(int width, int height) {
     const float aspect = height > 0 ? static_cast<float>(width) / static_cast<float>(height) : 1.0f;
     hud_.drawDamageNumbers(interface_.renderer(), camera.projectionMatrix(aspect) * camera.viewMatrix(),
                            camera.position);
+    const auto turn = ui::describeTurn(world_, interface_.strings(), interface_.gameText());
+    const auto active = world_.activeHog();
+    if (turn && turn->playing && active && !world_.sightView() && !world_.binocularView() &&
+        !world_.hogs()[*active].sheltered()) {
+        // No health bars: as on the PlayStation, only the hog in play has a
+        // label, its name (or rank) and its health (decision 36).
+        hud_.drawHogLabel(interface_, camera.projectionMatrix(aspect) * camera.viewMatrix(),
+                          world_.hogs()[*active].position + glm::vec3(0.0f, kHogLabelHeight, 0.0f),
+                          ui::hogLabel(*turn, world_.timeSeconds()), turn->health);
+    }
     if (world_.sightView()) hud_.drawRifleSight(interface_.renderer());
     if (world_.binocularView()) hud_.drawRifleSight(interface_.renderer(), false);  // the round view, no crosshair
-    hud_.draw(interface_, ui::describeTurn(world_, interface_.strings(), interface_.gameText()));
+    hud_.draw(interface_, turn);
     if (const auto& message = banner_.current()) {
         // Turn messages fade out over their last quarter.
         const double progress = banner_.progress();

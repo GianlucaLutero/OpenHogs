@@ -58,6 +58,7 @@ void TurnSystem::startTurn(const std::vector<Hog>& hogs) {
     ++turnNumber_;
     secondsLeft_ = rules_.turnSeconds;
     hasMoved_ = false;
+    choosingSecondsLeft_ = kSelectPigSeconds;
 
     // The hog after the one this team used last time (the first hog the
     // first time).
@@ -90,6 +91,10 @@ bool TurnSystem::switchHog(int step, const std::vector<Hog>& hogs) {
 bool TurnSystem::update(double seconds, float distanceMoved, const std::vector<Hog>& hogs) {
     if (distanceMoved > 0.0f) {
         hasMoved_ = true;
+    }
+    if (choosingHog()) {
+        choosingSecondsLeft_ -= seconds;  // SELECT PIG: the turn clock waits
+        return false;
     }
     secondsLeft_ -= seconds;
     if (secondsLeft_ > 0.0) {

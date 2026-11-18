@@ -121,7 +121,8 @@ glm::vec3 turnTowards(const glm::vec3& velocity, const glm::vec3& wanted, float 
 } // namespace
 
 bool explodesOnContact(const WeaponSpec& spec) {
-    return spec.kind == WeaponKind::Shell || spec.kind == WeaponKind::Airstrike;
+    // Shells, bombs and a dropped jetpack burst where they hit.
+    return spec.kind == WeaponKind::Shell || spec.kind == WeaponKind::Airstrike || spec.kind == WeaponKind::Jetpack;
 }
 
 void steerProjectile(Projectile& projectile, float yawRadians, float pitchRadians) {

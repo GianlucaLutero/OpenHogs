@@ -74,7 +74,9 @@ struct Hog {
     HogMotion motion;               // walking, jumping, swimming...
     std::optional<HeldAnimation> held;  // overrides the idle behaviour when set
 
-    float secondsInWater = 0.0f;    // swimming time not yet charged as damage
+    float waterDamageOwed = 0.0f;   // swimming damage not yet charged (it is charged in whole points)
+    float secondsSwumInItsTurn = 0.0f;  // swimming under the player's control, this turn
+    bool drownedBlastDone = false;  // a drowned hog explodes once, when it has sunk
 
     float health = kMaxHealth;
     float maxHealth = kMaxHealth;   // unhurt health (campaign ranks differ)
@@ -168,13 +170,23 @@ glm::vec3 hogFacing(const Hog& hog);
 // ignored).
 float yawFacing(const glm::vec3& direction);
 
-// Swimming hurts every hog except the two officer ranks, Commando (the
-// "ace" class) and Hero ("legend"), as the game's guides say: they swim
-// without harm. The others lose kSwimDamagePerSecond health every second
-// spent in the water ("even a full health pig drowns very quickly"; the
-// exact rate is not known, see docs/open-decisions.md).
+// Swimming, as the Hogs of War Wiki's Water page says (decision 9): the
+// two officer classes, ace and legend, swim without harm; the others lose
+// about 2 points a second. A hog the player steers into the water in its
+// own turn loses more and more, up to about 20 a second after some 3
+// seconds; a hog knocked in has no such ramp and swims back to the shore.
+// A hog that drowns explodes once it has sunk, hurting those nearby.
 bool swimsSafely(const Hog& hog);
-inline constexpr float kSwimDamagePerSecond = 10.0f;
+inline constexpr float kSwimDamagePerSecond = 2.0f;
+inline constexpr float kSteeredSwimDamagePerSecond = 20.0f;
+inline constexpr float kSteeredSwimRampSeconds = 3.0f;
+// The damage per second of a hog that has swum `steeredSeconds` under the
+// player's control in its turn (0 for a hog nobody steers).
+float swimDamagePerSecond(float steeredSeconds);
+// The drowned hog's explosion: the wiki gives no figures, so a grenade's
+// reach and the jetpack's 20 points (decision 149).
+inline constexpr float kDrownedBlastRadius = 325.0f;
+inline constexpr float kDrownedBlastDamage = 20.0f;
 
 // The centre of the hog's body (half way up), the point explosions and
 // bullets aim at.

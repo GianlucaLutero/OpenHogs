@@ -49,6 +49,7 @@ enum class GameEventType {
     PickedPocket, // hog: who was robbed; weapon: what of
     HogMounted,   // hog: who got in; object: into which building or vehicle
     HogDismounted,// hog: who got out (or was thrown out); object: of which
+    Respawned,    // hog: back where the map placed it (deathmatch); team: its team
 };
 
 struct GameEvent {

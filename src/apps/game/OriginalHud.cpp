@@ -21,6 +21,17 @@ const char* const kEffectPictures = "Language/Tims/expltims.mad";
 const char* const kFacePictures = "Language/Tims/facetims.mad";
 const glm::vec4 kSightBlack{0.0f, 0.0f, 0.0f, 1.0f};
 
+// The label over the hog in play: each of its two lines (name, then heart
+// and health) this tall in canvas units, the size it has in PlayStation
+// screenshots (about 13 of the console's 240 lines).
+constexpr float kLabelLineHeight = 26.0f;
+constexpr float kLabelLineGap = 4.0f;
+constexpr float kHeartGap = 10.0f;  // between the heart and the number
+// The letters and the heart are white pictures with a black edge; the
+// PlayStation shows them yellow and pink.
+constexpr glm::vec4 kLabelYellow{1.0f, 0.88f, 0.12f, 1.0f};
+constexpr glm::vec4 kHeartPink{1.0f, 0.3f, 0.6f, 1.0f};
+
 // TIM entry names end in ".tim"; the layout uses the bare names.
 std::string bareName(std::string_view entryName) {
     std::string name(entryName);
@@ -78,6 +89,35 @@ void OriginalHud::drawDamageNumbers(render::UiRenderer& ui, const glm::mat4& vie
             x += size;
         }
     }
+}
+
+void OriginalHud::drawHogLabel(Interface& userInterface, const glm::mat4& viewProjection, const glm::vec3& head,
+                               const std::string& label, int health) const {
+    auto& ui = userInterface.renderer();
+    const glm::vec4 clip = viewProjection * glm::vec4(head, 1.0f);
+    if (clip.w <= 0.0f) return;  // behind the camera
+    const glm::vec2 ndc = glm::vec2(clip) / clip.w;
+    const float centreX = (ndc.x * 0.5f + 0.5f) * ui.canvasWidth();
+    const float bottom = (0.5f - ndc.y * 0.5f) * render::kCanvasHeight;
+
+    const render::UiFont& font = userInterface.gameFont();
+    render::TextStyle style;
+    style.scale = kLabelLineHeight / static_cast<float>(std::max(1, font.font().lineHeight));
+    style.align = render::TextAlign::Centre;
+    style.shadow = false;  // the letters have their own black edge
+    style.colour = kLabelYellow;
+    const float healthTop = bottom - kLabelLineHeight;
+    ui.drawText(font, label, centreX, healthTop - kLabelLineGap - kLabelLineHeight, style);
+
+    // The heart and the number side by side, centred together.
+    const std::string number = std::to_string(health);
+    const float numberWidth = render::UiRenderer::textWidth(font, number, style.scale);
+    const float left = centreX - (kLabelLineHeight + kHeartGap + numberWidth) / 2.0f;
+    if (const auto* heart = picture("heart")) {
+        ui.drawImage(*heart, left, healthTop, kLabelLineHeight, kLabelLineHeight, kHeartPink);
+    }
+    style.align = render::TextAlign::Left;
+    ui.drawText(font, number, left + kLabelLineHeight + kHeartGap, healthTop, style);
 }
 
 const render::UiImage* OriginalHud::picture(std::string_view name) const {

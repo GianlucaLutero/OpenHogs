@@ -122,6 +122,13 @@ public:
     // When the match is over: the winning team, or empty for a draw.
     std::optional<int> winner() const { return winner_; }
 
+    // DEATHMATCH LIMIT (TurnRules::deathmatchLimit): a team's points, as
+    // the manual counts them: 2 for every enemy its hogs killed, -1 for
+    // every hog of its own that died. Dead hogs come back where the map
+    // first placed them when the next turn starts.
+    bool isDeathmatch() const { return turns_ && turns_->rules().deathmatchLimit > 0; }
+    int deathmatchPoints(int team) const;
+
     // Seconds of simulated time since the match started.
     double timeSeconds() const { return timeSeconds_; }
 
@@ -170,6 +177,7 @@ private:
     void fire(std::size_t hogIndex, float power, std::vector<GameEvent>& events);
     void updateWeaponStance(Hog& hog) const;
     void hurtSwimmers(double seconds, std::vector<GameEvent>& events);
+    void explodeDrownedHogs(std::vector<GameEvent>& events);
     void collectPickups(std::vector<GameEvent>& events);
     void updateObjectives(std::vector<GameEvent>& events);
     void recordDeeds(std::optional<std::size_t> active, const std::vector<GameEvent>& events);
@@ -191,7 +199,11 @@ private:
     void useOwnWeapon(Hog& hog, std::size_t slot);
     glm::vec3 targetSpot(const Hog& hog, const WeaponSpec& spec, float power) const;
     void flyJetpack(std::size_t index, const MovementInput& input, double seconds,
-                    const std::vector<formats::Animation>& animations);
+                    const std::vector<formats::Animation>& animations, std::vector<GameEvent>& events);
+    // Ends a jetpack flight: dropped in the air (the parachute opens and
+    // the jetpack falls away behind), or crashed into the ground (it
+    // explodes on the spot).
+    void dropJetpack(std::size_t index, bool crashed, std::vector<GameEvent>& events);
     void steerGuided(const PlayerInput& input, double seconds);
     std::optional<std::size_t> freeMountNear(const Hog& hog) const;
     const CollisionBox* mountBox(const Mount& mount) const;
@@ -227,6 +239,11 @@ private:
     MatchPhase phase_ = MatchPhase::Playing;
     std::optional<int> winner_;
     bool hadSeveralTeams_ = false;
+    // Deathmatch: each hog as the match began (to bring it back) and the
+    // hogs each team lost.
+    std::vector<Hog> startingHogs_;
+    std::map<int, int> deathmatchLosses_;
+    void respawnDeadHogs(std::vector<GameEvent>& events);
     double timeSeconds_ = 0.0;
 
     std::vector<Projectile> projectiles_;
@@ -246,9 +263,8 @@ private:
     bool suddenDeathDone_ = false;
     std::vector<GameEvent> pendingEvents_;  // from endTurn(), reported by the next update()
     bool fireWasHeld_ = false;
-    bool flightEndsTurn_ = false;
     bool sighting_ = false;  // the active hog's player looks through the rifle sight
-    std::vector<Mount> mounts_;  // a jetpack flight is on: the turn ends when the hog is down
+    std::vector<Mount> mounts_;
     // Bullet spread: seeded with a fixed value, so a match replays the same
     // way (and tests are reproducible).
     std::mt19937 random_{20261111};

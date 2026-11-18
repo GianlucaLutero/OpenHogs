@@ -173,25 +173,50 @@ TEST_CASE("Movement: no jumping off a wall tile", "[game][movement]") {
     CHECK_FALSE(events.tookOff);
 }
 
-TEST_CASE("World: swimming hurts, except the officers; drowned hogs sink", "[game][world][movement]") {
-    // In the original only Commandos (ace) and Heroes (legend) swim safely;
-    // the others lose health every second in the water, and a hog that dies
-    // there plays the sinking animation. Water everywhere but the first
-    // tiles, so nobody reaches the shore during the test.
+TEST_CASE("World: swimming hurts, except the officers; drowned hogs sink and explode", "[game][world][movement]") {
+    // The wiki's Water page: about 2 points a second for a hog in the
+    // water, none for the officers (ace, legend); a hog that drowns sinks
+    // (the executable's animation 74) and then explodes, hurting those
+    // nearby. Water everywhere but the first tiles, so nobody reaches the
+    // shore during the test.
     const auto map = mapWithWater(-1536);
     std::vector<Hog> hogs{makeHog(map, -1800, 0, 0), hogOfClass(map, "GR_ME", 1800, 0, 1),
-                          hogOfClass(map, "AC_ME", 1800, 1200, 1)};
+                          hogOfClass(map, "AC_ME", 1800, 200, 1)};
+    hogs[1].health = 3.0f;
     World world(map, hogs);
     const auto animations = makeAnimations();
     for (int i = 0; i < 51; ++i) world.update(kStep, PlayerInput{}, animations);  // just over a second
 
-    CHECK(world.hogs()[1].health == Approx(kMaxHealth - kSwimDamagePerSecond));
+    CHECK(world.hogs()[1].health == Approx(3.0f - kSwimDamagePerSecond));
     CHECK(world.hogs()[2].health == Approx(kMaxHealth));
 
-    // Swimming towards the far shore takes longer than the grunt's health.
-    for (int i = 0; i < 50 * 12 && world.hogs()[1].alive; ++i) world.update(kStep, PlayerInput{}, animations);
+    bool exploded = false;
+    for (int i = 0; i < 50 * 8 && !exploded; ++i) {
+        for (const auto& event : world.update(kStep, PlayerInput{}, animations)) {
+            exploded = exploded || event.type == GameEventType::Explosion;
+        }
+    }
     CHECK_FALSE(world.hogs()[1].alive);
     CHECK(world.hogs()[1].animation.animation() == kDrowningAnimation);
+    CHECK(exploded);
+    CHECK(world.hogs()[2].health < kMaxHealth);  // the officer next to it was caught by the blast
+}
+
+TEST_CASE("World: steering a hog into the water costs more and more", "[game][world][movement]") {
+    // The wiki: crossing water in its own turn, a hog's loss rises to
+    // about 20 points a second within some 3 seconds; knocked in, it stays
+    // at about 2. This makes swimming a real risk rather than a shortcut.
+    CHECK(swimDamagePerSecond(0.0f) == Approx(kSwimDamagePerSecond));
+    CHECK(swimDamagePerSecond(1.5f) == Approx((kSwimDamagePerSecond + kSteeredSwimDamagePerSecond) / 2.0f));
+    CHECK(swimDamagePerSecond(10.0f) == Approx(kSteeredSwimDamagePerSecond));
+
+    const auto map = mapWithWater(-1536);
+    std::vector<Hog> hogs{hogOfClass(map, "GR_ME", 1800, 0, 0), makeHog(map, -1800, 0, 1)};
+    World world(map, hogs);
+    const auto animations = makeAnimations();
+    for (int i = 0; i < 50 * 4; ++i) world.update(kStep, PlayerInput{}, animations);  // its own turn
+    // About 2 + 8 + 14 + 20 = 44 points in four seconds, far more than 8.
+    CHECK(world.hogs()[0].health < kMaxHealth - 30.0f);
 }
 
 TEST_CASE("World: a hog in the water that nobody controls swims to the shore", "[game][world][movement]") {

@@ -12,6 +12,18 @@ the `project()` call in `CMakeLists.txt`.
 - **Rifle sight**: the mouse turns the hog and aims while it is held; the
   pad's left trigger holds it.
 - **Volumes** changed in VOLUME CONTROL are saved.
+- **Label over the hog** as on the PlayStation: its name or rank, and its
+  health after a heart; no more health bars.
+- **FIELD CONDITIONS**: DEATHMATCH LIMIT (killed hogs come back; 2 points
+  a kill, -1 a loss) and SELECT PIG (10 seconds to choose the hog).
+- **Rules**: the PlayStation's by default (`[Game] Version = ps1`); two
+  teams can no longer fight for the same nation; the battle awards keep
+  the executable's slip that leaves team 1 out of the kill awards.
+- **Swimming** as the wiki says: about 2 points a second, rising to 20 for
+  a hog steered into the water in its own turn; drowned hogs explode.
+- **Jetpack** as the wiki says: it flies along the aim; fire again drops
+  it (it explodes where it lands) and opens the parachute; the turn goes
+  on; flying into the ground is a crash landing.
 
 ## 0.1.0 — first prototype release
 

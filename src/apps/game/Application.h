@@ -55,7 +55,7 @@ struct ApplicationOptions {
     std::vector<std::string> maps;  // the levels offered by the menu
     std::filesystem::path savePath = "saves/campaign.ini";
     bool intro = true;  // play the original's start-up videos first
-    game::GameVersion version = game::GameVersion::Pc;  // whose rules: [Game] Version
+    game::GameVersion version = game::GameVersion::PlayStation;  // whose rules: [Game] Version (decision 136)
 };
 
 class Application {
