@@ -2,6 +2,8 @@
 
 #include "openhogs/game/Hog.h"
 
+#include <algorithm>
+
 #include "openhogs/core/PathUtils.h"
 #include "openhogs/formats/Model.h"
 
@@ -114,6 +116,11 @@ bool swimsSafely(const Hog& hog) {
     if (hog.characterClass == nullptr) return false;
     const std::string_view id = hog.characterClass->id;
     return id == "ace" || id == "legend";
+}
+
+float swimDamagePerSecond(float steeredSeconds) {
+    const float ramp = std::clamp(steeredSeconds / kSteeredSwimRampSeconds, 0.0f, 1.0f);
+    return kSwimDamagePerSecond + (kSteeredSwimDamagePerSecond - kSwimDamagePerSecond) * ramp;
 }
 
 glm::vec3 hogCentre(const Hog& hog) {

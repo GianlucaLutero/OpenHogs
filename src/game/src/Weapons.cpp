@@ -367,9 +367,14 @@ std::array<WeaponSpec, kWeaponCount> makeWeapons() {
     auto shockShell = shell(W::ShockShell, "SHOCK SHELL", 1920, 6500);
     shockShell.knockback = 1800.0f;  // little harm, thrown far
 
+    // The wiki's jetpack: 20 points with a small blast where the dropped
+    // jetpack lands, and using it does not end the turn.
     auto jetpack = action(W::Jetpack, K::Jetpack, "JETPACK");
-    jetpack.fuseSeconds = 5.0f;  // seconds of flight before the parachute
-    jetpack.endsTurn = false;    // the turn ends when the hog is down again
+    jetpack.fuseSeconds = 5.0f;  // seconds of flight before it is dropped by itself
+    jetpack.damage = 20.0f;
+    jetpack.blastRadius = 200.0f;
+    jetpack.knockback = 300.0f;
+    jetpack.endsTurn = false;
     auto specialOps = action(W::SpecialOps, K::SpecialOps, "SPECIAL OPS");
     specialOps.range = 8000.0f;
     specialOps.usesPower = true;

@@ -11,6 +11,7 @@
 #include <glm/gtc/constants.hpp>
 
 #include <algorithm>
+#include <limits>
 #include <cmath>
 #include <set>
 #include <stdexcept>
@@ -48,13 +49,13 @@ constexpr float kChainReactionSeconds = 0.15f;
 // the hog's turns, madness makes it run for about ten seconds.
 constexpr float kPoisonDamage = 10.0f;
 // Flying: special ops and airstrike bombs start this high above the ground;
-// the jetpack climbs and sinks at these speeds and turns a guided missile
-// at most this fast.
+// the jetpack flies along the hog's aim at this speed and a dropped one
+// falls away behind at a share of it; a guided missile turns at most this
+// fast.
 constexpr float kDropHeight = 2500.0f;
 constexpr float kAirstrikeFallSpeed = 300.0f;
-constexpr float kJetpackClimbSpeed = 500.0f;
-constexpr float kJetpackSinkSpeed = 120.0f;
-constexpr float kJetpackSpeed = 600.0f;
+constexpr float kJetpackSpeed = 700.0f;
+constexpr float kDroppedJetpackSpeedShare = 0.5f;
 constexpr float kGuidedDegreesPerSecond = 90.0f;
 // Getting into a building or vehicle: the hog must stand this close to it.
 // Driving: speed and turning of tanks and troop carriers.
@@ -127,6 +128,33 @@ World::World(MapCollision map, std::vector<Hog> hogs, TurnRules rules, std::vect
         hadSeveralTeams_ = turns_->teams().size() > 1;
     }
     for (std::size_t i = 0; i < hogs_.size(); ++i) applyFooter(i);  // SKIP TURN for everyone
+    if (isDeathmatch()) startingHogs_ = hogs_;
+}
+
+int World::deathmatchPoints(int team) const {
+    int kills = 0;
+    for (const auto& hog : hogs_) {
+        if (hog.team == team) kills += hog.record.enemiesKilled;
+    }
+    const auto lost = deathmatchLosses_.find(team);
+    return 2 * kills - (lost == deathmatchLosses_.end() ? 0 : lost->second);
+}
+
+void World::respawnDeadHogs(std::vector<GameEvent>& events) {
+    for (std::size_t i = 0; i < hogs_.size(); ++i) {
+        if (hogs_[i].alive) continue;
+        ++deathmatchLosses_[hogs_[i].team];
+        // Back as it began, unhurt, keeping what it did so far (its kills count).
+        Hog fresh = startingHogs_[i];
+        fresh.record = hogs_[i].record;
+        fresh.health = fresh.maxHealth;
+        hogs_[i] = std::move(fresh);
+        GameEvent back;
+        back.type = GameEventType::Respawned;
+        back.hog = i;
+        back.team = hogs_[i].team;
+        events.push_back(back);
+    }
 }
 
 std::optional<std::size_t> World::activeHog() const {
@@ -141,6 +169,12 @@ void World::handleAiming(std::size_t hogIndex, const PlayerInput& input, double 
     Hog& hog = hogs_[hogIndex];
     const bool fireJustPressed = input.fire && !fireWasHeld_;
     fireWasHeld_ = input.fire;
+
+    if (hog.jetpackSecondsLeft > 0.0f) {
+        // Flying a jetpack: fire again lets go of it (the wiki).
+        if (fireJustPressed) dropJetpack(hogIndex, false, events);
+        return;
+    }
 
     // Weapons are used standing on dry ground.
     const bool canUseWeapon = hog.alive && !isAirborne(hog) && hog.motion.state != MotionState::Swimming;
@@ -209,18 +243,42 @@ void World::updateWeaponStance(Hog& hog) const {
 }
 
 void World::hurtSwimmers(double seconds, std::vector<GameEvent>& events) {
+    const auto active = activeHog();
     for (std::size_t i = 0; i < hogs_.size(); ++i) {
         Hog& hog = hogs_[i];
         if (!hog.alive || hog.motion.state != MotionState::Swimming || swimsSafely(hog)) {
-            hog.secondsInWater = 0.0f;
+            hog.waterDamageOwed = 0.0f;
+            hog.secondsSwumInItsTurn = 0.0f;
             continue;
         }
-        // Charged once a second, so the damage shows as whole numbers.
-        hog.secondsInWater += static_cast<float>(seconds);
-        while (hog.secondsInWater >= 1.0f && hog.alive) {
-            hog.secondsInWater -= 1.0f;
-            damageHog(hogs_, i, kSwimDamagePerSecond, events);
+        // Steered into the water in its own turn: the damage ramps up.
+        const bool steered = active == i && phase_ == MatchPhase::Playing;
+        hog.secondsSwumInItsTurn = steered ? hog.secondsSwumInItsTurn + static_cast<float>(seconds) : 0.0f;
+        hog.waterDamageOwed += swimDamagePerSecond(hog.secondsSwumInItsTurn) * static_cast<float>(seconds);
+        // Charged in whole points, so the damage shows as whole numbers.
+        const float whole = std::floor(hog.waterDamageOwed);
+        if (whole >= 1.0f) {
+            hog.waterDamageOwed -= whole;
+            damageHog(hogs_, i, whole, events);
         }
+    }
+}
+
+void World::explodeDrownedHogs(std::vector<GameEvent>& events) {
+    for (std::size_t i = 0; i < hogs_.size(); ++i) {
+        Hog& hog = hogs_[i];
+        const bool sunk = !hog.alive && hog.motion.state == MotionState::Dead &&
+                          hog.animation.animation() == kDrowningAnimation && hog.animation.finished();
+        if (!sunk || hog.drownedBlastDone) continue;
+        hog.drownedBlastDone = true;
+        const glm::vec3 centre = hog.position + glm::vec3(0.0f, kExplosionLift, 0.0f);
+        GameEvent explosion;
+        explosion.type = GameEventType::Explosion;
+        explosion.position = centre;
+        events.push_back(explosion);
+        explosions_.push_back({centre, kDrownedBlastRadius, 0.0f});
+        explode(hogs_, centre, kDrownedBlastRadius, kDrownedBlastDamage, 0.0f, events);
+        damageObjects(centre, kDrownedBlastRadius, kDrownedBlastDamage, events);
     }
 }
 
@@ -672,9 +730,9 @@ void World::fire(std::size_t hogIndex, float power, std::vector<GameEvent>& even
         pickPocket(hogIndex, spec, events);
         break;
     case WeaponKind::Jetpack:
-        // It takes off: the flight is steered with the movement keys (jump
-        // climbs) until the fuel runs out, then a parachute brings it down
-        // and the turn ends.
+        // It takes off along its aim (the wiki: "in the direction set by
+        // the angle"); the turn keys steer it until fire is pressed again
+        // or the fuel runs out (dropJetpack). The turn goes on afterwards.
         events.push_back(fired);
         hog.jetpackSecondsLeft = spec.fuseSeconds;
         hog.motion.state = MotionState::Airborne;
@@ -683,7 +741,6 @@ void World::fire(std::size_t hogIndex, float power, std::vector<GameEvent>& even
         hog.motion.highestPoint = hog.position.y;
         hog.drawnWeapon.reset();
         hog.held.reset();
-        flightEndsTurn_ = true;
         break;
     case WeaponKind::SpecialOps: {
         // Dropped by parachute on the chosen spot.
@@ -945,7 +1002,7 @@ glm::vec3 World::targetSpot(const Hog& hog, const WeaponSpec& spec, float power)
 }
 
 void World::flyJetpack(std::size_t index, const MovementInput& input, double seconds,
-                       const std::vector<formats::Animation>& animations) {
+                       const std::vector<formats::Animation>& animations, std::vector<GameEvent>& events) {
     Hog& hog = hogs_[index];
     const auto dt = static_cast<float>(seconds);
     hog.animation.update(seconds, animations);
@@ -955,24 +1012,49 @@ void World::flyJetpack(std::size_t index, const MovementInput& input, double sec
     const int turn = (input.turnLeft ? 1 : 0) - (input.turnRight ? 1 : 0);
     hog.yawRadians += static_cast<float>(turn) * glm::radians(kTurnDegreesPerSecond) * dt;
 
-    const int direction = (input.forward ? 1 : 0) - (input.backward ? 1 : 0);
-    glm::vec3 next = hog.position + hogFacing(hog) * (kJetpackSpeed * dt * static_cast<float>(direction));
+    // Along the aim it took off with: level, climbing or diving.
+    const float pitch = glm::radians(hog.aimDegrees);
+    const glm::vec3 along = hogFacing(hog) * std::cos(pitch) + glm::vec3(0.0f, std::sin(pitch), 0.0f);
+    glm::vec3 next = hog.position + along * (kJetpackSpeed * dt);
     const auto& terrain = map_.terrain();
     const float centreX = (terrain.minX() + terrain.maxX()) / 2.0f;
     const float centreZ = (terrain.minZ() + terrain.maxZ()) / 2.0f;
     const bool outside = std::abs(next.x - centreX) > kPlayAreaHalfSize || std::abs(next.z - centreZ) > kPlayAreaHalfSize;
-    if (outside || map_.hitsObstacle(next)) next = hog.position;
-    next.y += (input.jump ? kJetpackClimbSpeed : -kJetpackSinkSpeed) * dt;
-    next.y = std::max(next.y, map_.groundHeight(next.x, next.z, next.y) + 1.0f);
-    hog.position = next;
-    hog.motion.highestPoint = hog.position.y;
-
-    hog.jetpackSecondsLeft -= dt;
-    if (hog.jetpackSecondsLeft <= 0.0f) {
-        hog.jetpackSecondsLeft = 0.0f;
-        hog.parachute = true;  // out of fuel: down it floats
-        hog.motion.velocity = glm::vec3(0.0f);
+    if (outside || map_.hitsObstacle(next)) {
+        next.x = hog.position.x;  // held back at the edge or by a wall
+        next.z = hog.position.z;
     }
+    const float ground = map_.groundHeight(next.x, next.z, next.y);
+    hog.position = glm::vec3(next.x, std::max(next.y, ground), next.z);
+    hog.motion.highestPoint = hog.position.y;
+    if (next.y <= ground) {
+        dropJetpack(index, true, events);  // flown into the ground: a crash landing
+        return;
+    }
+    hog.jetpackSecondsLeft -= dt;
+    if (hog.jetpackSecondsLeft <= 0.0f) dropJetpack(index, false, events);  // out of fuel
+}
+
+void World::dropJetpack(std::size_t index, bool crashed, std::vector<GameEvent>& events) {
+    Hog& hog = hogs_[index];
+    const float pitch = glm::radians(hog.aimDegrees);
+    const glm::vec3 along = hogFacing(hog) * std::cos(pitch) + glm::vec3(0.0f, std::sin(pitch), 0.0f);
+    hog.jetpackSecondsLeft = 0.0f;
+    hog.motion.velocity = glm::vec3(0.0f);
+    Projectile jetpack = launchProjectile(WeaponId::Jetpack, index, hog.position, glm::vec3(0.0f), 0.0f);
+    if (crashed) {
+        // The wiki: landing without the parachute hurts (the jetpack goes
+        // off under the hog).
+        hog.motion.state = MotionState::Airborne;  // lands at once, unhurt by the fall itself
+        detonate(jetpack, events);
+        return;
+    }
+    // The wiki: the released jetpack flies backwards and explodes where it
+    // comes down; the hog floats down under its parachute.
+    hog.parachute = true;
+    jetpack.position += glm::vec3(0.0f, kHogHeight / 2.0f, 0.0f);
+    jetpack.velocity = -along * (kJetpackSpeed * kDroppedJetpackSpeedShare);
+    projectiles_.push_back(jetpack);
 }
 
 void World::steerGuided(const PlayerInput& input, double seconds) {
@@ -1328,6 +1410,11 @@ bool World::matchIsDecided() const {
     if (!turns_) {
         return false;
     }
+    if (isDeathmatch()) {
+        const int limit = turns_->rules().deathmatchLimit;
+        const auto& teams = turns_->teams();
+        return std::any_of(teams.begin(), teams.end(), [&](int team) { return deathmatchPoints(team) >= limit; });
+    }
     const auto living = turns_->livingTeams(hogs_);
     // A map with a single team (training) only ends if that team is wiped
     // out, or when the Boot Camp is done.
@@ -1336,8 +1423,23 @@ bool World::matchIsDecided() const {
 
 void World::finishMatch(std::vector<GameEvent>& events) {
     phase_ = MatchPhase::Over;
-    const auto living = turns_->livingTeams(hogs_);
-    winner_ = living.size() == 1 ? std::optional<int>(living.front()) : std::nullopt;
+    if (isDeathmatch()) {
+        // The team with the most points; two at the top is a draw.
+        winner_.reset();
+        int best = std::numeric_limits<int>::min();
+        for (const int team : turns_->teams()) {
+            const int points = deathmatchPoints(team);
+            if (points > best) {
+                best = points;
+                winner_ = team;
+            } else if (points == best) {
+                winner_.reset();
+            }
+        }
+    } else {
+        const auto living = turns_->livingTeams(hogs_);
+        winner_ = living.size() == 1 ? std::optional<int>(living.front()) : std::nullopt;
+    }
     GameEvent over;
     over.type = GameEventType::MatchOver;
     over.team = winner_.value_or(-1);
@@ -1350,6 +1452,7 @@ void World::startNextTurn(std::vector<GameEvent>& events) {
         hog.drawnWeapon.reset();
         hog.charging = false;
     }
+    if (isDeathmatch()) respawnDeadHogs(events);  // the turn's dead count, then come back
     if (matchIsDecided()) {
         finishMatch(events);
         return;
@@ -1374,16 +1477,12 @@ void World::turnBegan(std::vector<GameEvent>& events) {
     started.hog = turns_->activeHog();
     events.push_back(started);
 
-    // A flight still going on when the turn changed comes down by parachute.
-    flightEndsTurn_ = false;
-    for (auto& hog : hogs_) {
-        hog.controlsReversed = false;
-        hog.looking = Hog::Looking::Normally;
-        if (hog.jetpackSecondsLeft > 0.0f) {
-            hog.jetpackSecondsLeft = 0.0f;
-            hog.parachute = true;
-            hog.motion.velocity = glm::vec3(0.0f);
-        }
+    // A flight still going on when the turn changed ends as if the player
+    // had pressed fire: the jetpack falls away and the parachute opens.
+    for (std::size_t i = 0; i < hogs_.size(); ++i) {
+        hogs_[i].controlsReversed = false;
+        hogs_[i].looking = Hog::Looking::Normally;
+        if (hogs_[i].jetpackSecondsLeft > 0.0f) dropJetpack(i, false, events);
     }
 
     // The hog whose turn it is comes out of hiding, suffers its poison and,
@@ -1481,7 +1580,7 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
                 std::swap(movement.turnLeft, movement.turnRight);
             }
             if (hogs_[i].jetpackSecondsLeft > 0.0f && hogs_[i].alive) {
-                flyJetpack(i, movement, seconds, animations);
+                flyJetpack(i, movement, seconds, animations, events);
                 continue;
             }
             if (hogs_[i].sheltered()) {
@@ -1537,6 +1636,7 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
     }
 
     hurtSwimmers(seconds, events);
+    explodeDrownedHogs(events);
     collectPickups(events);
 
     if (burst_) {
@@ -1560,12 +1660,6 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
         if (!hogs_[turns_->activeHog()].alive || matchIsDecided()) {
             // The active hog died (a mine, a fall) or the last enemy did:
             // let things settle, then move on.
-            phase_ = MatchPhase::Resolving;
-            settleSecondsLeft_ = kSettleSeconds;
-        } else if (flightEndsTurn_ && hogs_[*active].jetpackSecondsLeft <= 0.0f && !hogs_[*active].parachute &&
-                   !isAirborne(hogs_[*active])) {
-            // Down again after a jetpack flight: the turn is over.
-            flightEndsTurn_ = false;
             phase_ = MatchPhase::Resolving;
             settleSecondsLeft_ = kSettleSeconds;
         } else if (turns_->update(seconds, distanceMoved, hogs_)) {

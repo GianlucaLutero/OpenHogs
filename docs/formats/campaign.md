@@ -141,7 +141,8 @@ SPECIAL AWARD (202) goes to a hog, the first that fits:
 
 The code skips the kill and 351-damage awards when the best hog belongs
 to the second team (it compares the team with 1, where -1 "nobody" seems
-meant); OpenHogs does not copy that (decision 116).
+meant); OpenHogs copies that slip, as the owner chose (decision 116):
+such a hog can still get SADISM AWARD or PIG OF THE BATTLE.
 
 ## The maps' teams
 

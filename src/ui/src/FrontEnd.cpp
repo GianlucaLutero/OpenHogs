@@ -37,10 +37,13 @@ int controlItem(std::size_t team) { return static_cast<int>(team) * 2 + 1; }
 // Field conditions page. The values offered follow the original's menu
 // (fetext 303-320): turn times 10 to 99 s, health half/normal/double,
 // sudden death off or after 10, 20, 30 rounds.
-enum FieldItem { kFieldHogs, kFieldTurnTime, kFieldHealth, kFieldSuddenDeath, kFieldBack };
+enum FieldItem { kFieldHogs, kFieldTurnTime, kFieldDeathmatch, kFieldHealth, kFieldSuddenDeath, kFieldSelectPig, kFieldBack };
 constexpr int kMostHogsPerTeam = 8;
 constexpr std::array<double, 6> kTurnTimes{10, 20, 30, 45, 60, 99};
 constexpr int kDefaultTurnTime = 4;  // 60 s
+// DEATHMATCH LIMIT: OFF (last team standing wins), then the points to win
+// (the numbers after it in fetext, 321-329).
+constexpr std::array<int, 10> kDeathmatchLimits{0, 3, 4, 5, 6, 7, 8, 9, 10, 20};
 constexpr std::array<float, 3> kHealthFactors{1.0f, 0.5f, 2.0f};
 constexpr std::array<int, 4> kSuddenDeathRounds{0, 10, 20, 30};
 
@@ -116,7 +119,19 @@ FrontEnd::FrontEnd(UiStrings strings, std::vector<std::string> maps, VolumeLevel
     suddenDeath.label = strings_.suddenDeath;
     suddenDeath.kind = MenuItem::Kind::Choice;
     suddenDeath.choices = {strings_.off, "10", "20", "30"};
-    fieldConditions_ = Menu(strings_.fieldConditions, {hogs, turnTime, health, suddenDeath, action(kFieldBack, strings_.back)});
+    MenuItem deathmatch;
+    deathmatch.id = kFieldDeathmatch;
+    deathmatch.label = strings_.deathmatchLimit;
+    deathmatch.kind = MenuItem::Kind::Choice;
+    for (const int points : kDeathmatchLimits) deathmatch.choices.push_back(points == 0 ? strings_.off : std::to_string(points));
+    MenuItem selectPig;
+    selectPig.id = kFieldSelectPig;
+    selectPig.label = strings_.selectPig;
+    selectPig.kind = MenuItem::Kind::Choice;
+    selectPig.choices = {strings_.off, strings_.on};
+    // In the original's order (fetext 297-302).
+    fieldConditions_ = Menu(strings_.fieldConditions, {hogs, turnTime, deathmatch, health, suddenDeath, selectPig,
+                                                       action(kFieldBack, strings_.back)});
 
     std::vector<MenuItem> levels;
     for (std::size_t i = 0; i < maps_.size(); ++i) {
@@ -225,7 +240,13 @@ FrontEndResult FrontEnd::handle(MenuInput input) {
     case FrontEndScreen::OnePlayer: return handleOnePlayer(onePlayerMenu_.handle(input));
     case FrontEndScreen::SelectTeam: return handleSelectTeam(selectTeam_.handle(input));
     case FrontEndScreen::SelectLevel: return handleSelectLevel(selectLevel_.handle(input));
-    case FrontEndScreen::Players: return handlePlayers(players_.handle(input));
+    case FrontEndScreen::Players: {
+        const auto response = players_.handle(input);
+        if (response.type == Type::Changed && response.itemId >= 0 && response.itemId % 2 == 0) {  // a nation row
+            skipTakenNation(static_cast<std::size_t>(response.itemId / 2), input == MenuInput::Left ? -1 : 1);
+        }
+        return handlePlayers(response);
+    }
     case FrontEndScreen::FieldConditions: return handleFieldConditions(fieldConditions_.handle(input));
     case FrontEndScreen::Options: return handleOptions(options_.handle(input));
     case FrontEndScreen::Volume: return handleVolume(volume_.handle(input));
@@ -367,6 +388,34 @@ FrontEndResult FrontEnd::setLevelTeams(const std::vector<int>& teams) {
     return result;
 }
 
+bool FrontEnd::nationTaken(int nation, std::size_t exceptTeam) const {
+    for (std::size_t i = 0; i < levelTeams_.size(); ++i) {
+        if (i == exceptTeam || players_.item(controlItem(i)).value == kOffChoice) continue;
+        if (players_.item(nationItem(i)).value == nation) return true;
+    }
+    return false;
+}
+
+bool FrontEnd::nationTakenTwice() const {
+    for (std::size_t i = 0; i < levelTeams_.size(); ++i) {
+        if (players_.item(controlItem(i)).value == kOffChoice) continue;
+        if (nationTaken(players_.item(nationItem(i)).value, i)) return true;
+    }
+    return false;
+}
+
+void FrontEnd::skipTakenNation(std::size_t team, int step) {
+    // Two teams may not fight for the same nation (decision 60): a choice
+    // already taken by a playing team is passed over, in the direction the
+    // player is going.
+    const auto nations = static_cast<int>(strings_.teamNames.size());
+    int nation = players_.item(nationItem(team)).value;
+    for (int tries = 0; tries < nations && nationTaken(nation, team); ++tries) {
+        nation = ((nation + step) % nations + nations) % nations;
+    }
+    players_.setValue(nationItem(team), nation);
+}
+
 FrontEndResult FrontEnd::handlePlayers(const MenuResponse& response) {
     FrontEndResult result;
     result.sound = soundFor(response);
@@ -387,8 +436,9 @@ FrontEndResult FrontEnd::handlePlayers(const MenuResponse& response) {
             default: ++playing; break;
             }
         }
-        if (playing < 2) {
-            result.sound = MenuSound::Back;  // a match needs two teams
+        if (playing < 2 || nationTakenTwice()) {
+            // A match needs two teams, each with a nation of its own.
+            result.sound = MenuSound::Back;
             return result;
         }
         result.request = Request::StartMatch;
@@ -404,6 +454,9 @@ MatchSettings FrontEnd::fieldSettings() const {
     settings.conditions.hogsPerTeam = hogs;
     settings.conditions.healthFactor = kHealthFactors.at(static_cast<std::size_t>(fieldConditions_.item(kFieldHealth).value));
     settings.turnSeconds = kTurnTimes.at(static_cast<std::size_t>(fieldConditions_.item(kFieldTurnTime).value));
+    settings.deathmatchLimit =
+        kDeathmatchLimits.at(static_cast<std::size_t>(fieldConditions_.item(kFieldDeathmatch).value));
+    settings.selectPig = fieldConditions_.item(kFieldSelectPig).value == 1;
     settings.suddenDeathRound =
         kSuddenDeathRounds.at(static_cast<std::size_t>(fieldConditions_.item(kFieldSuddenDeath).value));
     return settings;

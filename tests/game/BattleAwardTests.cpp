@@ -51,12 +51,22 @@ TEST_CASE("The special award follows the executable's order", "[game][awards]") 
     // double kill; with nothing better, damage gives the sadism award or
     // the pig of the battle; nobody gets anything without hurting an enemy.
     CHECK(awardFor({hogOf(0, 4), hogOf(1, 3, 500.0f)}) == SpecialAwardKind::Annihilator);
-    CHECK(awardFor({hogOf(0, 1), hogOf(1, 3)}) == SpecialAwardKind::TripleRipReaper);
-    CHECK(awardFor({hogOf(0, 2), hogOf(1, 0, 351.0f)}) == SpecialAwardKind::MasterSadist);
+    CHECK(awardFor({hogOf(1, 1), hogOf(0, 3)}) == SpecialAwardKind::TripleRipReaper);
+    CHECK(awardFor({hogOf(1, 2), hogOf(0, 0, 351.0f)}) == SpecialAwardKind::MasterSadist);
     CHECK(awardFor({hogOf(0, 2, 350.0f), hogOf(1)}) == SpecialAwardKind::DoubleDeathDealer);
     CHECK(awardFor({hogOf(0, 1, 176.0f), hogOf(1, 0, 20.0f)}) == SpecialAwardKind::SadismAward);
     CHECK(awardFor({hogOf(0, 1, 175.9f)}) == SpecialAwardKind::PigOfTheBattle);
     CHECK_FALSE(awardFor({hogOf(0), hogOf(1)}).has_value());
+}
+
+TEST_CASE("Team 1 cannot win the kill awards or MASTER SADIST, as in the executable", "[game][awards]") {
+    // The executable compares the best hog's team with 1 where it meant -1,
+    // and the owner chose to keep that slip (decision 116): when team 1
+    // has the best killer, no kill award is given at all, and its big
+    // damage dealers fall back to the lesser awards.
+    CHECK(awardFor({hogOf(0, 2, 50.0f), hogOf(1, 4)}) == SpecialAwardKind::PigOfTheBattle);
+    CHECK(awardFor({hogOf(0), hogOf(1, 4, 400.0f)}) == SpecialAwardKind::SadismAward);
+    CHECK(awardFor({hogOf(0), hogOf(1, 0, 100.0f)}) == SpecialAwardKind::PigOfTheBattle);
 }
 
 TEST_CASE("Battle scores add kills, victory and the award; a shared best score wins nothing", "[game][awards]") {

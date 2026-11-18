@@ -82,7 +82,8 @@ animations.
 | `version-variants`   | ✅ done | The PC's or the PlayStation's rules (`[Game] Version`, `--rules`): computer hogs that walk, looping turn tunes and the PlayStation's hard mode (the campaign again with every enemy one rank higher, ending with FMV 09); the campaign's enemies now have the ranks their maps give them, with the Legend as the rank after Hero |
 | fidelity blocks      | ✅ done | the PC and PlayStation differences OpenHogs knows are in `version-variants`; what is left is in `docs/open-decisions.md` |
 | `release`            | ✅ done | Packaged builds for Windows and Linux: install rules and CPack archives, a release workflow on version tags, `config/openhogs.ini` found next to the programs and created from the default on the first run, `--version`, `CHANGELOG.md` |
-| refinement: `controls` | 🔍 in review | Keys changed on the CONTROLS screen as in the original (the row blinks until a key is pressed) and saved in `[Controls]`; the camera stays behind the hog; through the rifle sight the mouse turns the hog and aims; volumes changed in VOLUME CONTROL are saved |
+| refinement: `controls` | ✅ done | Keys changed on the CONTROLS screen as in the original (the row blinks until a key is pressed) and saved in `[Controls]`; the camera stays behind the hog; through the rifle sight the mouse turns the hog and aims; volumes changed in VOLUME CONTROL are saved |
+| refinement: `match-rules` | 🔍 in review | The PlayStation's label over the hog in play (name or rank, heart and health) instead of health bars; DEATHMATCH LIMIT and SELECT PIG in FIELD CONDITIONS; one nation per team; the PlayStation rules by default; the executable's slip in the battle awards; swimming and the jetpack as the Hogs of War Wiki describes them (drowned hogs explode; the jetpack is dropped with fire and explodes where it lands) |
 
 ## Requirements
 
@@ -197,15 +198,15 @@ of your installation:
 ```ini
 [Game]
 Directory = C:\Program Files (x86)\Steam\steamapps\common\HogsofWar
-; pc (default) or ps1: whose rules to follow where the releases differ
-Version = pc
+; ps1 (default) or pc: whose rules to follow where the releases differ
+Version = ps1
 ```
 
-With `Version = ps1` the computer's hogs walk to better places before
-they shoot (on PC they never do), the computer's turn tune loops, and
-winning the campaign starts the PlayStation's hard mode: the campaign
-again from mission 1 with the same squad and every enemy one rank
-higher.
+With `Version = ps1` (the default) the computer's hogs walk to better
+places before they shoot, the computer's turn tune loops, and winning
+the campaign starts the PlayStation's hard mode: the campaign again from
+mission 1 with the same squad and every enemy one rank higher. With
+`Version = pc` the computer's hogs never walk, as in the PC release.
 
 ## Usage
 
@@ -222,12 +223,16 @@ after the mission that conquers one. Then the **main menu**:
   **DEATH MATCH** → pick a map: you play the team that starts, the
   computer plays all the others;
 - **MULTI-PLAYER** → pick a map → **PLAYERS**: two rows per team of the
-  map: its nation, and who plays it, *PLAYER* (a person at this PC),
-  *CPU* (the computer) or *OFF* (left out), changed with left/right; at
-  least two teams must play. **FIELD CONDITIONS** sets the number of
-  hogs per team, the turn time (10–99 s), starting health (normal, half,
-  double) and sudden death (every hog left with one point of health when
-  round 10, 20 or 30 begins). Then **START GAME**;
+  map: its nation (each team a different one), and who plays it,
+  *PLAYER* (a person at this PC), *CPU* (the computer) or *OFF* (left
+  out), changed with left/right; at least two teams must play.
+  **FIELD CONDITIONS** sets, in the original's order, the number of hogs
+  per team, the turn time (10–99 s), the deathmatch limit (killed hogs
+  come back and the first team to that many points wins: 2 for a kill,
+  -1 for a loss), starting health (normal, half, double), sudden death
+  (every hog left with one point of health when round 10, 20 or 30
+  begins) and SELECT PIG (each turn starts with up to 10 seconds to
+  choose the hog, the clock waiting). Then **START GAME**;
 - **OPTIONS** → **AUDIO**: the original's VOLUME CONTROL (mode, master,
   effects, voices on or off), saved in `config/openhogs.ini`;
 - **OPTIONS** → **CONTROLS**: the keys of a match. Pick a row, then press
@@ -271,8 +276,9 @@ high the hog aims; the power gauge rises at the bottom while a grenade,
 shell or rocket is charged; the clock (bottom right) counts the seconds
 left and its lamp turns amber, then red, as time runs out. "GET READY
 ..." announces each turn in the team's colour and "VICTORY TO ...!!" the
-winner. Damage numbers rise above hurt hogs and health bars float above
-them. As in the original, each hog speaks in its nation's accent when its
+winner. Over the hog in play, as on the PlayStation, its name (or rank,
+in turn with its name) and its health after a heart; damage numbers rise
+above hurt hogs. As in the original, each hog speaks in its nation's accent when its
 turn starts, when it attacks and when it is hurt, the sergeant comments
 on the players' shots, and the computer's turns come with its nation's
 tune. All
@@ -312,7 +318,7 @@ The keys below are the defaults; OPTIONS → CONTROLS changes them.
 | `V` or right mouse button (held) | look through the rifle sight, with a gun: first-person view along the barrel, crosshair in the middle; turn and aim (the mouse does both too), then fire |
 | `Left Ctrl` or `X` | fire; for grenades, mortars and bazookas hold it to throw further and release to fire; for special ops and airstrikes the power sets how far ahead the ring of dots (the target) lies |
 | while a guided missile flies | `A`/`D` steer it left/right, `R`/`F` up/down |
-| with the jetpack on | `W`/`S`/`A`/`D` fly, hold `Space` to climb |
+| with the jetpack on | it flies along the aim it took off with; `A`/`D` steer; fire again to let go of it (it falls away and explodes where it lands) and come down by parachute; the turn goes on |
 | next to a building or vehicle | VEHICLE INOUT / BUILDING INOUT appear at the end of the weapon list: fire to get in (and again to get out); inside a tank or carrier, `W`/`S`/`A`/`D` drive |
 | `Tab` / `Shift+Tab` | another hog of the same team (only before moving) |
 | `Enter` | end the turn (after the match: back to the menu) |

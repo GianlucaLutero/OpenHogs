@@ -2,11 +2,8 @@
 //
 // The match settings of the multiplayer FIELD CONDITIONS page that change
 // the map's hogs before a match: teams switched off, the number of hogs
-// per team and their starting health. (Turn time and sudden death are
-// TurnRules.)
-//
-// The original also has a deathmatch limit and "select pig"; they are not
-// implemented yet (docs/open-decisions.md).
+// per team and their starting health. (Turn time, the deathmatch limit,
+// sudden death and SELECT PIG are TurnRules.)
 
 #pragma once
 

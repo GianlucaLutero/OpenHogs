@@ -16,6 +16,11 @@ constexpr int kDoubleKills = 2;
 constexpr int kMasterSadistDamage = 351;
 constexpr int kSadismDamage = 176;
 
+// The executable skips the kill awards and MASTER SADIST when the best hog
+// is in team 1: it compares the team with 1 where -1 ("nobody") seems
+// meant. The slip is copied, as the owner chose (decision 116).
+constexpr int kTeamSkippedByTheExecutable = 1;
+
 struct Candidate {
     std::optional<std::size_t> hog;
     int value = 0;
@@ -51,9 +56,14 @@ std::optional<SpecialAward> chooseAward(const std::vector<Hog>& hogs, const std:
         }
     }
 
+    if (killer.hog && hogs[*killer.hog].team == kTeamSkippedByTheExecutable) killer.hog.reset();
+    const bool masterSadistSkipped = damager.hog && hogs[*damager.hog].team == kTeamSkippedByTheExecutable;
+
     if (killer.hog && killer.value >= kAnnihilatorKills) return award(SpecialAwardKind::Annihilator, *killer.hog);
     if (killer.hog && killer.value >= kTripleKills) return award(SpecialAwardKind::TripleRipReaper, *killer.hog);
-    if (damager.hog && damager.value >= kMasterSadistDamage) return award(SpecialAwardKind::MasterSadist, *damager.hog);
+    if (damager.hog && damager.value >= kMasterSadistDamage && !masterSadistSkipped) {
+        return award(SpecialAwardKind::MasterSadist, *damager.hog);
+    }
     if (killer.hog) return award(SpecialAwardKind::DoubleDeathDealer, *killer.hog);
     if (damager.hog) {
         return award(damager.value < kSadismDamage ? SpecialAwardKind::PigOfTheBattle : SpecialAwardKind::SadismAward,

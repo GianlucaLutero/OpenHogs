@@ -7,7 +7,8 @@
 // those of Language/Tims/dashtims.mad; where they go and how they move is
 // worked out by ui::HudLayout (see docs/formats/hud.md).
 //
-// It also shows the damage numbers that rise above hurt hogs (digits of
+// It also shows the label over the hog in play (its name or rank and its
+// health after a heart, as on the PlayStation), the damage numbers that rise above hurt hogs (digits of
 // Language/Tims/expltims.mad) and the rifle sight (crosshair of
 // Language/Tims/facetims.mad).
 //
@@ -51,6 +52,12 @@ public:
     // `cameraPosition`.
     void drawDamageNumbers(render::UiRenderer& ui, const glm::mat4& viewProjection,
                            const glm::vec3& cameraPosition) const;
+
+    // The label over the hog in play, as on the PlayStation: `label` (its
+    // name or rank, ui::hogLabel) in the game's yellow letters, and under
+    // it a heart with its health. `head` is the point above the hog.
+    void drawHogLabel(Interface& userInterface, const glm::mat4& viewProjection, const glm::vec3& head,
+                      const std::string& label, int health) const;
 
     // The rifle sight over the view: black around a round hole and the
     // crosshair (ui/RifleSight.h).

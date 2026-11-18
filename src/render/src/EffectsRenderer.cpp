@@ -14,10 +14,6 @@ namespace openhogs::render {
 
 namespace {
 
-constexpr float kHealthBarWidth = 160.0f;
-constexpr float kHealthBarHeight = 18.0f;
-constexpr glm::vec4 kHealthBarBackground{0.15f, 0.05f, 0.05f, 1.0f};
-
 void addQuad(std::vector<scene::Vertex>& vertices, glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 d,
              float brightness) {
     for (const glm::vec3& p : {a, b, c, a, c, d}) {
@@ -77,10 +73,6 @@ void EffectsRenderer::begin(const Camera& camera, int width, int height) const {
     shader_->setInt("uTexture", 0);
     glActiveTexture(GL_TEXTURE0);
     whiteTexture_->bind();
-
-    const glm::vec3 forward = camera.forward();
-    const glm::vec3 right = glm::cross(forward, glm::vec3(0.0f, 1.0f, 0.0f));
-    cameraRight_ = glm::length(right) > 0.001f ? glm::normalize(right) : glm::vec3(1.0f, 0.0f, 0.0f);
 }
 
 void EffectsRenderer::drawDots(const std::vector<glm::vec3>& points, float size, const glm::vec4& colour,
@@ -102,27 +94,6 @@ void EffectsRenderer::drawExplosion(const glm::vec3& centre, float radius, float
     shader_->setVector("uTint", glm::mix(hot, cool, progress));
     shader_->setMatrix("uModel", glm::scale(glm::translate(glm::mat4(1.0f), centre), glm::vec3(size)));
     sphere_->draw();
-}
-
-void EffectsRenderer::drawHealthBar(const glm::vec3& centre, float fraction, const glm::vec4& colour) const {
-    fraction = std::clamp(fraction, 0.0f, 1.0f);
-    const auto bar = [&](float from, float to, const glm::vec4& tint, float depthOffset) {
-        // A thin box along the camera's right vector, from `from` to `to`
-        // (fractions of the bar's width).
-        const float middle = (from + to) / 2.0f - 0.5f;
-        const glm::vec3 position = centre + cameraRight_ * (middle * kHealthBarWidth);
-        glm::mat4 model = glm::translate(glm::mat4(1.0f), position);
-        const float yaw = std::atan2(-cameraRight_.z, cameraRight_.x);
-        model = glm::rotate(model, yaw, glm::vec3(0, 1, 0));
-        model = glm::scale(model, glm::vec3((to - from) * kHealthBarWidth, kHealthBarHeight, 4.0f + depthOffset));
-        shader_->setVector("uTint", tint);
-        shader_->setMatrix("uModel", model);
-        cube_->draw();
-    };
-    bar(fraction, 1.0f, kHealthBarBackground, 0.0f);
-    if (fraction > 0.0f) {
-        bar(0.0f, fraction, colour, 2.0f);
-    }
 }
 
 } // namespace openhogs::render

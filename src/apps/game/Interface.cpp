@@ -70,6 +70,11 @@ Interface::Interface(const core::VirtualFileSystem& vfs) {
     } catch (const std::exception& error) {
         std::cerr << "Warning: " << error.what() << "; the menus use BIG instead\n";
     }
+    try {
+        gameFont_ = loadFont(vfs, "GameChars");
+    } catch (const std::exception& error) {
+        std::cerr << "Warning: " << error.what() << "; the label over the hog uses BIG instead\n";
+    }
     gameText_ = loadTextTable(vfs, "gtext");
     strings_ = ui::loadUiStrings(loadTextTable(vfs, "fetext"), gameText_);
     loadWeaponIcons(vfs);

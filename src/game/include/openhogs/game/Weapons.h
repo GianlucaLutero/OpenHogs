@@ -105,7 +105,10 @@ enum class WeaponId {
 //   - Shockwave: every hog around is thrown up and away;
 //   - Hide: the hog hides in a disguise until its next turn;
 //   - PickPocket: steals a weapon from the nearest enemy in reach;
-//   - Jetpack: the hog flies for a while, then comes down by parachute;
+//   - Jetpack: the hog flies off along its aim; fire again (or the fuel
+//     running out) drops the jetpack, which explodes where it lands
+//     (damage, blastRadius), and a parachute brings the hog down; the
+//     turn goes on;
 //   - SpecialOps: the hog is dropped by parachute on a chosen spot;
 //   - Airstrike: bombs fall from the sky along a line over a chosen spot;
 //   - InOut: gets into the building or vehicle next to the hog, or out of

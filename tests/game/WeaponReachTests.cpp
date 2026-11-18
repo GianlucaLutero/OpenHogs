@@ -85,22 +85,45 @@ TEST_CASE("Special ops drop the hog unhurt on the chosen spot, then the turn end
     CHECK(world.activeHog() == std::optional<std::size_t>(1));
 }
 
-TEST_CASE("The jetpack flies where it is steered and the turn ends after the parachute", "[game][weapons][reach]") {
-    // Climbing and flying forward takes the hog up and ahead; when the fuel
-    // is gone it floats down unhurt and the other team plays.
+TEST_CASE("The jetpack flies along the aim; fire again drops it and the turn goes on", "[game][weapons][reach]") {
+    // As the Hogs of War Wiki describes it: the hog takes off in the
+    // direction of its aim; pressing fire again lets go of the jetpack,
+    // which falls away behind and explodes where it lands, while the hog
+    // floats down unhurt under its parachute; the turn is not over.
     const auto map = flatMap();
-    World world(map, shooterAndEnemy(map, WeaponId::Jetpack, 0, 4000));
+    auto hogs = shooterAndEnemy(map, WeaponId::Jetpack, 0, 4000);
+    hogs[0].aimDegrees = 30.0f;
+    World world(map, hogs);
     run(world, firing(), 1);
-    PlayerInput fly;
-    fly.movement.forward = true;
-    fly.movement.jump = true;
-    run(world, fly, 50);
-    CHECK(world.hogs()[0].position.y > 300.0f);
-    CHECK(world.hogs()[0].position.x > 300.0f);
-    CHECK(world.activeHog() == std::optional<std::size_t>(0));  // still its turn while it flies
-    run(world, PlayerInput{}, 50 * 15);
+    run(world, PlayerInput{}, 50);
+    const Hog& flying = world.hogs()[0];
+    CHECK(flying.position.y > 200.0f);
+    CHECK(flying.position.x > 300.0f);
+    REQUIRE(flying.jetpackSecondsLeft > 0.0f);
+
+    run(world, firing(), 1);
+    CHECK(world.hogs()[0].jetpackSecondsLeft == 0.0f);
+    CHECK(world.hogs()[0].parachute);
+    const auto landing = run(world, PlayerInput{}, 50 * 8);
+    CHECK(std::any_of(landing.begin(), landing.end(),
+                      [](const GameEvent& event) { return event.type == GameEventType::Explosion; }));
     CHECK(world.hogs()[0].health == Approx(kMaxHealth));
-    CHECK(world.activeHog() == std::optional<std::size_t>(1));
+    CHECK(world.activeHog() == std::optional<std::size_t>(0));  // still its turn
+    CHECK(world.phase() == MatchPhase::Playing);
+}
+
+TEST_CASE("Flying a jetpack into the ground is a crash landing", "[game][weapons][reach]") {
+    // The wiki: without the parachute the landing hurts (20 points).
+    const auto map = flatMap();
+    auto hogs = shooterAndEnemy(map, WeaponId::Jetpack, 0, 4000);
+    hogs[0].aimDegrees = -20.0f;  // diving
+    World world(map, hogs);
+    run(world, firing(), 1);
+    run(world, PlayerInput{}, 50 * 2);
+    const Hog& hog = world.hogs()[0];
+    CHECK(hog.jetpackSecondsLeft == 0.0f);
+    CHECK(hog.health < kMaxHealth);
+    CHECK(hog.health >= kMaxHealth - 21.0f);
 }
 
 TEST_CASE("A homing missile finds an enemy off its line of fire", "[game][weapons][reach]") {

@@ -70,6 +70,8 @@ struct UiStrings {
     std::string fieldConditions = "FIELD CONDITIONS";
     std::string pigs = "PIGS";
     std::string turnTime = "TURN TIME";
+    std::string deathmatchLimit = "DEATHMATCH LIMIT";  // fetext 299
+    std::string selectPig = "SELECT PIG";              // fetext 302
     std::string health = "HEALTH";
     std::string normal = "NORMAL";
     std::string half = "HALF";

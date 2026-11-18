@@ -13,7 +13,7 @@
 //     starts again from mission 1 with every enemy one rank higher, and
 //     ends with a second film (FMV 09, an empty file on PC).
 //
-// The PC rules are the default, as OpenHogs plays the PC release's files.
+// The PlayStation rules are the default, as the owner chose (decision 136).
 // Settings: [Game] Version = pc or ps1 (config/openhogs.ini).
 
 #pragma once

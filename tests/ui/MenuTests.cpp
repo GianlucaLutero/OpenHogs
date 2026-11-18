@@ -154,8 +154,9 @@ TEST_CASE("A match needs at least two teams in play", "[ui][frontend]") {
     CHECK(frontEnd.screen() == FrontEndScreen::Players);
 }
 
-TEST_CASE("Field conditions set hogs per team, turn time, health and sudden death", "[ui][frontend]") {
-    // The original's FIELD CONDITIONS page; the defaults leave the map as it is.
+TEST_CASE("Field conditions set hogs, turn time, deathmatch, health, sudden death and select pig", "[ui][frontend]") {
+    // The original's FIELD CONDITIONS page, in its order; the defaults
+    // leave the map as it is and play the usual last-team-standing match.
     auto frontEnd = makeFrontEnd();
     press(frontEnd, {MenuInput::Down, MenuInput::Confirm, MenuInput::Confirm});
     frontEnd.setLevelTeams({0, 1});
@@ -164,8 +165,10 @@ TEST_CASE("Field conditions set hogs per team, turn time, health and sudden deat
     CHECK(frontEnd.menu().item(1).choiceText() == "60");  // turn time
     press(frontEnd, {MenuInput::Right, MenuInput::Right, MenuInput::Right});  // 3 hogs per team
     press(frontEnd, {MenuInput::Down, MenuInput::Left, MenuInput::Left});     // 30 s
+    press(frontEnd, {MenuInput::Down, MenuInput::Right});                     // deathmatch to 3 points
     press(frontEnd, {MenuInput::Down, MenuInput::Right, MenuInput::Right});   // double health
     press(frontEnd, {MenuInput::Down, MenuInput::Right});                     // sudden death at 10
+    press(frontEnd, {MenuInput::Down, MenuInput::Right});                     // select pig on
     press(frontEnd, {MenuInput::Back});
     REQUIRE(frontEnd.screen() == FrontEndScreen::Players);
     const auto start = press(frontEnd, {MenuInput::Up, MenuInput::Confirm});  // START GAME
@@ -174,6 +177,25 @@ TEST_CASE("Field conditions set hogs per team, turn time, health and sudden deat
     CHECK(start.settings.turnSeconds == 30.0);
     CHECK(start.settings.conditions.healthFactor == 2.0f);
     CHECK(start.settings.suddenDeathRound == 10);
+    CHECK(start.settings.deathmatchLimit == 3);
+    CHECK(start.settings.selectPig);
+}
+
+TEST_CASE("Two teams cannot fight for the same nation", "[ui][frontend]") {
+    // The owner chose one nation per team (decision 60): changing a team's
+    // nation passes over the ones other playing teams have, so the
+    // uniforms and names of the teams always differ.
+    auto frontEnd = makeFrontEnd();
+    press(frontEnd, {MenuInput::Down, MenuInput::Confirm, MenuInput::Confirm});  // MULTI-PLAYER, BOOM
+    frontEnd.setLevelTeams({0, 1});                // teams start British and American
+    frontEnd.handle(MenuInput::Down);              // FIELD CONDITIONS
+    frontEnd.handle(MenuInput::Down);              // BACK
+    frontEnd.handle(MenuInput::Down);              // team A's nation (wraps round)
+    REQUIRE(frontEnd.menu().selectedItem().id == 0);
+    frontEnd.handle(MenuInput::Right);             // American is team B's: skipped
+    CHECK(frontEnd.menu().item(0).value == 2);
+    frontEnd.handle(MenuInput::Left);              // back past American to British
+    CHECK(frontEnd.menu().item(0).value == 0);
 }
 
 TEST_CASE("A level without teams cannot be started", "[ui][frontend]") {

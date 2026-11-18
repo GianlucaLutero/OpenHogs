@@ -83,6 +83,8 @@ struct MatchSettings {
     game::FieldConditions conditions;    // teams switched off, hogs per team, health
     double turnSeconds = 60.0;
     int suddenDeathRound = 0;            // 0 = no sudden death
+    int deathmatchLimit = 0;             // points to win a deathmatch; 0 = last team standing
+    bool selectPig = false;              // SELECT PIG: the hog is chosen at each turn
 };
 
 struct FrontEndResult {
@@ -152,6 +154,9 @@ private:
     FrontEndResult handleSelectTeam(const MenuResponse& response);
     FrontEndResult handleSelectLevel(const MenuResponse& response);
     FrontEndResult handlePlayers(const MenuResponse& response);
+    bool nationTaken(int nation, std::size_t exceptTeam) const;  // by another playing team
+    bool nationTakenTwice() const;
+    void skipTakenNation(std::size_t team, int step);
     FrontEndResult handleFieldConditions(const MenuResponse& response);
     MatchSettings fieldSettings() const;
     FrontEndResult handleOptions(const MenuResponse& response);

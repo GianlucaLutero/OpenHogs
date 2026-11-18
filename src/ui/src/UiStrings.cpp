@@ -48,6 +48,8 @@ constexpr std::array<std::size_t, 4> kFeTeamLetters{60, 61, 62, 63};
 constexpr std::size_t kFeFieldConditions = 66;
 constexpr std::size_t kFePigs = 297;
 constexpr std::size_t kFeTurnTime = 298;
+constexpr std::size_t kFeDeathmatchLimit = 299;
+constexpr std::size_t kFeSelectPig = 302;
 constexpr std::size_t kFeHealth = 300;
 constexpr std::size_t kFeNormal = 303;
 constexpr std::size_t kFeHalf = 304;
@@ -213,6 +215,8 @@ UiStrings loadUiStrings(const std::vector<std::string>& frontEndText, const std:
     take(strings.fieldConditions, fe, kFeFieldConditions);
     take(strings.pigs, fe, kFePigs);
     take(strings.turnTime, fe, kFeTurnTime);
+    take(strings.deathmatchLimit, fe, kFeDeathmatchLimit);
+    take(strings.selectPig, fe, kFeSelectPig);
     take(strings.health, fe, kFeHealth);
     take(strings.normal, fe, kFeNormal);
     take(strings.half, fe, kFeHalf);
