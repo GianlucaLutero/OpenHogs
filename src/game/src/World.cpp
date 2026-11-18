@@ -189,6 +189,9 @@ void World::handleAiming(std::size_t hogIndex, const PlayerInput& input, double 
         return;
     }
 
+    if (input.chooseWeapon && !hog.charging && *input.chooseWeapon < hog.weapons.size()) {
+        hog.weaponSlot = *input.chooseWeapon;
+    }
     if (input.weaponStep != 0 && !hog.charging && !hog.weapons.empty()) {
         const auto count = static_cast<long long>(hog.weapons.size());
         const long long slot = (static_cast<long long>(hog.weaponSlot) + input.weaponStep) % count;
@@ -201,6 +204,7 @@ void World::handleAiming(std::size_t hogIndex, const PlayerInput& input, double 
                                 kLowestAimDegrees, kHighestAimDegrees);
 
     const WeaponSpec& spec = weaponSpec(hog.selectedWeapon());
+    hog.aimDegrees = std::max(hog.aimDegrees, spec.lowestAimDegrees);  // a mortar lobs
     if (!spec.usesPower) {
         if (fireJustPressed) {
             fire(hogIndex, 1.0f, events);
@@ -1617,7 +1621,7 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
             const MountSpec& mount = mountSpec(mounts_[*hog.mount].kind);
             hog.aimDegrees = std::clamp(hog.aimDegrees, mount.lowestAimDegrees, mount.highestAimDegrees);
         }
-        if (input.weaponStep != 0) hog.looking = Hog::Looking::Normally;
+        if (input.weaponStep != 0 || input.chooseWeapon) hog.looking = Hog::Looking::Normally;
         applyFooter(*active);  // getting in appears and goes as it walks
     }
 

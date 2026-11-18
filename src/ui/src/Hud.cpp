@@ -52,6 +52,7 @@ std::optional<HudInfo> describeTurn(const game::World& world, const UiStrings& s
     info.canAim = spec.kind == game::WeaponKind::Bullet || spec.kind == game::WeaponKind::Thrown ||
                   spec.kind == game::WeaponKind::Shell;
     info.usesPower = spec.usesPower;
+    info.aimLimited = spec.lowestAimDegrees > 0.0f;
     info.playing = world.phase() == game::MatchPhase::Playing;
     info.turnNumber = turns->turnNumber();
     return info;

@@ -113,7 +113,29 @@ A full PS1 playthrough on YouTube shows the same view (first person along
 the gun, the black mask with the round hole; there the crosshair is four
 small marks).
 
-Not reproduced yet (`docs/open-decisions.md`): the weapon menu (the frame
-of `wepn01`–`20` with a 4 × 4 grid of icons and ammunition counts,
-`FUN_00459550`), the 3D radar (`FUN_004582f0`, `Chars/top.mad`), text
-boxes and the limit marks.
+## Weapon menu
+
+`FUN_00457690` loads it: `language\tims\menutims.mad` entry 0
+(`menu.bmp`, the 257 × 274 panel: four tabs along the top, a grid of
+windows, a bar at the bottom; magenta is transparent), entries 1–67 (the
+weapons' icons, 56 × 34, one per weapon number), `smlfont.bmp` (digits
+6 × 10) and `smlhalft.bmp` (missing on PC; `halftone.bmp` is there).
+`FUN_00459550` draws it each frame, sliding in from the right by
+309 × a percentage table (0x4D1954): for each of 4 columns (x 16, 88, 157,
+229) and 4 rows (y 25, 71, 117, 164) of the open tab (16 slots, a weapon
+number and its uses each), the icon, the halftone over a weapon with no
+uses, and the uses (capped at 9) in the icon's corner; then the selection
+frame at the chosen icon − (15, 11). The PC picture only has 3 columns of
+windows. OpenHogs' version: `ui::WeaponMenu`, `OriginalHud::drawWeaponMenu`
+(decision 151).
+
+## Aim limit
+
+`FUN_0045c130` sets a flag when the weapon in hand changes: weapon numbers
+16 (guided missile), 28 (mortar) and 50 get flag 1, which draws `divide1`
+and keeps the arrow at 45° or more; hogs in vehicles and buildings get
+flags 2, 3 or 5 (`divide2`, both). OpenHogs keeps the mortar and the
+guided missile at 45° or more and draws `divide1` (decision 153).
+
+Not reproduced yet (`docs/open-decisions.md`): the 3D radar
+(`FUN_004582f0`, `Chars/top.mad`) and the text boxes (`npro1`–`4`).

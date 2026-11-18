@@ -551,3 +551,16 @@ TEST_CASE("World: an anti-personnel mine bursts into four fragments", "[game][wo
     const auto events = runWorld(world, PlayerInput{}, 50 * 6);
     CHECK(count(events, GameEventType::Explosion) == 5);
 }
+
+// The executable keeps a mortar at 45 degrees or more (it lobs its shell)
+// and marks the limit on the angle gauge; the hog cannot aim it lower.
+TEST_CASE("World: a mortar is never aimed below 45 degrees", "[game][world][weapons]") {
+    const auto map = flatMap();
+    auto hogs = duel(map, {WeaponId::Mortar});
+    hogs[0].aimDegrees = 0.0f;
+    World world(map, hogs);
+    PlayerInput down;
+    down.aimDown = true;
+    runWorld(world, down, 50);
+    CHECK(world.hogs()[0].aimDegrees == Approx(45.0f));
+}

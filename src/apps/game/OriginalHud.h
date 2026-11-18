@@ -7,7 +7,8 @@
 // those of Language/Tims/dashtims.mad; where they go and how they move is
 // worked out by ui::HudLayout (see docs/formats/hud.md).
 //
-// It also shows the label over the hog in play (its name or rank and its
+// It also draws the weapon menu (Language/Tims/MENUTIMS.MAD), the label
+// over the hog in play (its name or rank and its
 // health after a heart, as on the PlayStation), the damage numbers that rise above hurt hogs (digits of
 // Language/Tims/expltims.mad) and the rifle sight (crosshair of
 // Language/Tims/facetims.mad).
@@ -25,6 +26,7 @@
 #include "openhogs/ui/FloatingNumbers.h"
 #include "openhogs/ui/Hud.h"
 #include "openhogs/ui/HudLayout.h"
+#include "openhogs/ui/WeaponMenu.h"
 
 #include <map>
 #include <optional>
@@ -41,7 +43,7 @@ public:
 
     // `turn` is the active hog's HUD information, empty between matches
     // or when the match is over.
-    void update(double elapsedSeconds, const std::optional<ui::HudInfo>& turn);
+    void update(double elapsedSeconds, const std::optional<ui::HudInfo>& turn, bool weaponMenuOpen = false);
 
     void draw(Interface& userInterface, const std::optional<ui::HudInfo>& turn) const;
 
@@ -58,6 +60,11 @@ public:
     // it a heart with its health. `head` is the point above the hog.
     void drawHogLabel(Interface& userInterface, const glm::mat4& viewProjection, const glm::vec3& head,
                       const std::string& label, int health) const;
+
+    // The weapon menu (ui::WeaponMenu) on its brass panel, sliding in from
+    // the right while it is open: the tabs, the icons with their uses
+    // left, the selection frame and the chosen weapon's name.
+    void drawWeaponMenu(Interface& userInterface, const ui::WeaponMenu& menu) const;
 
     // The rifle sight over the view: black around a round hole and the
     // crosshair (ui/RifleSight.h).
@@ -79,10 +86,17 @@ private:
     ui::HudTicker ticker_;
     ui::HudSlide powerSlide_;
     ui::HudSlide clockSlide_;
+    ui::HudSlide weaponMenuSlide_;
+    // The weapon menu's pictures (MENUTIMS.MAD, Language/Tims), if found.
+    std::optional<render::UiImage> menuPanel_;
+    std::optional<render::UiImage> menuFrame_;
+    std::optional<render::UiImage> menuDigits_;
+    std::optional<render::UiImage> menuHalftone_;
     ui::HudFade aimFade_;
     ui::ClockLamp lamp_ = ui::ClockLamp::Green;
     int lastTurn_ = -1;
     float lastAimDegrees_ = 0.0f;  // the arrow stays where it was while fading out
+    bool lastAimLimited_ = false;  // so does the limit mark
 };
 
 } // namespace openhogs::gameapp

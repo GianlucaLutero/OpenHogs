@@ -140,10 +140,14 @@ TEST_CASE("A guided missile follows the player's steering", "[game][weapons][rea
     // have hit flying straight.
     const auto map = flatMap();
     World world(map, shooterAndEnemy(map, WeaponId::GuidedMissile, 960, -1800));
-    run(world, firing(), 1);
+    run(world, firing(), 1);  // it leaves at 45 degrees, its lowest aim
+    PlayerInput leftAndDown;
+    leftAndDown.movement.turnLeft = true;
+    leftAndDown.aimDown = true;
+    run(world, leftAndDown, 35);  // about 60 degrees down: under the horizon
     PlayerInput left;
     left.movement.turnLeft = true;
-    run(world, left, 50);  // 90 degrees at 90 degrees per second
+    run(world, left, 15);  // 90 degrees left in all, at 90 degrees per second
     run(world, PlayerInput{}, 50 * 6);
     CHECK(world.hogs()[1].health < kMaxHealth);
 }

@@ -68,6 +68,9 @@ inline constexpr HudPiece kAngleGaugeIcon{"", 547.0f, 55.0f, HudAnchor::Right};
 
 // The arrow (angpoint, 64 x 15) turns about this point, right of the dial.
 inline constexpr glm::vec2 kAimPointerPivot{536.0f, 73.5f};
+// The mark of the lowest aim of a mortar or guided missile (45 degrees),
+// `divide1` of table 0x4CF468, drawn with the arrow.
+inline constexpr HudPiece kAimLimitMark{"divide1", 496.0f, 33.0f, HudAnchor::Right};
 inline constexpr HudAnchor kAimPointerAnchor = HudAnchor::Right;
 
 // The four corners of the arrow (top-left, top-right, bottom-right,

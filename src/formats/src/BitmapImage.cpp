@@ -114,6 +114,16 @@ RgbaImage decodeBitmap(std::span<const std::byte> data, BitmapTransparency trans
             out[3] = transparent ? 0 : 255;
         }
     }
+    if (transparency == BitmapTransparency::Magenta) {
+        // Comparing the top five bits of each channel, as a 15-bit screen
+        // would, catches both forms of the key colour.
+        const auto top5 = [](std::uint8_t channel) { return channel >> 3; };
+        for (std::size_t i = 0; i + 3 < image.pixels.size(); i += 4) {
+            if (top5(image.pixels[i]) == 31 && top5(image.pixels[i + 1]) == 0 && top5(image.pixels[i + 2]) == 31) {
+                image.pixels[i + 3] = 0;
+            }
+        }
+    }
     return image;
 }
 

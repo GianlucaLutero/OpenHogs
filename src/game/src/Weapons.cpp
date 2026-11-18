@@ -214,6 +214,7 @@ std::array<WeaponSpec, kWeaponCount> makeWeapons() {
     launcher.launchSound = "L_MORT";
 
     auto mortar = explosive(W::Mortar, K::Shell, "MORTAR", 50, 500, 2400, "L_MORT");
+    mortar.lowestAimDegrees = 45.0f;
     auto bazooka = explosive(W::Bazooka, K::Shell, "BAZOOKA", 55, 450, 2800, "L_BAZOO");
     bazooka.gravityFactor = 0.3f;  // a rocket: flies almost straight
     auto rocket = explosive(W::RocketLauncher, K::Shell, "ROCKET LAUNCHER", 45, 400, 3200, "L_ROC");
@@ -347,6 +348,7 @@ std::array<WeaponSpec, kWeaponCount> makeWeapons() {
     guided.gravityFactor = 0.0f;
     guided.usesPower = false;
     guided.fuseSeconds = 7.5f;
+    guided.lowestAimDegrees = 45.0f;
     guided.guidance = Guidance::Guided;
     auto homing = explosive(W::HomingMissile, K::Shell, "HOMING MISSILE", exeDamage(5120), exeRadius(3900), 1200,
                             "L_ROC");  // ammunition 423: 40 points, fuse 250

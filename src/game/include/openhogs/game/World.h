@@ -48,6 +48,7 @@ inline constexpr float kSecondsToFullPower = 1.5f;
 struct PlayerInput {
     MovementInput movement;
     int weaponStep = 0;   // +1 / -1: next / previous weapon (a key press)
+    std::optional<std::size_t> chooseWeapon = std::nullopt;  // a weapon picked from the weapon menu (index in Hog::weapons)
     bool aimUp = false;   // held
     bool aimDown = false; // held
     bool fire = false;    // held: powered weapons charge while held and fire when released

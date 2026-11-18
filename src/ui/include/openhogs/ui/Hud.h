@@ -38,6 +38,7 @@ struct HudInfo {
     float aimDegrees = 0.0f;        // above the horizon
     bool canAim = false;            // the weapon is aimed up and down (guns, throws, shells)
     bool usesPower = false;         // the weapon is thrown or fired with a power the player sets
+    bool aimLimited = false;        // aimed at 45 degrees or more (mortar, guided missile)
     bool playing = false;           // the hog is still under control (not watching its shot)
     int turnNumber = 0;
 };

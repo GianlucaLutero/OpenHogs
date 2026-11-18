@@ -2,6 +2,7 @@
 
 #include "OriginalHud.h"
 
+#include "openhogs/formats/BitmapImage.h"
 #include "openhogs/formats/PackageArchive.h"
 #include "openhogs/formats/TimImage.h"
 #include "openhogs/ui/RifleSight.h"
@@ -32,6 +33,34 @@ constexpr float kHeartGap = 10.0f;  // between the heart and the number
 constexpr glm::vec4 kLabelYellow{1.0f, 0.88f, 0.12f, 1.0f};
 constexpr glm::vec4 kHeartPink{1.0f, 0.3f, 0.6f, 1.0f};
 
+// The weapon menu (FUN_00459550). MENUTIMS.MAD holds the panel (entry 0,
+// `menu.bmp`, 257 x 274) and the selection frame (`SELECT.BMP`, the last
+// entry); smlfont.bmp has the digits of the uses left (6 x 10 each) and
+// halftone.bmp greys out a weapon with none left (the executable asks for
+// smlhalft.bmp, which the PC folder does not have).
+const char* const kMenuPictures = "Language/Tims/MENUTIMS.MAD";
+const char* const kMenuDigits = "Language/Tims/smlfont.bmp";
+const char* const kMenuHalftone = "Language/Tims/halftone.bmp";
+// Where the panel sits on the 640 x 480 screen when fully in (right edge,
+// between the angle gauge and the clock), and how far it slides out.
+constexpr float kMenuRightMargin = 12.0f;
+constexpr float kMenuTop = 100.0f;
+constexpr float kMenuSlideDistance = 309.0f;  // the executable: 0x135
+// On the panel: the windows (from the picture's bolts), the icons in them,
+// the frame around the chosen one (the executable: icon - (15, 11)), the
+// tabs along the top and the bar at the bottom for the weapon's name.
+constexpr float kMenuFirstWindowX = 8.0f, kMenuFirstWindowY = 50.0f;
+constexpr float kMenuWindowWidth = 72.0f, kMenuWindowHeight = 46.0f;
+constexpr float kMenuIconX = 8.0f, kMenuIconY = 6.0f;  // in its window
+constexpr float kMenuIconWidth = 56.0f, kMenuIconHeight = 34.0f;
+constexpr float kMenuFrameX = -15.0f, kMenuFrameY = -11.0f;  // from the icon
+constexpr float kMenuTabX = 6.0f, kMenuTabWidth = 58.0f, kMenuTabHeight = 30.0f;
+constexpr float kMenuNameCentreX = 118.0f, kMenuNameTop = 246.0f;
+constexpr float kMenuDigitWidth = 6.0f, kMenuDigitHeight = 10.0f;
+constexpr int kMenuMostUsesShown = 9;  // the executable shows 9 for more
+const glm::vec4 kMenuTabHighlight{1.0f, 0.9f, 0.5f, 0.3f};
+const glm::vec4 kMenuNameColour{1.0f, 0.88f, 0.12f, 1.0f};
+
 // TIM entry names end in ".tim"; the layout uses the bare names.
 std::string bareName(std::string_view entryName) {
     std::string name(entryName);
@@ -54,6 +83,69 @@ OriginalHud::OriginalHud(const core::VirtualFileSystem& vfs) {
         } catch (const std::exception& error) {
             std::cerr << "Warning: no HUD pictures from " << path << " (" << error.what() << ")\n";
         }
+    }
+    try {
+        const auto archive = formats::PackageArchive::parse(vfs.readFile(kMenuPictures));
+        const auto& entries = archive.entries();
+        if (!entries.empty()) {
+            menuPanel_.emplace(formats::decodeBitmap(archive.entryData(entries.front()), formats::BitmapTransparency::Magenta));
+            // The frame's inside is black, and must let the icon show.
+            auto frame = formats::decodeBitmap(archive.entryData(entries.back()));
+            for (std::size_t i = 0; i + 3 < frame.pixels.size(); i += 4) {
+                if (frame.pixels[i] == 0 && frame.pixels[i + 1] == 0 && frame.pixels[i + 2] == 0) frame.pixels[i + 3] = 0;
+            }
+            menuFrame_.emplace(frame);
+        }
+        menuDigits_.emplace(formats::decodeBitmap(vfs.readFile(kMenuDigits), formats::BitmapTransparency::PaletteIndex0));
+        menuHalftone_.emplace(formats::decodeBitmap(vfs.readFile(kMenuHalftone), formats::BitmapTransparency::PaletteIndex0));
+    } catch (const std::exception& error) {
+        std::cerr << "Warning: no weapon menu pictures (" << error.what() << ")\n";
+    }
+}
+
+void OriginalHud::drawWeaponMenu(Interface& userInterface, const ui::WeaponMenu& menu) const {
+    if (!weaponMenuSlide_.visible() || !menuPanel_) return;
+    auto& ui = userInterface.renderer();
+    const float slide = weaponMenuSlide_.offset() / ui::HudSlide::kHiddenOffset * kMenuSlideDistance;
+    const float left = ui.canvasWidth() - kMenuRightMargin - menuPanel_->width() + slide;
+    ui.drawImage(*menuPanel_, left, kMenuTop, menuPanel_->width(), menuPanel_->height());
+
+    // The open tab lights up.
+    ui.drawRect(left + kMenuTabX + static_cast<float>(menu.tab()) * kMenuTabWidth, kMenuTop, kMenuTabWidth,
+                kMenuTabHeight, kMenuTabHighlight);
+
+    for (std::size_t slot = 0; slot < ui::kWeaponMenuSlots; ++slot) {
+        const float iconX = left + kMenuFirstWindowX + static_cast<float>(slot % ui::kWeaponMenuColumns) * kMenuWindowWidth + kMenuIconX;
+        const float iconY = kMenuTop + kMenuFirstWindowY + static_cast<float>(slot / ui::kWeaponMenuColumns) * kMenuWindowHeight + kMenuIconY;
+        const auto& entry = menu.slots()[slot];
+        if (entry) {
+            if (const auto* icon = userInterface.weaponIcon(entry->weapon)) {
+                ui.drawImage(*icon, iconX, iconY, kMenuIconWidth, kMenuIconHeight);
+            }
+            if (!entry->usable() && menuHalftone_) {
+                ui.drawImage(*menuHalftone_, iconX, iconY, kMenuIconWidth, kMenuIconHeight);
+            }
+            if (entry->uses && menuDigits_) {
+                // The uses left in the icon's top-left corner, as the executable writes them.
+                const int digit = std::min(*entry->uses, kMenuMostUsesShown);
+                const float u0 = static_cast<float>(digit) * kMenuDigitWidth / menuDigits_->width();
+                const float u1 = static_cast<float>(digit + 1) * kMenuDigitWidth / menuDigits_->width();
+                ui.drawImageRegion(*menuDigits_, iconX, iconY, kMenuDigitWidth, kMenuDigitHeight, u0, 0.0f, u1,
+                                   kMenuDigitHeight / menuDigits_->height());
+            }
+        }
+        if (slot == menu.slot() && menuFrame_) {
+            ui.drawImage(*menuFrame_, iconX + kMenuFrameX, iconY + kMenuFrameY, menuFrame_->width(), menuFrame_->height());
+        }
+    }
+
+    // The chosen weapon's name in the bar at the bottom.
+    if (const auto& current = menu.current()) {
+        render::TextStyle style;
+        style.align = render::TextAlign::Centre;
+        style.colour = kMenuNameColour;
+        ui.drawText(userInterface.smallFont(), ui::weaponDisplayName(current->weapon, userInterface.gameText()),
+                    left + kMenuNameCentreX, kMenuTop + kMenuNameTop, style);
     }
 }
 
@@ -125,7 +217,7 @@ const render::UiImage* OriginalHud::picture(std::string_view name) const {
     return found == pictures_.end() ? nullptr : &found->second;
 }
 
-void OriginalHud::update(double elapsedSeconds, const std::optional<ui::HudInfo>& turn) {
+void OriginalHud::update(double elapsedSeconds, const std::optional<ui::HudInfo>& turn, bool weaponMenuOpen) {
     // Which instruments are wanted now.
     const bool playing = turn && turn->playing;
     const bool wantClock = turn.has_value();
@@ -136,12 +228,16 @@ void OriginalHud::update(double elapsedSeconds, const std::optional<ui::HudInfo>
     if (turn) {
         lamp_ = ui::nextClockLamp(lamp_, turn->exactSecondsLeft, newTurn);
         lastTurn_ = turn->turnNumber;
-        if (wantAim) lastAimDegrees_ = turn->aimDegrees;
+        if (wantAim) {
+            lastAimDegrees_ = turn->aimDegrees;
+            lastAimLimited_ = turn->aimLimited;
+        }
     }
 
     damageNumbers_.update(elapsedSeconds);
     for (int tick = ticker_.advance(elapsedSeconds); tick > 0; --tick) {
         powerSlide_.tick(wantPower);
+        weaponMenuSlide_.tick(weaponMenuOpen);
         clockSlide_.tick(wantClock);
         aimFade_.tick(wantAim);
     }
@@ -182,6 +278,10 @@ void OriginalHud::drawAngleGauge(Interface& userInterface, const ui::HudInfo& tu
                                   ui::kAimPointerPivot.y};
             ui.drawImageQuad(*arrow, ui::aimPointerCorners(lastAimDegrees_, pivot),
                              glm::vec4(1.0f, 1.0f, 1.0f, aimFade_.pointerAlpha()));
+        }
+        // A mortar or guided missile cannot aim below the mark (45 degrees).
+        if (lastAimLimited_) {
+            drawPiece(ui, ui::kAimLimitMark, 0.0f, glm::vec4(1.0f, 1.0f, 1.0f, aimFade_.pointerAlpha()));
         }
     }
     for (const auto& piece : ui::angleGaugeFrame()) {

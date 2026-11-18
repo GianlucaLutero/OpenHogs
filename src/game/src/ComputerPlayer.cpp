@@ -182,7 +182,9 @@ std::optional<ShotPlan> planThrow(const World& world, std::size_t shooter, const
     };
 
     const float coarsePowerStep = spec.usesPower ? kCoarsePowerStep : 1.0f;
-    for (float angle = kCoarseAngleFrom; angle <= kCoarseAngleTo; angle += kCoarseAngleStep) {
+    // A mortar cannot be aimed below its limit (WeaponSpec::lowestAimDegrees).
+    const float lowestAngle = std::max(kCoarseAngleFrom, spec.lowestAimDegrees);
+    for (float angle = lowestAngle; angle <= kCoarseAngleTo; angle += kCoarseAngleStep) {
         for (float power = 1.0f; power >= kLowestPower - 1e-4f; power -= coarsePowerStep) {
             tryShot(angle, power, false);
         }
@@ -195,8 +197,8 @@ std::optional<ShotPlan> planThrow(const World& world, std::size_t shooter, const
     const float centrePower = best.power;
     bestMiss = std::numeric_limits<float>::max();
     bestLanding.reset();
-    for (float angle = centreAngle - kFineAngleRange; angle <= centreAngle + kFineAngleRange + 1e-3f;
-         angle += kFineAngleStep) {
+    for (float angle = std::max(centreAngle - kFineAngleRange, spec.lowestAimDegrees);
+         angle <= centreAngle + kFineAngleRange + 1e-3f; angle += kFineAngleStep) {
         if (!spec.usesPower) {
             tryShot(angle, 1.0f, true);
             continue;

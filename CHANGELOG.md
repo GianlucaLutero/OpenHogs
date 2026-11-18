@@ -24,6 +24,12 @@ the `project()` call in `CMakeLists.txt`.
 - **Jetpack** as the wiki says: it flies along the aim; fire again drops
   it (it explodes where it lands) and opens the parachute; the turn goes
   on; flying into the ground is a crash landing.
+- **Weapon menu** as the original (`C`): the brass panel with its four
+  tabs, the weapons' icons and uses left.
+- **Explosives** as the wiki says: TNT leaves 5 seconds to get away; the
+  first mine of a turn keeps the turn and waits for the turn to end; the
+  computer uses both. The mortar and the guided missile aim at 45 degrees
+  or more, with the angle gauge's limit mark.
 
 ## 0.1.0 — first prototype release
 

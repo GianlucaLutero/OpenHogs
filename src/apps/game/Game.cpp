@@ -159,6 +159,7 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Inter
         showMessage(*message, kTurnMessageSeconds, true);
     }
     audio_.matchStarted();
+    if (options.openWeaponMenu) openWeaponMenu();
 }
 
 Game::~Game() {
@@ -254,7 +255,9 @@ GameRequest Game::handleEvent(const SDL_Event& event) {
         if (event.key.key == SDLK_F12) {
             return GameRequest::Screenshot;
         }
-        return paused_ ? handlePauseInput(menuInputForKey(event.key.key)) : handleCommand(commandForKey(event));
+        if (paused_) return handlePauseInput(menuInputForKey(event.key.key));
+        if (weaponMenu_.isOpen()) return handleWeaponMenuKey(event);
+        return handleCommand(commandForKey(event));
 
     case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
         return paused_ ? handlePauseInput(Gamepads::menuInputForButton(event.gbutton.button))
@@ -306,6 +309,7 @@ GameRequest Game::handleCommand(Command command) {
     case Command::Jump: jumpPressed_ = true; break;
     case Command::PreviousWeapon: weaponStep_ = -1; break;
     case Command::NextWeapon: weaponStep_ = 1; break;
+    case Command::WeaponMenu: openWeaponMenu(); break;
     case Command::None:
     case Command::Pause: break;
     }
@@ -325,6 +329,7 @@ Game::Command Game::commandForKey(const SDL_Event& event) const {
     case ui::Control::Jump: return Command::Jump;
     case ui::Control::PreviousWeapon: return Command::PreviousWeapon;
     case ui::Control::NextWeapon: return Command::NextWeapon;
+    case ui::Control::WeaponMenu: return Command::WeaponMenu;
     default: return Command::None;  // held controls are read in readInput()
     }
 }
@@ -340,6 +345,48 @@ Game::Command Game::commandForPad(Uint8 button) {
     case PadAction::None: break;
     }
     return Command::None;
+}
+
+void Game::openWeaponMenu() {
+    // Only for the hog in play, standing ready (not charging a throw).
+    const auto active = world_.activeHog();
+    if (!active || world_.phase() != game::MatchPhase::Playing) return;
+    const auto& hog = world_.hogs()[*active];
+    if (!hog.alive || hog.charging || hog.weapons.empty()) return;
+    // Its own weapons count their uses left, the team's stock from crates
+    // how many it has; the rest never run out.
+    std::vector<ui::WeaponMenuEntry> entries;
+    const std::size_t footerStart = hog.weapons.size() - std::min(hog.footerActions, hog.weapons.size());
+    for (std::size_t i = 0; i < hog.weapons.size(); ++i) {
+        ui::WeaponMenuEntry entry{i, hog.weapons[i], std::nullopt};
+        if (i < hog.ownCount()) {
+            if (const auto uses = hog.ownAmmo.find(hog.weapons[i]); uses != hog.ownAmmo.end()) entry.uses = uses->second;
+        } else if (i < footerStart) {
+            entry.uses = world_.stock(hog.team, hog.weapons[i]);
+        }
+        entries.push_back(entry);
+    }
+    weaponMenu_.open(entries, hog.weaponSlot % hog.weapons.size());
+    weaponMenuTurn_ = world_.turns()->turnNumber();
+    playMenuSound(sounds_, ui::MenuSound::Select);
+}
+
+GameRequest Game::handleWeaponMenuKey(const SDL_Event& event) {
+    // The menu keys (arrows, W/S/A/D, Enter, Space, Esc), the fire key to
+    // pick and the menu's own key to close it again.
+    std::optional<ui::MenuInput> input = menuInputForKey(event.key.key);
+    if (const auto control = keyboard_.controlFor(event.key.scancode)) {
+        if (*control == ui::Control::Fire) input = ui::MenuInput::Confirm;
+        if (*control == ui::Control::WeaponMenu) input = ui::MenuInput::Back;
+    }
+    if (!input) return GameRequest::None;
+    const auto result = weaponMenu_.handle(*input);
+    if (result.chosen) chosenWeapon_ = result.chosen;
+    playMenuSound(sounds_, result.chosen ? ui::MenuSound::Select
+                           : result.closed ? ui::MenuSound::Back
+                           : result.moved  ? ui::MenuSound::Move
+                                           : ui::MenuSound::None);
+    return GameRequest::None;
 }
 
 game::PlayerInput Game::readInput() {
@@ -369,9 +416,16 @@ game::PlayerInput Game::readInput() {
         input.fire = t >= *autoFireAt_ && t < *autoFireAt_ + kAutoFireHoldSeconds;
     }
     gamepads_.addHeldControls(input);
+    if (weaponMenu_.isOpen()) {
+        // Choosing a weapon: the hog stands and waits.
+        input.movement = {};
+        input.fire = input.aimUp = input.aimDown = input.sight = false;
+    }
     input.weaponStep = weaponStep_;
+    input.chooseWeapon = chosenWeapon_;
     jumpPressed_ = false;
     weaponStep_ = 0;
+    chosenWeapon_.reset();
     return input;
 }
 
@@ -496,7 +550,12 @@ void Game::step(double seconds) {
     handleEvents(world_.update(seconds, input, library_.animations()));
     placeMounts();
     banner_.update(seconds);
-    hud_.update(seconds, ui::describeTurn(world_, interface_.strings(), interface_.gameText()));
+    // The weapon menu closes when the hog's chance to use it is over.
+    const bool newTurn = world_.turns() && world_.turns()->turnNumber() != weaponMenuTurn_;
+    if (weaponMenu_.isOpen() && (world_.phase() != game::MatchPhase::Playing || computerIsPlaying() || newTurn)) {
+        weaponMenu_.close();
+    }
+    hud_.update(seconds, ui::describeTurn(world_, interface_.strings(), interface_.gameText()), weaponMenu_.isOpen());
     audio_.update(seconds);
 
     // The camera stays behind the active hog (decision 15), swinging round
@@ -685,6 +744,7 @@ void Game::drawHud(int width, int height) {
     if (world_.sightView()) hud_.drawRifleSight(interface_.renderer());
     if (world_.binocularView()) hud_.drawRifleSight(interface_.renderer(), false);  // the round view, no crosshair
     hud_.draw(interface_, turn);
+    hud_.drawWeaponMenu(interface_, weaponMenu_);  // also while it slides away
     if (const auto& message = banner_.current()) {
         // Turn messages fade out over their last quarter.
         const double progress = banner_.progress();

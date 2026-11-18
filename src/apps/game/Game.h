@@ -21,6 +21,8 @@
 //   W / Up, S / Down    run forward / walk back
 //   A / Left, D / Right turn
 //   Space               jump (with W: jump forward)
+//   C                   the weapon menu (arrows or W/S/A/D move, fire, Space
+//                       or Enter pick, C or Esc close)
 //   Q / E               previous / next weapon
 //   R / F               aim up / down
 //   Left Ctrl or X      fire (hold to throw further, release to throw)
@@ -77,6 +79,7 @@ struct GameOptions {
     std::optional<std::size_t> startHog;  // hog to start with (0-based), if of the first team
     bool autoWalk = false;                // hold "forward" (for screenshots of a walking hog)
     bool autoSight = false;               // hold the rifle sight (for screenshots of it)
+    bool openWeaponMenu = false;          // start with the weapon menu open (for screenshots of it)
     // For screenshots of a shot: select this weapon slot of the first hog
     // and hold "fire" from this time (seconds) for kAutoFireHoldSeconds.
     std::optional<std::size_t> autoWeaponSlot;
@@ -149,7 +152,7 @@ private:
     };
 
     // What a key or pad button asks the match to do.
-    enum class Command { None, Pause, NextHog, PreviousHog, EndTurn, Jump, PreviousWeapon, NextWeapon };
+    enum class Command { None, Pause, NextHog, PreviousHog, EndTurn, Jump, PreviousWeapon, NextWeapon, WeaponMenu };
     Command commandForKey(const SDL_Event& event) const;
     static Command commandForPad(Uint8 button);
     GameRequest handleCommand(Command command);
@@ -195,6 +198,13 @@ private:
     KeyboardControls keyboard_;
     bool jumpPressed_ = false;  // jump was pressed since the last step
     int weaponStep_ = 0;        // previous / next weapon pressed since the last step
+    // The weapon menu: open while the player chooses; the choice goes to
+    // the world with the next step.
+    ui::WeaponMenu weaponMenu_;
+    std::optional<std::size_t> chosenWeapon_;
+    int weaponMenuTurn_ = -1;  // the turn it was opened in
+    void openWeaponMenu();
+    GameRequest handleWeaponMenuKey(const SDL_Event& event);
     // Mouse movement through the rifle sight since the last step, in
     // degrees: turning (left positive) and raising the aim.
     float sightLookYaw_ = 0.0f;

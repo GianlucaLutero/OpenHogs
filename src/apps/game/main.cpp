@@ -21,6 +21,7 @@
 //   --seconds <s>        with --screenshot: let the match (or the menu) run this long first
 //   --auto-walk          with --screenshot: the active hog runs forward meanwhile
 //   --sight              with --screenshot: look through the rifle sight
+//   --weapon-menu        with --screenshot: open the weapon menu
 //   --rules <pc|ps1>     the PC's or the PlayStation's rules (else [Game] Version)
 //   --weapon <n>         with --screenshot: the active hog selects its n-th weapon (1 = first)
 //   --fire-at <s>        with --screenshot: the active hog fires at s seconds
@@ -71,6 +72,7 @@ struct Options {
     bool sound = true;
     bool autoWalk = false;
     bool sight = false;
+    bool weaponMenu = false;
     std::optional<game::GameVersion> version;  // --rules
     std::optional<std::size_t> weaponSlot;  // 1-based, as typed
     std::optional<double> fireAt;
@@ -98,6 +100,7 @@ void printUsage() {
                  "  --seconds <s>        with --screenshot: let the match (or the menu) run this long first\n"
                  "  --auto-walk          with --screenshot: the active hog runs forward meanwhile\n"
                  "  --sight              with --screenshot: look through the rifle sight (with a gun)\n"
+                 "  --weapon-menu        with --screenshot: open the weapon menu\n"
                  "  --rules <pc|ps1>     the PC's or the PlayStation's rules (default: [Game] Version, else ps1)\n"
                  "  --weapon <n>         with --screenshot: the active hog selects its n-th weapon\n"
                  "  --fire-at <s>        with --screenshot: the active hog fires at s seconds\n"
@@ -163,6 +166,10 @@ std::optional<Options> parseArguments(const std::vector<std::string>& args) {
             }
             if (arg == "--sight") {
                 options.sight = true;
+                continue;
+            }
+            if (arg == "--weapon-menu") {
+                options.weaponMenu = true;
                 continue;
             }
             if (arg == "--pause") {
@@ -276,6 +283,7 @@ int runGame(Options options) {
         if (screenshotOnly) {
             gameOptions.autoWalk = options.autoWalk;
             gameOptions.autoSight = options.sight;
+            gameOptions.openWeaponMenu = options.weaponMenu;
             gameOptions.autoFireAt = options.fireAt;
             if (options.weaponSlot) gameOptions.autoWeaponSlot = *options.weaponSlot - 1;
         }

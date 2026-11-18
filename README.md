@@ -83,7 +83,8 @@ animations.
 | fidelity blocks      | ✅ done | the PC and PlayStation differences OpenHogs knows are in `version-variants`; what is left is in `docs/open-decisions.md` |
 | `release`            | ✅ done | Packaged builds for Windows and Linux: install rules and CPack archives, a release workflow on version tags, `config/openhogs.ini` found next to the programs and created from the default on the first run, `--version`, `CHANGELOG.md` |
 | refinement: `controls` | ✅ done | Keys changed on the CONTROLS screen as in the original (the row blinks until a key is pressed) and saved in `[Controls]`; the camera stays behind the hog; through the rifle sight the mouse turns the hog and aims; volumes changed in VOLUME CONTROL are saved |
-| refinement: `match-rules` | 🔍 in review | The PlayStation's label over the hog in play (name or rank, heart and health) instead of health bars; DEATHMATCH LIMIT and SELECT PIG in FIELD CONDITIONS; one nation per team; the PlayStation rules by default; the executable's slip in the battle awards; swimming and the jetpack as the Hogs of War Wiki describes them (drowned hogs explode; the jetpack is dropped with fire and explodes where it lands) |
+| refinement: `match-rules` | ✅ done | The PlayStation's label over the hog in play (name or rank, heart and health) instead of health bars; DEATHMATCH LIMIT and SELECT PIG in FIELD CONDITIONS; one nation per team; the PlayStation rules by default; the executable's slip in the battle awards; swimming and the jetpack as the Hogs of War Wiki describes them (drowned hogs explode; the jetpack is dropped with fire and explodes where it lands) |
+| refinement: `original-hud-2` | 🔍 in review (part 1) | The original's weapon menu (brass panel with four tabs, icons, uses left, selection frame); the angle gauge's limit mark for the mortar and the guided missile; TNT and mines as the wiki describes them (5 s to get away from TNT, a free first mine that waits for the turn to end), used by the computer too. Part 2: the 3D radar and the text boxes |
 
 ## Requirements
 
@@ -313,6 +314,7 @@ The keys below are the defaults; OPTIONS → CONTROLS changes them.
 | `S` / `↓` | walk backwards |
 | `A` / `←`, `D` / `→` | turn left / right |
 | `Space` | jump (hold `W` to jump forward) |
+| `C` | the weapon menu: arrows or `W`/`S`/`A`/`D` choose, fire, `Enter` or `Space` pick, `C` or `Esc` close |
 | `Q` / `E` | previous / next weapon |
 | `R` / `F` | aim up / down (the white dots show where the shot goes) |
 | `V` or right mouse button (held) | look through the rifle sight, with a gun: first-person view along the barrel, crosshair in the middle; turn and aim (the mouse does both too), then fire |
@@ -637,6 +639,7 @@ TurnLeft = A, Left
 TurnRight = D, Right
 Fire = Left Ctrl, X
 Jump = Space
+WeaponMenu = C
 PreviousWeapon = Q
 NextWeapon = E
 Sight = V
