@@ -220,10 +220,15 @@ std::array<WeaponSpec, kWeaponCount> makeWeapons() {
     rocket.gravityFactor = 0.0f;
     rocket.usesPower = false;
 
-    auto tnt = explosive(W::Tnt, K::Placed, "TNT", 70, 600, 0, "");
-    tnt.fuseSeconds = 4.0f;
-    auto mine = explosive(W::Mine, K::Placed, "MINE", 50, 400, 0, "L_MINETR");
+    // The Hogs of War Wiki: TNT does 50 with a big blast and very high
+    // knockback, and leaves 5 seconds to get away; a mine does 20 with a
+    // small blast and medium knockback, and goes off when a hog comes near.
+    auto tnt = explosive(W::Tnt, K::Placed, "TNT", 50, 600, 0, "");
+    tnt.fuseSeconds = 5.0f;
+    tnt.knockback = 1200.0f;
+    auto mine = explosive(W::Mine, K::Placed, "MINE", 20, 300, 0, "L_MINETR");
     mine.triggerRadius = 150.0f;
+    mine.knockback = 600.0f;
 
     auto burst = gun(W::RifleBurst, "RIFLE BURST", 15, 6000, 3, 1.5f, "L_RIFLE");
     auto shotgun = gun(W::Shotgun, "SHOTGUN", 6, 2000, 1, 8.0f, "L_SHOTG");
@@ -267,12 +272,16 @@ std::array<WeaponSpec, kWeaponCount> makeWeapons() {
     antiPersonnel.fallbackName = "ANTI-P MINE";
     antiPersonnel.damage = exeDamage(3200);
     antiPersonnel.blastRadius = exeRadius(3900);
+    antiPersonnel.bomblets = 4;  // the wiki: four fragments of 20, very small blasts
+    antiPersonnel.bombletDamage = 20.0f;
+    antiPersonnel.bombletRadius = 150.0f;
 
     auto superTnt = tnt;  // ammunition 440 (WE_BANG): 200 points, radius 6500
     superTnt.id = W::SuperTnt;
     superTnt.fallbackName = "SUPER TNT";
     superTnt.damage = exeDamage(25600);
     superTnt.blastRadius = exeRadius(6500);
+    superTnt.knockback = 1600.0f;  // the wiki: extreme
 
     auto suicide = action(W::Suicide, K::Suicide, "SUICIDE");  // as a TNT charge at the hog's feet
     suicide.damage = tnt.damage;

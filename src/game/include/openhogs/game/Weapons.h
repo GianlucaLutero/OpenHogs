@@ -187,6 +187,10 @@ struct WeaponSpec {
     // burst (the mine shell lays a mine; `hasPayload` false: nothing).
     Guidance guidance = Guidance::None;
     bool hasPayload = false;
+    // The bomblets' own blast, when it differs from the weapon's (the
+    // anti-personnel mine's fragments: 20 points, very small); 0 = the same.
+    float bombletDamage = 0.0f;
+    float bombletRadius = 0.0f;
     WeaponId payload = WeaponId::Mine;
 
     // Guns the player may aim through the rifle sight: a first-person view

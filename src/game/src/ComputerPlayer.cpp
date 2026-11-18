@@ -297,6 +297,61 @@ std::optional<std::size_t> nearestEnemy(const World& world, std::size_t shooter)
     return nearest;
 }
 
+// --- Explosives put down -------------------------------------------------
+
+// Where a hog puts an explosive down: just in front of it (World::fire).
+constexpr float kPlaceForward = 70.0f;
+// With TNT or a mine to use, the computer walks this close to an enemy.
+constexpr float kExplosiveApproachDistance = 250.0f;
+// After putting a mine down it walks off for this long before going on
+// with its turn; from TNT it runs until the charge has gone off.
+constexpr double kMineRetreatSeconds = 1.5;
+
+// The best explosive the hog can put down where it stands, facing an
+// enemy: TNT scored like any blast (its own hog will have run off, so only
+// its friends count against it), a mine by the enemy it will catch when it
+// is armed at the end of the turn. Mines only while none was put down this
+// turn (the first one is free).
+std::optional<ShotPlan> planExplosive(const World& world, std::size_t shooter, bool mineAllowed) {
+    const auto& hogs = world.hogs();
+    const Hog& me = hogs[shooter];
+    std::optional<ShotPlan> best;
+    for (const WeaponId weapon : me.weapons) {
+        const WeaponSpec& spec = weaponSpec(weapon);
+        if (spec.kind != WeaponKind::Placed) continue;
+        const bool mine = spec.triggerRadius > 0.0f;
+        if (mine && !mineAllowed) continue;
+        for (std::size_t target = 0; target < hogs.size(); ++target) {
+            const Hog& enemy = hogs[target];
+            if (!enemy.alive || enemy.hidden() || enemy.sheltered() || enemy.team == me.team) continue;
+            const float yaw = yawTowards(enemy.position - me.position);
+            // hogFacing() for that yaw: (cos yaw, 0, -sin yaw).
+            const glm::vec3 spot = me.position + glm::vec3(std::cos(yaw), 0.0f, -std::sin(yaw)) * kPlaceForward;
+            float score = 0.0f;
+            if (mine) {
+                if (horizontalDistance(spot, enemy.position) < spec.triggerRadius) score = damageValue(enemy, spec.damage);
+            } else {
+                for (std::size_t i = 0; i < hogs.size(); ++i) {
+                    if (!hogs[i].alive || i == shooter) continue;
+                    const float distance = glm::length(hogCentre(hogs[i]) - spot);
+                    if (distance >= spec.blastRadius) continue;
+                    const float damage = spec.damage * (1.0f - distance / spec.blastRadius);
+                    score += hogs[i].team == me.team ? -kFriendlyFireWeight * damage : damageValue(hogs[i], damage);
+                }
+            }
+            if (score > 0.0f && (!best || score > best->score)) {
+                best = ShotPlan{weapon, target, yaw, me.aimDegrees, 1.0f, score};
+            }
+        }
+    }
+    return best;
+}
+
+bool hasExplosives(const Hog& hog) {
+    return std::any_of(hog.weapons.begin(), hog.weapons.end(),
+                       [](WeaponId weapon) { return weaponSpec(weapon).kind == WeaponKind::Placed; });
+}
+
 } // namespace
 
 float yawTowards(const glm::vec3& direction) {
@@ -330,8 +385,8 @@ void ShotPlanner::step(const World& world) {
     case WeaponKind::Bullet: plan = planBullet(world, shooter_, spec, target); break;
     case WeaponKind::Thrown:
     case WeaponKind::Shell: plan = planThrow(world, shooter_, spec, target); break;
-    // Explosives put down would need the hog to walk away after using
-    // them, which the rules do not allow yet.
+    // Explosives put down are weighed apart (planExplosive): they are not
+    // aimed, and the hog must walk away from them.
     case WeaponKind::Placed:
     case WeaponKind::Heal:
     case WeaponKind::Suicide:
@@ -376,6 +431,7 @@ void ComputerPlayer::startTurn(const World& world) {
     hasApproached_ = false;
     hasJumped_ = false;
     approachTarget_.reset();
+    minePlaced_ = false;
     enter(Stage::Thinking, settings_.thinkSeconds);
 }
 
@@ -393,6 +449,20 @@ void ComputerPlayer::spoil(ShotPlan& plan) {
 void ComputerPlayer::decide(const World& world, ComputerDecision& decision) {
     plan_ = planner_->best();
     planner_.reset();
+    // Explosives put down need a hog that can walk away from them (the
+    // PlayStation's rules): a free first mine comes before anything else,
+    // TNT when it does more than the best shot.
+    if (settings_.walks) {
+        if (const auto explosive = planExplosive(world, hog_, !minePlaced_)) {
+            const bool mine = weaponSpec(explosive->weapon).triggerRadius > 0.0f;
+            const float shot = plan_ ? plan_->score : 0.0f;
+            if (explosive->score >= settings_.minimumScore && (mine || explosive->score > shot)) {
+                plan_ = explosive;
+                enter(Stage::Turning);
+                return;
+            }
+        }
+    }
     if (plan_ && plan_->score >= settings_.minimumScore) {
         spoil(*plan_);
         enter(Stage::Turning);
@@ -438,7 +508,11 @@ void ComputerPlayer::approach(const World& world, const Hog& hog, double seconds
         blocked = false;
     }
 
-    const bool arrived = horizontalDistance(hog.position, goal) <= settings_.approachDistance;
+    // Close enough to shoot, or with explosives to put down, closer still.
+    const float wantedDistance = settings_.walks && hasExplosives(hog)
+                                     ? std::min(settings_.approachDistance, kExplosiveApproachDistance)
+                                     : settings_.approachDistance;
+    const bool arrived = horizontalDistance(hog.position, goal) <= wantedDistance;
     if (targetGone || arrived || blocked || stageSeconds_ > kMaxApproachSeconds) {
         hasApproached_ = true;
         decision.input.movement = {};
@@ -522,7 +596,14 @@ ComputerDecision ComputerPlayer::update(const World& world, double seconds) {
     }
 
     case Stage::Firing:
-        if (!weaponSpec(plan_->weapon).usesPower) {
+        if (weaponSpec(plan_->weapon).kind == WeaponKind::Placed) {
+            // Put down, then away from it before it can go off.
+            decision.input.fire = true;
+            const bool mine = weaponSpec(plan_->weapon).triggerRadius > 0.0f;
+            if (mine) minePlaced_ = true;
+            retreatFrom_ = hog.position + hogFacing(hog) * kPlaceForward;
+            enter(Stage::Retreating, mine ? kMineRetreatSeconds : 0.0);
+        } else if (!weaponSpec(plan_->weapon).usesPower) {
             decision.input.fire = true;  // one press
             enter(Stage::Done);
         } else if (!hog.charging || hog.power < plan_->power - kPowerTolerance) {
@@ -531,6 +612,23 @@ ComputerDecision ComputerPlayer::update(const World& world, double seconds) {
             enter(Stage::Done);  // releasing the key throws
         }
         break;
+
+    case Stage::Retreating: {
+        // Run straight away from the explosive. TNT: until it has gone off
+        // and the turn is over; a mine: for a moment, then on with the turn.
+        const bool mine = weaponSpec(plan_->weapon).triggerRadius > 0.0f;
+        if (mine && stageSeconds_ >= kMineRetreatSeconds) {
+            planner_.reset();
+            enter(Stage::Thinking, kSettleSeconds);
+            break;
+        }
+        const float away = yawTowards(hog.position - retreatFrom_);
+        steer(hog, away, decision.input.movement);
+        if (std::abs(angleDifference(hog.yawRadians, away)) < kRunFacingTolerance) {
+            decision.input.movement.forward = true;
+        }
+        break;
+    }
 
     case Stage::Done:
         break;

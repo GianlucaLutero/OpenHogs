@@ -18,6 +18,12 @@
 //      (holding the fire key until the planned power for throws).
 //   5. Nothing at all to do: end the turn.
 //
+// Where the computer's hogs walk (the PlayStation's rules) they also use
+// the explosives put down, as the wiki describes them: a mine at an
+// enemy's feet first (the first mine of a turn is free, and it goes off
+// when the turn ends), then TNT if it does more than any shot, running
+// away while its fuse burns.
+//
 // The plan is made with the exact rules of the match (projectile flight,
 // bullets stopped by the scenery...), then spoiled by a small random error
 // (AiSettings), so the computer is good but not perfect. How the original
@@ -105,7 +111,7 @@ public:
     ComputerDecision update(const World& world, double seconds);
 
 private:
-    enum class Stage { Thinking, Approaching, Turning, Selecting, Aiming, Firing, Done };
+    enum class Stage { Thinking, Approaching, Turning, Selecting, Aiming, Firing, Retreating, Done };
 
     void startTurn(const World& world);
     void decide(const World& world, ComputerDecision& decision);
@@ -130,6 +136,8 @@ private:
     glm::vec3 progressCheckPosition_{0.0f};
     double progressCheckSeconds_ = 0.0;
     bool hasJumped_ = false;
+    bool minePlaced_ = false;      // this turn's free mine is down
+    glm::vec3 retreatFrom_{0.0f};  // the explosive it runs from
 };
 
 } // namespace openhogs::game

@@ -178,6 +178,8 @@ private:
     void updateWeaponStance(Hog& hog) const;
     void hurtSwimmers(double seconds, std::vector<GameEvent>& events);
     void explodeDrownedHogs(std::vector<GameEvent>& events);
+    void armMines();            // mines put down this turn become dangerous
+    bool chargeBurning() const; // a TNT fuse is still burning
     void collectPickups(std::vector<GameEvent>& events);
     void updateObjectives(std::vector<GameEvent>& events);
     void recordDeeds(std::optional<std::size_t> active, const std::vector<GameEvent>& events);
@@ -264,6 +266,10 @@ private:
     std::vector<GameEvent> pendingEvents_;  // from endTurn(), reported by the next update()
     bool fireWasHeld_ = false;
     bool sighting_ = false;  // the active hog's player looks through the rifle sight
+    // The wiki's explosives: mines put down this turn (the first does not
+    // end it), and TNT burning while its hog gets away.
+    int minesThisTurn_ = 0;
+    bool chargeRetreat_ = false;
     std::vector<Mount> mounts_;
     // Bullet spread: seeded with a fixed value, so a match replays the same
     // way (and tests are reproducible).

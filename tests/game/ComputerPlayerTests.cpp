@@ -179,3 +179,34 @@ TEST_CASE("With nothing useful to do, the computer ends its turn", "[game][ai]")
     playComputerTurn(world, computer, steps);
     CHECK(world.turns()->activeTeam() == 1);
 }
+
+TEST_CASE("Where it walks, the computer puts TNT by an enemy and runs from it", "[game][ai]") {
+    // The owner's choice (decision 45), with the wiki's rules: TNT leaves
+    // five seconds to get away, so the computer can blow up an enemy close
+    // by without being caught in the blast itself.
+    const auto map = flatMap();
+    World world(map, standoff(map, 250.0f, {WeaponId::Tnt}));
+    ComputerPlayer computer(perfect());
+    const auto events = playComputerTurn(world, computer);
+    CHECK(wasHurt(events, 1));
+    CHECK_FALSE(wasHurt(events, 0));
+}
+
+TEST_CASE("Where it walks, the computer leaves a mine at an enemy's feet, then shoots", "[game][ai]") {
+    // The first mine of a turn is free (the wiki): the computer puts one
+    // down next to the enemy, steps away and still takes its shot; the
+    // mine catches the enemy when the turn ends.
+    const auto map = flatMap();
+    World world(map, standoff(map, 200.0f, {WeaponId::Mine, WeaponId::Rifle}));
+    ComputerPlayer computer(perfect());
+    auto events = playComputerTurn(world, computer);
+    static const auto animations = makeAnimations();
+    for (int i = 0; i < 100; ++i) {  // the next turn begins: the mine is armed
+        const auto more = world.update(kStep, PlayerInput{}, animations);
+        events.insert(events.end(), more.begin(), more.end());
+    }
+    const auto explosions = std::count_if(events.begin(), events.end(),
+                                          [](const GameEvent& event) { return event.type == GameEventType::Explosion; });
+    CHECK(explosions == 1);  // the mine went off
+    CHECK(wasHurt(events, 1));
+}

@@ -74,7 +74,7 @@ void report(std::vector<GameEvent>& events, GameEventType type, const Projectile
 
 ProjectileOutcome stepPlaced(Projectile& projectile, const WeaponSpec& spec, const std::vector<Hog>& hogs) {
     if (spec.triggerRadius > 0.0f) {
-        if (projectile.ageSeconds < kMineArmingSeconds) {
+        if (!projectile.armed || projectile.ageSeconds < kMineArmingSeconds) {
             return ProjectileOutcome::Flying;
         }
         for (const auto& hog : hogs) {
@@ -164,7 +164,7 @@ ProjectileOutcome stepProjectile(Projectile& projectile, double seconds, const M
             return ProjectileOutcome::Explodes;
         }
     }
-    if (spec.kind == WeaponKind::Placed) {
+    if (spec.kind == WeaponKind::Placed && !projectile.bomblet) {
         return stepPlaced(projectile, spec, hogs);
     }
 

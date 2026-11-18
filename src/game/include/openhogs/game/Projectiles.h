@@ -33,6 +33,9 @@ struct Projectile {
     std::size_t owner = 0;         // the hog that fired it
     bool bomblet = false;          // a piece of a cluster grenade (does not split again)
     bool resting = false;          // lying on the ground
+    // Mines put down by a hog wait, harmless, until their turn ends or
+    // the hog uses another weapon (the wiki); then they are armed.
+    bool armed = true;
 };
 
 enum class ProjectileOutcome { Flying, Explodes, Gone };
