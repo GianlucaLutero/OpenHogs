@@ -10,7 +10,8 @@
 //   Match:  left stick or D-pad   run, walk back, turn
 //           A                     jump
 //           X or right trigger    fire (hold to throw further)
-//           right stick up/down   aim       right stick left/right: camera
+//           right stick up/down   aim
+//           left trigger          look through the rifle sight (held)
 //           LB / RB               previous / next weapon
 //           Y                     end the turn       Back: another hog
 //           Start                 pause menu
@@ -52,10 +53,6 @@ public:
 
     // Adds what the pads hold right now (sticks, D-pad, fire) to `input`.
     void addHeldControls(game::PlayerInput& input) const;
-
-    // How far the camera should turn, -1 (left) to 1 (right), from the
-    // right sticks.
-    float cameraTurn() const;
 
 private:
     float strongestAxis(SDL_GamepadAxis axis) const;

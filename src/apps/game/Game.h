@@ -16,27 +16,33 @@
 // Texts come from the game's text tables, so a language pack translates
 // them.
 //
-// Controls:
+// Controls (the keyboard's can be changed on the CONTROLS screen and are
+// saved in [Controls] of openhogs.ini; these are the defaults):
 //   W / Up, S / Down    run forward / walk back
 //   A / Left, D / Right turn
 //   Space               jump (with W: jump forward)
 //   Q / E               previous / next weapon
 //   R / F               aim up / down
-//   Ctrl or X           fire (hold to throw further, release to throw)
+//   Left Ctrl or X      fire (hold to throw further, release to throw)
+//   V or right mouse    look through the rifle sight (guns); the mouse
+//                       then turns the hog and raises or lowers its aim
 //   Tab / Shift+Tab     another hog of the team (before moving)
-//   Enter               end the turn (after the match: back to the menu)
-//   Left mouse drag     turn the camera around the hog     Mouse wheel: zoom
-//   Esc or P            pause menu (continue / abort the match)
+//   Return              end the turn (after the match: back to the menu)
+//   P, and always Esc   pause menu (continue / abort the match)
+//   Mouse wheel         camera nearer or farther
 //   (gamepads: see Gamepads.h)
 //
+// The camera stays behind the active hog, as the owner chose (decision 15).
+//
 // During the turns of the computer's teams (GameOptions::computerTeams)
-// the keys that control the hog do nothing; the camera keys still work.
+// the keys that control the hog do nothing.
 //   F12                 save a screenshot (openhogs-<map>.png)
 
 #pragma once
 
 #include "Gamepads.h"
 #include "Interface.h"
+#include "KeyboardControls.h"
 #include "MatchAudio.h"
 #include "OriginalHud.h"
 #include "SoundPlayer.h"
@@ -83,6 +89,9 @@ struct GameOptions {
     int suddenDeathRound = 0;  // 0 = none (multiplayer field conditions)
     std::function<void(std::vector<game::Hog>&)> prepareHogs;
     std::map<int, int> teamNations;
+
+    // The player's keys (the CONTROLS screen, [Controls]).
+    ui::KeyBindings keyBindings = ui::KeyBindings::defaults();
 
     // PC or PlayStation rules (game/GameVersion.h): whether the computer's
     // hogs walk and the turn tunes loop. Set by the application.
@@ -139,7 +148,7 @@ private:
 
     // What a key or pad button asks the match to do.
     enum class Command { None, Pause, NextHog, PreviousHog, EndTurn, Jump, PreviousWeapon, NextWeapon };
-    static Command commandForKey(const SDL_Event& event);
+    Command commandForKey(const SDL_Event& event) const;
     static Command commandForPad(Uint8 button);
     GameRequest handleCommand(Command command);
     GameRequest handlePauseInput(std::optional<ui::MenuInput> input);
@@ -181,13 +190,14 @@ private:
     bool autoWalk_ = false;
     bool autoSight_ = false;
     std::optional<double> autoFireAt_;
-    bool jumpPressed_ = false;  // Space was pressed since the last step
-    int weaponStep_ = 0;        // Q / E pressed since the last step
-
-    // After a change of hog the camera swings round behind the new hog
-    // for this long, even if it does not move.
-    std::optional<std::size_t> cameraHog_;
-    double cameraSwingSecondsLeft_ = 0.0;
+    KeyboardControls keyboard_;
+    bool jumpPressed_ = false;  // jump was pressed since the last step
+    int weaponStep_ = 0;        // previous / next weapon pressed since the last step
+    // Mouse movement through the rifle sight since the last step, in
+    // degrees: turning (left positive) and raising the aim.
+    float sightLookYaw_ = 0.0f;
+    float sightLookPitch_ = 0.0f;
+    void lockMouseForSight(bool sighting);
 
     Interface& interface_;
     SoundPlayer& sounds_;

@@ -5,6 +5,7 @@
 #include "openhogs/core/BinaryReader.h"  // FormatError
 #include "openhogs/core/IniFile.h"
 
+#include <cmath>
 #include <string>
 
 namespace openhogs::audio {
@@ -39,6 +40,18 @@ Volumes volumesFromIni(const core::IniFile& ini) {
         throw core::FormatError("[Audio] SoundMode must be mono, stereo or surround, got " + mode);
     }
     return volumes;
+}
+
+std::vector<std::pair<std::string, std::string>> volumesToIni(const Volumes& volumes) {
+    const auto percent = [](float volume) { return std::to_string(std::lround(volume * 100.0f)); };
+    const char* mode = volumes.mode == SoundMode::Mono       ? "mono"
+                       : volumes.mode == SoundMode::Surround ? "surround"
+                                                             : "stereo";
+    return {{"MasterVolume", percent(volumes.master)},
+            {"EffectsVolume", percent(volumes.effects)},
+            {"SpeechVolume", percent(volumes.speech)},
+            {"MusicVolume", percent(volumes.music)},
+            {"SoundMode", mode}};
 }
 
 } // namespace openhogs::audio

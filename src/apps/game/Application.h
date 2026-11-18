@@ -48,6 +48,10 @@ struct ApplicationOptions {
     bool hiddenWindow = false;  // for screenshots without a window
     bool sound = true;
     audio::Volumes volumes;
+    ui::KeyBindings keyBindings = ui::KeyBindings::defaults();
+    // openhogs.ini, where volumes and keys changed in the menus are saved;
+    // empty: they last for the session only.
+    std::filesystem::path configPath;
     std::vector<std::string> maps;  // the levels offered by the menu
     std::filesystem::path savePath = "saves/campaign.ini";
     bool intro = true;  // play the original's start-up videos first
@@ -126,6 +130,10 @@ private:
     bool campaignMatch_ = false;   // the match being played is a campaign mission
     std::filesystem::path savePath_;
     game::VersionRules versionRules_;
+    std::filesystem::path configPath_;
+    audio::Volumes loadedVolumes_;  // from the file: the music level and exact percentages
+    void saveVolumes();
+    void saveKeyBindings();
     std::unique_ptr<Game> game_;
     std::unique_ptr<CutscenePlayer> cutscenes_;  // videos being played over everything
 };
@@ -133,5 +141,11 @@ private:
 // Volume levels of the menu sliders (0..10) <-> mixer volumes (0..1).
 ui::VolumeLevels toVolumeLevels(const audio::Volumes& volumes);
 audio::Volumes toVolumes(const ui::VolumeLevels& levels);
+
+// The volumes to play and save after a change in VOLUME CONTROL: the
+// menu's levels, except that a level the player did not move keeps the
+// exact percentage of `loaded` (85% shows as level 9 of 10 and must not
+// become 90%). The music level is not in the menu and always stays.
+audio::Volumes mergeMenuVolumes(const audio::Volumes& loaded, const ui::VolumeLevels& levels);
 
 } // namespace openhogs::gameapp

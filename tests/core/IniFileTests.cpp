@@ -13,6 +13,7 @@
 
 using openhogs::core::FormatError;
 using openhogs::core::IniFile;
+using openhogs::core::setIniValue;
 
 // Users copy settings from guides with any capitalisation ("languagecode",
 // "LanguageCode"), as the original Windows API allowed. Lookups must not
@@ -76,4 +77,33 @@ TEST_CASE("IniFile understands common boolean spellings", "[core][IniFile]") {
     CHECK_FALSE(ini.getBool("F", "B", true));
     CHECK(ini.getBool("F", "C", false));
     CHECK_THROWS_AS(ini.getBool("F", "D", false), FormatError);
+}
+
+// Volumes and keys changed in the game are written into the user's own
+// openhogs.ini. The file is full of comments explaining every setting:
+// saving must change only the value asked for, never lose the comments or
+// another section's key of the same name.
+TEST_CASE("setIniValue replaces a value and keeps everything else", "[core][IniFile]") {
+    const std::string text = "; volumes\n[Audio]\n; full is 100\nmastervolume = 100\nSoundMode = stereo\n\n"
+                             "[Other]\nMasterVolume = 7\n";
+    const std::string result = setIniValue(text, "audio", "MasterVolume", "60");
+
+    CHECK(result == "; volumes\n[Audio]\n; full is 100\nMasterVolume = 60\nSoundMode = stereo\n\n"
+                    "[Other]\nMasterVolume = 7\n");
+    CHECK(IniFile::parse(result).getInt("Other", "MasterVolume", 0) == 7);
+}
+
+// The first save of a key the file never had (an old openhogs.ini without
+// [Controls], say) must still work: the key goes into its section, or a
+// new section at the end.
+TEST_CASE("setIniValue adds a missing key or section", "[core][IniFile]") {
+    const std::string text = "[Audio]\nMasterVolume = 100\n\n; the end\n[Game]\nVersion = pc\n";
+
+    const auto withKey = IniFile::parse(setIniValue(text, "Audio", "MusicVolume", "40"));
+    CHECK(withKey.getInt("Audio", "MusicVolume", 0) == 40);
+
+    const std::string withSection = setIniValue(text, "Controls", "Jump", "Space");
+    CHECK(withSection.ends_with("\n\n[Controls]\nJump = Space\n"));
+    CHECK(IniFile::parse(withSection).getString("Game", "Version") == "pc");
+    CHECK(IniFile::parse(setIniValue("", "Controls", "Jump", "Space")).getString("Controls", "Jump") == "Space");
 }

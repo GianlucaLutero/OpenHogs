@@ -23,9 +23,10 @@ namespace openhogs::gameapp {
 
 namespace {
 
-constexpr float kOrbitDegreesPerPixel = 0.3f;
 constexpr float kZoomStep = 0.9f;  // distance factor per wheel notch
-constexpr float kPadOrbitDegreesPerSecond = 120.0f;
+// Through the rifle sight the mouse turns the hog and raises its aim, this
+// many degrees per pixel (the 25-degree view makes coarser steps jumpy).
+constexpr float kSightLookDegreesPerPixel = 0.08f;
 
 // The camera looks at the hog's chest, this far above its feet.
 constexpr float kCameraTargetHeight = 180.0f;
@@ -52,9 +53,6 @@ constexpr glm::vec4 kShellColour{0.25f, 0.25f, 0.2f, 1.0f};
 constexpr glm::vec4 kHealthColour{0.2f, 0.85f, 0.2f, 1.0f};
 constexpr glm::vec4 kActiveHealthColour{1.0f, 0.85f, 0.1f, 1.0f};
 constexpr float kHealthBarHeight = 380.0f;  // above the feet
-
-// How long the camera swings round behind a newly active hog.
-constexpr double kCameraSwingSeconds = 1.5;
 
 // HUD layout, in canvas units (the screen is render::kCanvasHeight tall).
 constexpr float kDamageNumberHeight = 450.0f;  // above the feet, over the health bar
@@ -96,7 +94,7 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Inter
       world_(game::loadWorld(vfs, options.mapName, turnRules(options), options.prepareHogs)),
       pauseMenu_(userInterface.strings()), hud_(vfs),
       computerTeams_(options.computerTeams.begin(), options.computerTeams.end()), computer_(computerSettings(options.versionRules)),
-      interface_(userInterface), sounds_(sounds), gamepads_(gamepads),
+      keyboard_(options.keyBindings), interface_(userInterface), sounds_(sounds), gamepads_(gamepads),
       audio_(sounds, world_, [this](int team) { return isComputerTeam(team); }, options.versionRules.turnTuneLoops) {
     const auto scene = scene::loadMapScene(vfs, options.mapName);
     for (const auto& warning : scene.warnings) {
@@ -143,7 +141,6 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Inter
     // Start behind the active hog, looking the way it faces.
     if (const auto active = world_.activeHog()) {
         camera_.lookAlong(game::hogFacing(world_.hogs()[*active]));
-        cameraHog_ = active;
     }
     camera_.snapTo(cameraTarget());
 
@@ -162,7 +159,9 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Inter
     audio_.matchStarted();
 }
 
-Game::~Game() = default;
+Game::~Game() {
+    lockMouseForSight(false);  // back to the menus with a free pointer
+}
 
 const formats::Model* Game::weaponModel(std::string_view name) {
     if (name.empty() || !weaponTextures_) {
@@ -233,8 +232,11 @@ void Game::pause() {
 GameRequest Game::handleEvent(const SDL_Event& event) {
     switch (event.type) {
     case SDL_EVENT_MOUSE_MOTION:
-        if (!paused_ && (event.motion.state & SDL_BUTTON_LMASK)) {
-            camera_.orbit(event.motion.xrel * kOrbitDegreesPerPixel, -event.motion.yrel * kOrbitDegreesPerPixel);
+        // Through the rifle sight the mouse looks around: right turns
+        // right, up raises the aim.
+        if (!paused_ && world_.sightView()) {
+            sightLookYaw_ -= event.motion.xrel * kSightLookDegreesPerPixel;
+            sightLookPitch_ -= event.motion.yrel * kSightLookDegreesPerPixel;
         }
         return GameRequest::None;
 
@@ -308,17 +310,20 @@ GameRequest Game::handleCommand(Command command) {
     return GameRequest::None;
 }
 
-Game::Command Game::commandForKey(const SDL_Event& event) {
-    switch (event.key.key) {
-    case SDLK_ESCAPE:
-    case SDLK_P: return Command::Pause;
-    case SDLK_TAB: return (event.key.mod & SDL_KMOD_SHIFT) ? Command::PreviousHog : Command::NextHog;
-    case SDLK_RETURN:
-    case SDLK_KP_ENTER: return Command::EndTurn;
-    case SDLK_SPACE: return Command::Jump;
-    case SDLK_Q: return Command::PreviousWeapon;
-    case SDLK_E: return Command::NextWeapon;
-    default: return Command::None;
+Game::Command Game::commandForKey(const SDL_Event& event) const {
+    if (event.key.scancode == SDL_SCANCODE_ESCAPE) {
+        return Command::Pause;  // always, whatever the bindings (ui::kAlwaysPauseKey)
+    }
+    const auto control = keyboard_.controlFor(event.key.scancode);
+    if (!control) return Command::None;
+    switch (*control) {
+    case ui::Control::Pause: return Command::Pause;
+    case ui::Control::NextHog: return (event.key.mod & SDL_KMOD_SHIFT) ? Command::PreviousHog : Command::NextHog;
+    case ui::Control::EndTurn: return Command::EndTurn;
+    case ui::Control::Jump: return Command::Jump;
+    case ui::Control::PreviousWeapon: return Command::PreviousWeapon;
+    case ui::Control::NextWeapon: return Command::NextWeapon;
+    default: return Command::None;  // held controls are read in readInput()
     }
 }
 
@@ -340,16 +345,21 @@ game::PlayerInput Game::readInput() {
     // Keys held down are read directly; key presses (jump, weapon change)
     // are remembered by handleEvent until the next step.
     const bool* keys = SDL_GetKeyboardState(nullptr);
-    input.movement.forward = autoWalk_ || keys[SDL_SCANCODE_W] || keys[SDL_SCANCODE_UP];
-    input.movement.backward = keys[SDL_SCANCODE_S] || keys[SDL_SCANCODE_DOWN];
-    input.movement.turnLeft = keys[SDL_SCANCODE_A] || keys[SDL_SCANCODE_LEFT];
-    input.movement.turnRight = keys[SDL_SCANCODE_D] || keys[SDL_SCANCODE_RIGHT];
+    const auto held = [&](ui::Control control) { return keyboard_.held(control, keys); };
+    input.movement.forward = autoWalk_ || held(ui::Control::Forward);
+    input.movement.backward = held(ui::Control::Backward);
+    input.movement.turnLeft = held(ui::Control::TurnLeft);
+    input.movement.turnRight = held(ui::Control::TurnRight);
     input.movement.jump = jumpPressed_;
-    input.aimUp = keys[SDL_SCANCODE_R];
-    input.aimDown = keys[SDL_SCANCODE_F];
-    input.fire = keys[SDL_SCANCODE_LCTRL] || keys[SDL_SCANCODE_RCTRL] || keys[SDL_SCANCODE_X];
-    // The rifle sight: held with V or the right mouse button.
-    input.sight = autoSight_ || keys[SDL_SCANCODE_V] || (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_RMASK) != 0;
+    input.aimUp = held(ui::Control::AimUp);
+    input.aimDown = held(ui::Control::AimDown);
+    input.fire = held(ui::Control::Fire);
+    // The rifle sight: held with its key or the right mouse button.
+    input.sight = autoSight_ || held(ui::Control::Sight) ||
+                  (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_RMASK) != 0;
+    input.lookYawDegrees = sightLookYaw_;
+    input.lookPitchDegrees = sightLookPitch_;
+    sightLookYaw_ = sightLookPitch_ = 0.0f;
     if (autoFireAt_) {
         // Screenshot aid: hold fire for a while (half power for throws).
         constexpr double kAutoFireHoldSeconds = 0.75;
@@ -484,27 +494,21 @@ void Game::step(double seconds) {
     hud_.update(seconds, ui::describeTurn(world_, interface_.strings(), interface_.gameText()));
     audio_.update(seconds);
 
-    // When the active hog changes, or while it moves, the camera swings
-    // round behind the hog.
-    const auto active = world_.activeHog();
-    if (active != cameraHog_) {
-        cameraHog_ = active;
-        cameraSwingSecondsLeft_ = kCameraSwingSeconds;
+    // The camera stays behind the active hog (decision 15), swinging round
+    // smoothly as it turns.
+    if (const auto active = world_.activeHog()) {
+        camera_.turnTowards(game::hogFacing(world_.hogs()[*active]), seconds);
     }
-    if (active) {
-        const auto& hog = world_.hogs()[*active];
-        const bool moving = world_.phase() == game::MatchPhase::Playing &&
-                            (hog.motion.state == game::MotionState::Running ||
-                             hog.motion.state == game::MotionState::Swimming ||
-                             hog.motion.state == game::MotionState::Airborne);
-        if (moving || cameraSwingSecondsLeft_ > 0.0) {
-            camera_.turnTowards(game::hogFacing(hog), seconds);
-        }
-    }
-    cameraSwingSecondsLeft_ = std::max(0.0, cameraSwingSecondsLeft_ - seconds);
-    // The pads' right stick turns the camera, like dragging the mouse.
-    camera_.orbit(gamepads_.cameraTurn() * kPadOrbitDegreesPerSecond * static_cast<float>(seconds), 0.0f);
     camera_.update(seconds, cameraTarget());
+}
+
+void Game::lockMouseForSight(bool sighting) {
+    // Through the sight the mouse moves the view, so the pointer is held in
+    // the window (relative mode) instead of wandering off it.
+    SDL_Window* window = SDL_GetKeyboardFocus();
+    if (window && SDL_GetWindowRelativeMouseMode(window) != sighting) {
+        SDL_SetWindowRelativeMouseMode(window, sighting);
+    }
 }
 
 void Game::simulate(double seconds) {
@@ -512,6 +516,7 @@ void Game::simulate(double seconds) {
     for (int i = 0; i < steps; ++i) {
         step(timestep_.stepSeconds());
     }
+    lockMouseForSight(!paused_ && world_.sightView().has_value());
 }
 
 void Game::drawHog(const render::Camera& camera, int width, int height, const game::Hog& hog, std::size_t index) {

@@ -3,6 +3,16 @@
 All notable changes of OpenHogs, newest first. Version numbers follow
 the `project()` call in `CMakeLists.txt`.
 
+## Unreleased — refinement
+
+- **Controls**: the keys of a match can be changed on the CONTROLS screen,
+  as in the original (the row blinks until a key is pressed), and are
+  saved in `[Controls]` of `config/openhogs.ini`; `Esc` always pauses.
+- **Camera**: it stays behind the active hog; the mouse wheel zooms.
+- **Rifle sight**: the mouse turns the hog and aims while it is held; the
+  pad's left trigger holds it.
+- **Volumes** changed in VOLUME CONTROL are saved.
+
 ## 0.1.0 — first prototype release
 
 The first packaged build: the whole game can be played from start to

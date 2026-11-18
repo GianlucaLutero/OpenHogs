@@ -1455,6 +1455,12 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
                             hog.jetpackSecondsLeft <= 0.0f;
         sighting_ = input.sight && steady && phase_ == MatchPhase::Playing &&
                     weaponSpec(hog.selectedWeapon()).rifleView;
+        if (sighting_) {
+            // The mouse looks around through the sight (decision 131).
+            hog.yawRadians += glm::radians(input.lookYawDegrees);
+            hog.aimDegrees =
+                std::clamp(hog.aimDegrees + input.lookPitchDegrees, kLowestAimDegrees, kHighestAimDegrees);
+        }
         if (hog.sheltered()) {
             const MountSpec& mount = mountSpec(mounts_[*hog.mount].kind);
             hog.aimDegrees = std::clamp(hog.aimDegrees, mount.lowestAimDegrees, mount.highestAimDegrees);

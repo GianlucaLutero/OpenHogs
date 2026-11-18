@@ -52,6 +52,11 @@ struct PlayerInput {
     bool aimDown = false; // held
     bool fire = false;    // held: powered weapons charge while held and fire when released
     bool sight = false;   // held: look through the rifle sight (guns only, standing still)
+    // Looking around through the sight with the mouse, this step: degrees
+    // to turn the hog (left positive) and to raise its aim. Ignored when
+    // the hog is not looking through the sight.
+    float lookYawDegrees = 0.0f;
+    float lookPitchDegrees = 0.0f;
 };
 
 // What the player sees through the rifle sight: from the gun's muzzle,

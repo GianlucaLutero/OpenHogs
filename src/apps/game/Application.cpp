@@ -9,6 +9,8 @@
 #include "openhogs/game/FieldConditions.h"
 #include "openhogs/game/MatchSounds.h"
 
+#include "openhogs/audio/AudioSettings.h"
+#include "openhogs/core/IniFile.h"
 #include "openhogs/render/GlObjects.h"
 #include "openhogs/ui/BattleResultsPage.h"
 
@@ -48,14 +50,27 @@ audio::Volumes toVolumes(const ui::VolumeLevels& levels) {
     return volumes;
 }
 
+audio::Volumes mergeMenuVolumes(const audio::Volumes& loaded, const ui::VolumeLevels& levels) {
+    const ui::VolumeLevels loadedLevels = toVolumeLevels(loaded);
+    const audio::Volumes chosen = toVolumes(levels);
+    audio::Volumes merged = loaded;
+    if (levels.master != loadedLevels.master) merged.master = chosen.master;
+    if (levels.effects != loadedLevels.effects) merged.effects = chosen.effects;
+    if (levels.speech != loadedLevels.speech) merged.speech = chosen.speech;
+    merged.mode = chosen.mode;
+    return merged;
+}
+
 Application::Application(const core::VirtualFileSystem& vfs, ApplicationOptions options)
     : vfs_(vfs), maps_(std::move(options.maps)), width_(options.width), height_(options.height),
       window_("OpenHogs", options.width, options.height, options.hiddenWindow), savePath_(options.savePath),
-      versionRules_(game::versionRules(options.version)) {
+      versionRules_(game::versionRules(options.version)), configPath_(options.configPath),
+      loadedVolumes_(options.volumes) {
     sounds_ = options.sound ? std::make_unique<SoundPlayer>(vfs, options.volumes) : std::make_unique<SoundPlayer>();
     gamepads_ = std::make_unique<Gamepads>();
     interface_ = std::make_unique<Interface>(vfs);
-    frontEnd_ = std::make_unique<ui::FrontEnd>(interface_->strings(), maps_, toVolumeLevels(options.volumes));
+    frontEnd_ = std::make_unique<ui::FrontEnd>(interface_->strings(), maps_, toVolumeLevels(options.volumes),
+                                               options.keyBindings);
     frontEnd_->setSavedCampaign(CampaignSession::hasSave(savePath_));
     campaign_ = std::make_unique<CampaignSession>(vfs, *interface_, savePath_, versionRules_);
 
@@ -104,6 +119,7 @@ void Application::startMatch(const GameOptions& options) {
     game_.reset();  // free the previous match first
     GameOptions withRules = options;
     withRules.versionRules = versionRules_;
+    withRules.keyBindings = frontEnd_->keyBindings();
     game_ = std::make_unique<Game>(vfs_, withRules, *interface_, *sounds_, *gamepads_);
     originalMenu_->reset();  // back in the menus, the panel drops in again
 }
@@ -219,7 +235,11 @@ bool Application::handleFrontEndResult(const ui::FrontEndResult& result) {
         inCampaign_ = campaign_->loadSaved();
         break;
     case ui::FrontEndResult::Request::VolumesChanged:
-        sounds_->setVolumes(toVolumes(frontEnd_->volumes()));
+        sounds_->setVolumes(mergeMenuVolumes(loadedVolumes_, frontEnd_->volumes()));
+        saveVolumes();
+        break;
+    case ui::FrontEndResult::Request::ControlsChanged:
+        saveKeyBindings();
         break;
     case ui::FrontEndResult::Request::Quit:
         return false;
@@ -227,6 +247,24 @@ bool Application::handleFrontEndResult(const ui::FrontEndResult& result) {
         break;
     }
     return true;
+}
+
+void Application::saveVolumes() {
+    if (configPath_.empty()) return;
+    try {
+        core::updateIniFile(configPath_, "Audio", audio::volumesToIni(mergeMenuVolumes(loadedVolumes_, frontEnd_->volumes())));
+    } catch (const std::exception& error) {
+        std::cerr << "Warning: volumes not saved: " << error.what() << "\n";
+    }
+}
+
+void Application::saveKeyBindings() {
+    if (configPath_.empty()) return;
+    try {
+        core::updateIniFile(configPath_, "Controls", frontEnd_->keyBindings().iniValues());
+    } catch (const std::exception& error) {
+        std::cerr << "Warning: keys not saved: " << error.what() << "\n";
+    }
 }
 
 bool Application::sendMenuInputs(const std::vector<ui::MenuInput>& inputs) {
@@ -274,6 +312,11 @@ void Application::handleEvent(const SDL_Event& event, bool& running) {
         }
         return;
     }
+    if (!inCampaign_ && frontEnd_->waitingForKey() && event.type == SDL_EVENT_KEY_DOWN) {
+        // CONTROLS: the key pressed goes to the control waiting for one.
+        handleFrontEndResult(frontEnd_->keyPressed(keyName(event.key.scancode)));
+        return;
+    }
     std::optional<ui::MenuInput> input;
     if (event.type == SDL_EVENT_KEY_DOWN) {
         input = menuInputForKey(event.key.key);
@@ -308,6 +351,9 @@ void Application::update(double seconds) {
     if (!inCampaign_ && showsOriginalScreen()) {
         if (originalScreen() == OriginalScreen::Players) originalMenu_->setTeamPlayers(teamPlayers());
         if (originalScreen() == OriginalScreen::Results) originalMenu_->setSquadInfo(frontEnd_->resultLines(), 0);
+        const auto waiting = frontEnd_->waitingForKey();
+        originalMenu_->setWaitingRow(waiting ? std::optional<std::size_t>(static_cast<std::size_t>(*waiting))
+                                             : std::nullopt);
         originalMenu_->show(frontEnd_->menu(), originalScreen(), frontEnd_->menuUnder());
         originalMenu_->update(seconds);
     }
@@ -417,6 +463,9 @@ void Application::drawMenus(int width, int height) {
         campaign_->draw();
     } else if (showsOriginalScreen()) {
         if (originalScreen() == OriginalScreen::Results) originalMenu_->setSquadInfo(frontEnd_->resultLines(), 0);
+        const auto waiting = frontEnd_->waitingForKey();
+        originalMenu_->setWaitingRow(waiting ? std::optional<std::size_t>(static_cast<std::size_t>(*waiting))
+                                             : std::nullopt);
         originalMenu_->draw(ui, frontEnd_->menu(), originalScreen(), frontEnd_->menuUnder());
     } else {
         originalMenu_->reset();

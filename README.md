@@ -76,12 +76,13 @@ animations.
 | `destructible-objects` | ✅ done | Buildings, vehicles and scenery (houses, walls, bridges, trees...) have the executable's health and are destroyed by explosions and bullets; their box goes, hogs on top fall, and objectives on them pay their reward |
 | `medals`             | ✅ done | The campaign's medals as the executable counts them (survival, special medals per mission, island bonus after every fifth mission) and the BATTLE RESULTS page after a skirmish, with the special awards (THE ANNIHLATOR!!! ... PIG OF THE BATTLE) |
 | `boot-camp`          | ✅ done | The Boot Camp opens the campaign: training mode on CAMP (weapons only from crates, never running out), the chain of hidden crates and dummies revealed group by group, and the instructor's tips with his voice |
-| `weapons-complete`   | ✅ done (parts 1–3; vehicles to come) | Part 1 (done): cattle prod, super shotgun, roller and shrapnel grenades, airburst and super airburst, anti-personnel mine, super TNT, suicide, healing hands, self heal, skip turn and surrender. Part 2: flame thrower (sweeping burst), medicine dart and ball, tranquiliser, poison, freeze and madness gas with lasting effects, pick pocket, hide, shockwave; healing cures; the campaign ranks' loadouts with a number of uses per mission, as on the Hogs of War Wiki. Part 3: guided missile (steered in flight) and homing missile, the six shells (long range, mine, gas, fire rain, 1000 lbs, shock), confusion gas, jetpack, special ops, airstrike and fire-rain airstrike on a spot chosen with the power |
+| `weapons-complete`   | ✅ done (parts 1–3) | Part 1 (done): cattle prod, super shotgun, roller and shrapnel grenades, airburst and super airburst, anti-personnel mine, super TNT, suicide, healing hands, self heal, skip turn and surrender. Part 2: flame thrower (sweeping burst), medicine dart and ball, tranquiliser, poison, freeze and madness gas with lasting effects, pick pocket, hide, shockwave; healing cures; the campaign ranks' loadouts with a number of uses per mission, as on the Hogs of War Wiki. Part 3: guided missile (steered in flight) and homing missile, the six shells (long range, mine, gas, fire rain, 1000 lbs, shock), confusion gas, jetpack, special ops, airstrike and fire-rain airstrike on a spot chosen with the power |
 | `rifle-sight`        | ✅ done | The original's rifle sight: hold `V` (or the right mouse button) with a gun to aim in first person along the barrel, inside the black mask with the round hole and the crosshair (from the executable's `hole` model and `croshair.tim`); no movement allowance any more: as in the original, the hog may move until its turn ends |
 | `weapons-complete`   | ✅ done (part 4) | Buildings and vehicles: get into artillery guns, pillboxes, shelters and tents (medic and mash tents heal), tanks and troop carriers with VEHICLE/BUILDING INOUT; the object takes the harm and throws the hog out hurt when destroyed; inside, its own weapons (shells, heavy machine gun and flame thrower, bazooka and airburst) whose shots stay with it; tanks and carriers drive. SKIP TURN always last in the list; MAP VIEW and BINOCULARS |
 | `version-variants`   | ✅ done | The PC's or the PlayStation's rules (`[Game] Version`, `--rules`): computer hogs that walk, looping turn tunes and the PlayStation's hard mode (the campaign again with every enemy one rank higher, ending with FMV 09); the campaign's enemies now have the ranks their maps give them, with the Legend as the rank after Hero |
 | fidelity blocks      | ✅ done | the PC and PlayStation differences OpenHogs knows are in `version-variants`; what is left is in `docs/open-decisions.md` |
-| `release`            | 🔍 in review | Packaged builds for Windows and Linux: install rules and CPack archives, a release workflow on version tags, `config/openhogs.ini` found next to the programs and created from the default on the first run, `--version`, `CHANGELOG.md` |
+| `release`            | ✅ done | Packaged builds for Windows and Linux: install rules and CPack archives, a release workflow on version tags, `config/openhogs.ini` found next to the programs and created from the default on the first run, `--version`, `CHANGELOG.md` |
+| refinement: `controls` | 🔍 in review | Keys changed on the CONTROLS screen as in the original (the row blinks until a key is pressed) and saved in `[Controls]`; the camera stays behind the hog; through the rifle sight the mouse turns the hog and aims; volumes changed in VOLUME CONTROL are saved |
 
 ## Requirements
 
@@ -227,9 +228,12 @@ after the mission that conquers one. Then the **main menu**:
   hogs per team, the turn time (10–99 s), starting health (normal, half,
   double) and sudden death (every hog left with one point of health when
   round 10, 20 or 30 begins). Then **START GAME**;
-- **OPTIONS** → **VOLUME CONTROL**: master, effects, voices and music
-  volume (for this session; the starting values come from
-  `config/openhogs.ini`);
+- **OPTIONS** → **AUDIO**: the original's VOLUME CONTROL (mode, master,
+  effects, voices on or off), saved in `config/openhogs.ini`;
+- **OPTIONS** → **CONTROLS**: the keys of a match. Pick a row, then press
+  the key it should have (the row blinks meanwhile; `Esc` leaves it as it
+  was). A key taken from another control swaps with it. The choice is
+  saved in `config/openhogs.ini`;
 - **QUIT APPLICATION** asks for confirmation.
 
 In the menus the arrow keys (or `W` `A` `S` `D`) move and change the
@@ -295,6 +299,8 @@ build\bin\Release\openhogs.exe --map ESTU
 | `--screenshot <file>` | save the match (or, without `--map`, the menu) as an image and exit; `--seconds <s>` lets it run for a while first, `--auto-walk` makes the active hog run meanwhile, `--weapon <n>` and `--fire-at <s>` make it pick its n-th weapon and fire, `--pause` shows the pause menu, `--menu-keys down,enter` presses menu keys first |
 | `--game <folder>` / `--config <file>` / `--size <W>x<H>` | as for the other programs |
 
+The keys below are the defaults; OPTIONS → CONTROLS changes them.
+
 | Key | Action |
 |-----|--------|
 | `W` / `↑` | run forward |
@@ -303,16 +309,15 @@ build\bin\Release\openhogs.exe --map ESTU
 | `Space` | jump (hold `W` to jump forward) |
 | `Q` / `E` | previous / next weapon |
 | `R` / `F` | aim up / down (the white dots show where the shot goes) |
-| `V` or right mouse button (held) | look through the rifle sight, with a gun: first-person view along the barrel, crosshair in the middle; turn and aim, then fire |
-| `Ctrl` or `X` | fire; for grenades, mortars and bazookas hold it to throw further and release to fire; for special ops and airstrikes the power sets how far ahead the ring of dots (the target) lies |
+| `V` or right mouse button (held) | look through the rifle sight, with a gun: first-person view along the barrel, crosshair in the middle; turn and aim (the mouse does both too), then fire |
+| `Left Ctrl` or `X` | fire; for grenades, mortars and bazookas hold it to throw further and release to fire; for special ops and airstrikes the power sets how far ahead the ring of dots (the target) lies |
 | while a guided missile flies | `A`/`D` steer it left/right, `R`/`F` up/down |
 | with the jetpack on | `W`/`S`/`A`/`D` fly, hold `Space` to climb |
 | next to a building or vehicle | VEHICLE INOUT / BUILDING INOUT appear at the end of the weapon list: fire to get in (and again to get out); inside a tank or carrier, `W`/`S`/`A`/`D` drive |
 | `Tab` / `Shift+Tab` | another hog of the same team (only before moving) |
 | `Enter` | end the turn (after the match: back to the menu) |
-| left mouse button + drag | turn the camera around the hog |
-| mouse wheel | zoom |
-| `Esc` or `P` | pause menu: CONTINUE, or ABORT SKIRMISH (asks for confirmation) |
+| mouse wheel | camera nearer or farther (it always stays behind the hog) |
+| `P`, and always `Esc` | pause menu: CONTINUE, or ABORT SKIRMISH (asks for confirmation) |
 | `F12` | save a screenshot (`openhogs-<MAP>.png`) |
 
 **Gamepads** (any controller SDL knows, with Xbox button names) work in
@@ -325,7 +330,8 @@ PC: whoever's turn it is plays with the keyboard or any pad.
 | A | pick | jump |
 | B | back | – |
 | X or right trigger | – | fire (hold to throw further) |
-| right stick | – | up/down aim, left/right camera |
+| right stick | – | up/down aim |
+| left trigger | – | look through the rifle sight (held) |
 | LB / RB | – | previous / next weapon |
 | Y | – | end the turn |
 | Back | – | another hog (before moving) |
@@ -605,9 +611,38 @@ volume is its category volume multiplied by the master volume.
 `SoundMode` is the original's MODE: `mono` mixes both channels together,
 `stereo` and `surround` keep them (the PC version plays surround as
 stereo). In the game, OPTIONS → AUDIO opens the original's VOLUME CONTROL
-(MODE, MASTER, SFX, VOICES on or off); the music volume is only set here,
-as the original had no music control. OPTIONS → CONTROLS lists the keys
-and CREDITS rolls the original's credits.
+(MODE, MASTER, SFX, VOICES on or off) and saves its changes here; the
+music volume is only set here, as the original had no music control.
+CREDITS rolls the original's credits.
+
+### Keys
+
+OPTIONS → CONTROLS changes the keys of a match and saves them in the
+`[Controls]` section, one line per control with its keys separated by
+commas. The names are the physical keys' names (as on a US keyboard, so
+the layout stays in place on AZERTY or QWERTZ): `W`, `Up`, `Left Ctrl`,
+`Space`, `Return`, `Keypad Enter`, `Tab`...
+
+```ini
+[Controls]
+Forward = W, Up
+Backward = S, Down
+TurnLeft = A, Left
+TurnRight = D, Right
+Fire = Left Ctrl, X
+Jump = Space
+PreviousWeapon = Q
+NextWeapon = E
+Sight = V
+AimDown = F
+AimUp = R
+NextHog = Tab
+EndTurn = Return
+Pause = P
+```
+
+A control left out (or left empty) keeps its default keys. `Esc` always
+opens the pause menu and cannot be given to another control.
 
 ### Switching content packs on and off
 

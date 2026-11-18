@@ -228,9 +228,9 @@ TEST_CASE("ChaseCamera: stays above the terrain and keeps looking at the target"
     checkClose(lookDirection(pose), toFocus, 0.01);
 }
 
-// Zoom and pitch are limited so the player cannot lose the hog by zooming
-// out for ever or flip the camera over.
-TEST_CASE("ChaseCamera: zoom and pitch stay within limits", "[game][camera]") {
+// Zoom is limited so the player cannot lose the hog by zooming out for
+// ever or put the camera inside it.
+TEST_CASE("ChaseCamera: zoom stays within limits", "[game][camera]") {
     ChaseCamera camera;
     for (int i = 0; i < 100; ++i) camera.zoom(0.5f);
     const float closest = camera.distance();
@@ -238,12 +238,6 @@ TEST_CASE("ChaseCamera: zoom and pitch stay within limits", "[game][camera]") {
     CHECK(closest >= 100.0f);
     CHECK(camera.distance() <= 10000.0f);
     CHECK(camera.distance() > closest);
-
-    camera.orbit(0.0f, 500.0f);
-    const auto terrain = flatGround(-10000);
-    CHECK(camera.pose(terrain).pitchDegrees < 45.0f);
-    camera.orbit(0.0f, -1000.0f);
-    CHECK(camera.pose(terrain).pitchDegrees > -89.0f);
 }
 
 // While the hog runs, the camera swings round behind it: gradually (no

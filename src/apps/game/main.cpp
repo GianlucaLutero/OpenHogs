@@ -248,6 +248,10 @@ int runGame(Options options) {
     if (!options.gameFolder) {
         const auto ini = core::IniFile::load(options.configPath);
         appOptions.volumes = audio::volumesFromIni(ini);
+        appOptions.keyBindings = ui::KeyBindings::fromIni(ini);
+        // Volumes and keys changed in the menus are saved back into the
+        // file (not for screenshots, whose menu keys are scripted).
+        if (!screenshotOnly) appOptions.configPath = options.configPath;
         const std::string version = ini.getString("Game", "Version", "pc");
         const auto parsed = game::parseGameVersion(version);
         if (!parsed) throw std::runtime_error("[Game] Version must be pc or ps1, got " + version);

@@ -7,6 +7,7 @@
 #   FrontEndPictures - the original front end's .mgl pictures (FEBMP.MAD)
 #   Game           - one match: world, camera, drawing, HUD, pause menu
 #   Gamepads       - game controllers for the menus and the matches
+#   KeyboardControls - the player's key bindings as SDL key codes
 #   Interface      - fonts, icons, texts and shared drawing of the 2D interface
 #   MatchAudio     - voices, music and background sounds of a match
 #   MenuBackground - the original's picture behind the menus
@@ -27,6 +28,7 @@ add_executable(openhogs
     FrontEndPictures.cpp
     Game.cpp
     Gamepads.cpp
+    KeyboardControls.cpp
     Interface.cpp
     MatchAudio.cpp
     MenuBackground.cpp

@@ -1,6 +1,6 @@
 // IniFile.h
 //
-// Minimal reader for Windows-style .ini files.
+// Minimal reader (and value updater) for Windows-style .ini files.
 //
 // INI is used for every user-editable setting in OpenHogs (config/openhogs.ini,
 // the pack.ini manifest of each content pack) because it is easy to edit by
@@ -60,5 +60,25 @@ private:
     using Section = std::map<std::string, std::string>;
     std::map<std::string, Section> sections_;
 };
+
+// Settings changed in the game (volumes, keys) are written back into the
+// user's own openhogs.ini. Rewriting the whole file from an IniFile would
+// lose the comments that explain every setting, so these functions edit
+// the text instead and touch only the lines of the keys they set.
+
+// Returns `text` with `key` of `section` set to `value`:
+//   - an existing "Key = ..." line of that section is replaced (the first
+//     one, matched without regard to case);
+//   - a missing key is added after the section's last key line;
+//   - a missing section is added at the end with the key.
+// Everything else (comments, blank lines, other keys) is kept as it was.
+std::string setIniValue(std::string_view text, std::string_view section, std::string_view key,
+                        std::string_view value);
+
+// Applies setIniValue() to a file for every (key, value) pair of one
+// section and saves it. A file that does not exist yet is created.
+// Throws std::runtime_error if the file cannot be written.
+void updateIniFile(const std::filesystem::path& path, std::string_view section,
+                   const std::vector<std::pair<std::string, std::string>>& values);
 
 } // namespace openhogs::core

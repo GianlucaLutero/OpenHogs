@@ -28,11 +28,14 @@
 #pragma once
 
 #include "openhogs/game/FieldConditions.h"
+#include "openhogs/ui/KeyBindings.h"
 #include "openhogs/ui/Menu.h"
 #include "openhogs/ui/UiStrings.h"
 
 #include <map>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace openhogs::ui {
@@ -91,6 +94,7 @@ struct FrontEndResult {
         LoadCampaign, // continue the saved campaign
         Quit,
         VolumesChanged,
+        ControlsChanged,  // a key was given to a control: save keyBindings()
     };
     Request request = Request::None;
     std::string map;
@@ -101,7 +105,8 @@ struct FrontEndResult {
 
 class FrontEnd {
 public:
-    FrontEnd(UiStrings strings, std::vector<std::string> maps, VolumeLevels volumes);
+    FrontEnd(UiStrings strings, std::vector<std::string> maps, VolumeLevels volumes,
+             KeyBindings keyBindings = KeyBindings::defaults());
 
     // Whether LOAD GAME is offered (a saved campaign exists).
     void setSavedCampaign(bool exists);
@@ -118,6 +123,14 @@ public:
     // 0 a person, 1 the computer, 2 nobody (switched off).
     std::vector<int> teamControls() const;
     VolumeLevels volumes() const { return volumes_; }
+
+    // CONTROLS: activating a control's row makes it wait for a key (the row
+    // blinks, as in the original). While a control waits, the application
+    // sends the next key pressed to keyPressed() instead of menu inputs:
+    // Escape cancels, any other key is given to the control.
+    std::optional<Control> waitingForKey() const { return waitingControl_; }
+    FrontEndResult keyPressed(std::string_view key);
+    const KeyBindings& keyBindings() const { return keyBindings_; }
 
     // Goes back to the main menu (e.g. after a match).
     void showMainMenu();
@@ -143,7 +156,9 @@ private:
     MatchSettings fieldSettings() const;
     FrontEndResult handleOptions(const MenuResponse& response);
     FrontEndResult handleVolume(const MenuResponse& response);
-    FrontEndResult handleOptionPage(const MenuResponse& response);  // CONTROLS, CREDITS
+    FrontEndResult handleOptionPage(const MenuResponse& response);  // CREDITS
+    FrontEndResult handleControls(const MenuResponse& response);
+    void buildControlsMenu();
     FrontEndResult handleConfirmQuit(const MenuResponse& response);
     void open(FrontEndScreen screen);
 
@@ -151,6 +166,8 @@ private:
     std::vector<std::string> maps_;
     VolumeLevels volumes_;
     int speechWhenOn_ = kMaxVolumeLevel;  // the speech level VOICES ON goes back to
+    KeyBindings keyBindings_;
+    std::optional<Control> waitingControl_;  // CONTROLS: the row waiting for a key
     FrontEndScreen screen_ = FrontEndScreen::Main;
     bool onePlayer_ = false;     // the level list was opened from ONE PLAYER
     std::string chosenMap_;

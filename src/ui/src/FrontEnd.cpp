@@ -76,8 +76,8 @@ MenuSound soundFor(const MenuResponse& response) {
 
 } // namespace
 
-FrontEnd::FrontEnd(UiStrings strings, std::vector<std::string> maps, VolumeLevels volumes)
-    : strings_(std::move(strings)), maps_(std::move(maps)), volumes_(volumes) {
+FrontEnd::FrontEnd(UiStrings strings, std::vector<std::string> maps, VolumeLevels volumes, KeyBindings keyBindings)
+    : strings_(std::move(strings)), maps_(std::move(maps)), volumes_(volumes), keyBindings_(std::move(keyBindings)) {
     main_ = Menu(strings_.mainMenu, {action(kOnePlayer, strings_.onePlayer),
                                      action(kMultiPlayer, strings_.multiPlayer), action(kOptions, strings_.options),
                                      action(kQuit, strings_.quit)});
@@ -129,21 +129,7 @@ FrontEnd::FrontEnd(UiStrings strings, std::vector<std::string> maps, VolumeLevel
     options_ = Menu(strings_.options, {action(kAudio, strings_.audio), action(kControls, strings_.controls),
                                        action(kCredits, strings_.credits), action(kOptionsBack, strings_.back)});
 
-    // CONTROLS: what each key does (the game's keys are fixed for now).
-    // The names are the original's (fetext 349-360) where it has one.
-    const auto& names = strings_.controlNames;
-    const std::vector<std::pair<std::string, std::string>> keys{
-        {names[0], "W / UP"},         {names[1], "S / DOWN"},  {names[2], "A / LEFT"}, {names[3], "D / RIGHT"},
-        {names[5], "CTRL / X"},       {names[6], "SPACE"},     {names[7], "Q / E"},    {names[9], "F"},
-        {names[10], "R"},             {strings_.nextHog, "TAB"}, {strings_.endTurn, "ENTER"}, {names[11], "ESC / P"}};
-    std::vector<MenuItem> controlItems;
-    for (std::size_t i = 0; i < keys.size(); ++i) {
-        MenuItem item = action(static_cast<int>(i), keys[i].first);
-        item.detail = keys[i].second;
-        controlItems.push_back(item);
-    }
-    controlItems.push_back(action(kPageBack, strings_.back));
-    controls_ = Menu(strings_.controls, std::move(controlItems));
+    buildControlsMenu();
 
     // CREDITS: the rows themselves are drawn by the view (UiStrings::creditRows).
     credits_ = Menu(strings_.credits, {action(kPageBack, strings_.back)});
@@ -214,7 +200,10 @@ std::vector<int> FrontEnd::teamControls() const {
 
 void FrontEnd::open(FrontEndScreen screen) {
     screen_ = screen;
-    if (screen == FrontEndScreen::Controls) controls_.select(0);
+    if (screen == FrontEndScreen::Controls) {
+        controls_.select(0);
+        waitingControl_.reset();
+    }
     if (screen == FrontEndScreen::ConfirmQuit) {
         confirmQuit_.select(kNo);
     }
@@ -240,7 +229,13 @@ FrontEndResult FrontEnd::handle(MenuInput input) {
     case FrontEndScreen::FieldConditions: return handleFieldConditions(fieldConditions_.handle(input));
     case FrontEndScreen::Options: return handleOptions(options_.handle(input));
     case FrontEndScreen::Volume: return handleVolume(volume_.handle(input));
-    case FrontEndScreen::Controls: return handleOptionPage(controls_.handle(input));
+    case FrontEndScreen::Controls:
+        if (waitingControl_) {
+            // A pad's back button cancels the wait like Escape; nothing
+            // else is a key to give.
+            return input == MenuInput::Back ? keyPressed(kAlwaysPauseKey) : FrontEndResult{};
+        }
+        return handleControls(controls_.handle(input));
     case FrontEndScreen::Credits: return handleOptionPage(credits_.handle(input));
     case FrontEndScreen::ConfirmQuit: return handleConfirmQuit(confirmQuit_.handle(input));
     case FrontEndScreen::BattleResults: {
@@ -445,6 +440,69 @@ FrontEndResult FrontEnd::handleOptionPage(const MenuResponse& response) {
         open(FrontEndScreen::Options);
         result.sound = MenuSound::Back;
     }
+    return result;
+}
+
+void FrontEnd::buildControlsMenu() {
+    // CONTROLS: what each key does, with the original's names of the
+    // actions (fetext 349-360) where it has one.
+    const auto& names = strings_.controlNames;
+    const auto label = [&](Control control) -> const std::string& {
+        switch (control) {
+        case Control::Forward: return names[0];
+        case Control::Backward: return names[1];
+        case Control::TurnLeft: return names[2];
+        case Control::TurnRight: return names[3];
+        case Control::Fire: return names[5];
+        case Control::Jump: return names[6];
+        case Control::PreviousWeapon: return strings_.previousWeapon;
+        case Control::NextWeapon: return strings_.nextWeapon;
+        case Control::Sight: return names[8];
+        case Control::AimDown: return names[9];
+        case Control::AimUp: return names[10];
+        case Control::NextHog: return strings_.nextHog;
+        case Control::EndTurn: return strings_.endTurn;
+        case Control::Pause: return names[11];
+        }
+        return names[0];
+    };
+    std::vector<MenuItem> items;
+    for (std::size_t i = 0; i < kControlCount; ++i) {
+        const auto control = static_cast<Control>(i);
+        MenuItem item = action(static_cast<int>(i), label(control));
+        item.detail = keyBindings_.describe(control);
+        items.push_back(item);
+    }
+    items.push_back(action(kPageBack, strings_.back));
+    // Rebuilt after every change of key: the selection stays on its row.
+    const int selectedId = controls_.items().empty() ? 0 : controls_.items()[controls_.selectedIndex()].id;
+    controls_ = Menu(strings_.controls, std::move(items));
+    controls_.select(selectedId);
+}
+
+FrontEndResult FrontEnd::handleControls(const MenuResponse& response) {
+    if (response.type == Type::Activated && response.itemId >= 0 &&
+        response.itemId < static_cast<int>(kControlCount)) {
+        waitingControl_ = static_cast<Control>(response.itemId);
+        FrontEndResult result;
+        result.sound = MenuSound::Select;
+        return result;
+    }
+    return handleOptionPage(response);
+}
+
+FrontEndResult FrontEnd::keyPressed(std::string_view key) {
+    FrontEndResult result;
+    if (!waitingControl_) return result;
+    const Control control = *waitingControl_;
+    waitingControl_.reset();
+    if (!keyBindings_.bind(control, key)) {
+        result.sound = MenuSound::Back;  // Escape: the keys stay as they were
+        return result;
+    }
+    buildControlsMenu();
+    result.sound = MenuSound::Select;
+    result.request = FrontEndResult::Request::ControlsChanged;
     return result;
 }
 
