@@ -42,6 +42,7 @@ enum class Control {
     TurnRight,
     Fire,
     Jump,
+    WeaponMenu,  // the original's WEAPONS MENU: opens and closes it
     PreviousWeapon,
     NextWeapon,
     Sight,     // the original's AIM / LOOK: the rifle sight
@@ -51,7 +52,7 @@ enum class Control {
     EndTurn,
     Pause,
 };
-inline constexpr std::size_t kControlCount = 14;
+inline constexpr std::size_t kControlCount = 15;
 
 // The key that always pauses a match, whatever the bindings say, so that a
 // player who rebinds every key can still reach the pause menu. It cannot
@@ -64,7 +65,8 @@ std::string_view controlIniKey(Control control);
 class KeyBindings {
 public:
     // OpenHogs' layout: W/S/A/D or the arrows, Ctrl or X to fire, Space to
-    // jump, Q/E weapons, V sight, F/R angle, Tab hog, Enter end turn, P pause.
+    // jump, C weapon menu, Q/E weapons, V sight, F/R angle, Tab hog, Enter
+    // end turn, P pause.
     static KeyBindings defaults();
 
     // The defaults, with every control named in [Controls] replaced by the

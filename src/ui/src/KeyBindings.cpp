@@ -26,6 +26,7 @@ const std::array<ControlInfo, kControlCount>& controlTable() {
         {"TurnRight", {"D", "Right"}},
         {"Fire", {"Left Ctrl", "X"}},
         {"Jump", {"Space"}},
+        {"WeaponMenu", {"C"}},
         {"PreviousWeapon", {"Q"}},
         {"NextWeapon", {"E"}},
         {"Sight", {"V"}},

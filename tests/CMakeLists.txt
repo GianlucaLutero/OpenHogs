@@ -66,6 +66,7 @@ add_executable(openhogs_tests
     ui/TextLayoutTests.cpp
     video/BinkTests.cpp
     ui/KeyBindingsTests.cpp
+    ui/WeaponMenuTests.cpp
     ui/MenuTests.cpp
     ui/HudLayoutTests.cpp
     ui/OriginalMenuTests.cpp

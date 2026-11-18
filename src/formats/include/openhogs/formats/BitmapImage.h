@@ -20,6 +20,9 @@ namespace openhogs::formats {
 enum class BitmapTransparency {
     None,           // every pixel is opaque
     PaletteIndex0,  // palette entry 0 is transparent (the fonts' background)
+    // Magenta is transparent, the key colour of the PC menus: (255, 0, 255)
+    // and the 15-bit form (248, 0, 248) most pictures were made in.
+    Magenta,
 };
 
 // Decodes a .BMP file into top-row-first RGBA. Throws core::FormatError for

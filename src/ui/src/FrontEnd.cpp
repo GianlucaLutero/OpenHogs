@@ -508,6 +508,7 @@ void FrontEnd::buildControlsMenu() {
         case Control::TurnRight: return names[3];
         case Control::Fire: return names[5];
         case Control::Jump: return names[6];
+        case Control::WeaponMenu: return names[7];
         case Control::PreviousWeapon: return strings_.previousWeapon;
         case Control::NextWeapon: return strings_.nextWeapon;
         case Control::Sight: return names[8];

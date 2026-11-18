@@ -45,6 +45,8 @@ constexpr float kExplosionLift = 30.0f;
 
 // Explosions set off explosives lying within their radius after this delay.
 constexpr float kChainReactionSeconds = 0.15f;
+// Two mines closer than this count as put down on the same spot.
+constexpr float kStackedMineDistance = 60.0f;
 // The gases' lasting effects (the wiki): poison takes 10 points at each of
 // the hog's turns, madness makes it run for about ten seconds.
 constexpr float kPoisonDamage = 10.0f;
@@ -175,6 +177,10 @@ void World::handleAiming(std::size_t hogIndex, const PlayerInput& input, double 
         if (fireJustPressed) dropJetpack(hogIndex, false, events);
         return;
     }
+    if (chargeRetreat_) {
+        hog.charging = false;  // TNT is burning: time to run, not to shoot
+        return;
+    }
 
     // Weapons are used standing on dry ground.
     const bool canUseWeapon = hog.alive && !isAirborne(hog) && hog.motion.state != MotionState::Swimming;
@@ -183,6 +189,9 @@ void World::handleAiming(std::size_t hogIndex, const PlayerInput& input, double 
         return;
     }
 
+    if (input.chooseWeapon && !hog.charging && *input.chooseWeapon < hog.weapons.size()) {
+        hog.weaponSlot = *input.chooseWeapon;
+    }
     if (input.weaponStep != 0 && !hog.charging && !hog.weapons.empty()) {
         const auto count = static_cast<long long>(hog.weapons.size());
         const long long slot = (static_cast<long long>(hog.weaponSlot) + input.weaponStep) % count;
@@ -195,6 +204,7 @@ void World::handleAiming(std::size_t hogIndex, const PlayerInput& input, double 
                                 kLowestAimDegrees, kHighestAimDegrees);
 
     const WeaponSpec& spec = weaponSpec(hog.selectedWeapon());
+    hog.aimDegrees = std::max(hog.aimDegrees, spec.lowestAimDegrees);  // a mortar lobs
     if (!spec.usesPower) {
         if (fireJustPressed) {
             fire(hogIndex, 1.0f, events);
@@ -262,6 +272,30 @@ void World::hurtSwimmers(double seconds, std::vector<GameEvent>& events) {
             damageHog(hogs_, i, whole, events);
         }
     }
+}
+
+void World::armMines() {
+    for (auto& projectile : projectiles_) projectile.armed = true;
+    // The wiki: a mine put down on another one takes it for a hog and
+    // goes off (both then go up, the second set off by the first).
+    for (std::size_t i = 0; i < projectiles_.size(); ++i) {
+        const WeaponSpec& spec = weaponSpec(projectiles_[i].weapon);
+        if (spec.kind != WeaponKind::Placed || spec.triggerRadius <= 0.0f || projectiles_[i].bomblet) continue;
+        for (std::size_t j = i + 1; j < projectiles_.size(); ++j) {
+            const WeaponSpec& other = weaponSpec(projectiles_[j].weapon);
+            if (other.kind == WeaponKind::Placed && other.triggerRadius > 0.0f &&
+                glm::length(projectiles_[i].position - projectiles_[j].position) < kStackedMineDistance) {
+                projectiles_[i].fuseSecondsLeft = kChainReactionSeconds;
+            }
+        }
+    }
+}
+
+bool World::chargeBurning() const {
+    return std::any_of(projectiles_.begin(), projectiles_.end(), [](const Projectile& projectile) {
+        const WeaponSpec& spec = weaponSpec(projectile.weapon);
+        return spec.kind == WeaponKind::Placed && spec.triggerRadius <= 0.0f && projectile.fuseSecondsLeft > 0.0f;
+    });
 }
 
 void World::explodeDrownedHogs(std::vector<GameEvent>& events) {
@@ -641,18 +675,26 @@ void World::fire(std::size_t hogIndex, float power, std::vector<GameEvent>& even
     Hog& hog = hogs_[hogIndex];
     const WeaponSpec& spec = weaponSpec(hog.selectedWeapon());
     useStock(hogIndex);
+    // Any weapon used arms the mines put down before it (the wiki).
+    armMines();
+    // The wiki's explosives: the first mine of a turn does not use the
+    // turn up, and TNT leaves the hog its fuse's time to get away.
+    const bool placed = spec.kind == WeaponKind::Placed;
+    const bool firstMine = placed && spec.triggerRadius > 0.0f && minesThisTurn_ == 0;
+    const bool charge = placed && spec.fuseSeconds > 0.0f;
 
     // Guns fire from the aiming pose; other weapons have their own motion.
     if (spec.useAnimation != kNoAnimation) {
         hog.held = HeldAnimation{spec.useAnimation, AnimationPlayer::Repeat::Once};
         hog.animation.play(spec.useAnimation, AnimationPlayer::Repeat::Once, true);
     }
-    if (spec.endsTurn) {
+    if (spec.endsTurn && !firstMine && !charge) {
         phase_ = MatchPhase::Resolving;
         settleSecondsLeft_ = kSettleSeconds;
     } else {
         fireWasHeld_ = true;  // used once per press; the turn goes on
     }
+    if (charge) chargeRetreat_ = true;
 
     GameEvent fired;
     fired.type = GameEventType::Fired;
@@ -678,7 +720,12 @@ void World::fire(std::size_t hogIndex, float power, std::vector<GameEvent>& even
         events.push_back(fired);
         glm::vec3 spot = hog.position + hogFacing(hog) * kMuzzleForward;
         spot.y = map_.groundHeight(spot.x, spot.z, hog.position.y);
-        projectiles_.push_back(launchProjectile(spec.id, hogIndex, spot, glm::vec3(0.0f), 0.0f));
+        Projectile explosive = launchProjectile(spec.id, hogIndex, spot, glm::vec3(0.0f), 0.0f);
+        if (spec.triggerRadius > 0.0f) {
+            explosive.armed = false;  // harmless until the turn ends or another weapon is used
+            ++minesThisTurn_;
+        }
+        projectiles_.push_back(explosive);
         break;
     }
     case WeaponKind::Heal:
@@ -1292,7 +1339,12 @@ void World::fireShot(std::vector<GameEvent>& events) {
 }
 
 void World::detonate(const Projectile& projectile, std::vector<GameEvent>& events) {
-    const WeaponSpec& spec = weaponSpec(projectile.weapon);
+    WeaponSpec spec = weaponSpec(projectile.weapon);
+    if (projectile.bomblet) {
+        // Some weapons' pieces burst smaller than the weapon itself.
+        if (spec.bombletDamage > 0.0f) spec.damage = spec.bombletDamage;
+        if (spec.bombletRadius > 0.0f) spec.blastRadius = spec.bombletRadius;
+    }
     const glm::vec3 centre = projectile.position + glm::vec3(0.0f, kExplosionLift, 0.0f);
 
     GameEvent explosion;
@@ -1477,6 +1529,11 @@ void World::turnBegan(std::vector<GameEvent>& events) {
     started.hog = turns_->activeHog();
     events.push_back(started);
 
+    // The last turn's mines are armed now; this turn starts afresh.
+    armMines();
+    minesThisTurn_ = 0;
+    chargeRetreat_ = false;
+
     // A flight still going on when the turn changed ends as if the player
     // had pressed fire: the jetpack falls away and the parachute opens.
     for (std::size_t i = 0; i < hogs_.size(); ++i) {
@@ -1564,7 +1621,7 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
             const MountSpec& mount = mountSpec(mounts_[*hog.mount].kind);
             hog.aimDegrees = std::clamp(hog.aimDegrees, mount.lowestAimDegrees, mount.highestAimDegrees);
         }
-        if (input.weaponStep != 0) hog.looking = Hog::Looking::Normally;
+        if (input.weaponStep != 0 || input.chooseWeapon) hog.looking = Hog::Looking::Normally;
         applyFooter(*active);  // getting in appears and goes as it walks
     }
 
@@ -1660,6 +1717,11 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
         if (!hogs_[turns_->activeHog()].alive || matchIsDecided()) {
             // The active hog died (a mine, a fall) or the last enemy did:
             // let things settle, then move on.
+            phase_ = MatchPhase::Resolving;
+            settleSecondsLeft_ = kSettleSeconds;
+        } else if (chargeRetreat_ && !chargeBurning()) {
+            // The TNT has gone off: the turn is over once things settle.
+            chargeRetreat_ = false;
             phase_ = MatchPhase::Resolving;
             settleSecondsLeft_ = kSettleSeconds;
         } else if (turns_->update(seconds, distanceMoved, hogs_)) {

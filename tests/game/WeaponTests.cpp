@@ -438,9 +438,7 @@ TEST_CASE("World: explosions set off nearby explosives", "[game][world][weapons]
     hogs[1].position.x = 1500.0f;
     World world(map, hogs);
 
-    runWorld(world, fireKey(), 1);  // TNT at the hog's feet, 4 s fuse
-    // Walking is not possible while the shot resolves, so the hog stays by
-    // its TNT; it is the explosion we are after.
+    runWorld(world, fireKey(), 1);  // TNT at the hog's feet; it stays there
     const auto events = runWorld(world, PlayerInput{}, 50 * 6);
     CHECK(count(events, GameEventType::Explosion) == 1);
     CHECK(world.hogs()[0].health < 100.0f);
@@ -484,4 +482,85 @@ TEST_CASE("World: long falls hurt", "[game][world][weapons]") {
 
     CHECK(world.hogs()[0].position.y == 0.0f);
     CHECK(world.hogs()[0].health == Approx(100.0f - fallDamage(1000.0f)).margin(1.0f));
+}
+
+// The wiki's TNT: once it is put down the hog has the fuse's 5 seconds to
+// get away, and only then is the turn over. Without that time TNT could
+// only ever hurt the hog that used it.
+TEST_CASE("World: after putting TNT down the hog may run, then the turn ends", "[game][world][weapons]") {
+    const auto map = flatMap();
+    auto hogs = duel(map, {WeaponId::Tnt});
+    hogs[1].position.x = 3000.0f;
+    World world(map, hogs);
+    runWorld(world, fireKey(), 1);
+    CHECK(world.phase() == MatchPhase::Playing);
+    PlayerInput run;
+    run.movement.backward = true;  // away from the charge in front of it
+    runWorld(world, run, 50 * 3);
+    CHECK(world.activeHog() == std::optional<std::size_t>(0));
+    runWorld(world, PlayerInput{}, 50 * 6);
+    CHECK(world.hogs()[0].health == Approx(kMaxHealth));  // got away in time
+    CHECK(world.activeHog() == std::optional<std::size_t>(1));
+}
+
+// The wiki's mines: the first one of a turn does not use the turn up, and
+// it stays harmless (even with its own hog next to it) until the turn
+// ends or another weapon is used; then a hog coming near sets it off.
+TEST_CASE("World: the first mine keeps the turn and waits for the turn to end", "[game][world][weapons]") {
+    const auto map = flatMap();
+    auto hogs = duel(map, {WeaponId::Mine, WeaponId::Rifle});
+    hogs[1].position.x = 3000.0f;
+    World world(map, hogs);
+    runWorld(world, fireKey(), 1);
+    runWorld(world, PlayerInput{}, 50 * 3);
+    CHECK(world.phase() == MatchPhase::Playing);
+    CHECK(world.activeHog() == std::optional<std::size_t>(0));
+    CHECK(world.hogs()[0].health == Approx(kMaxHealth));  // standing on its own mine, unharmed
+
+    world.endTurn();  // now the mine is armed, and its hog is still beside it
+    const auto events = runWorld(world, PlayerInput{}, 50 * 3);
+    CHECK(count(events, GameEventType::Explosion) == 1);
+    CHECK(world.hogs()[0].health < kMaxHealth);
+}
+
+// The wiki: a second mine of the same turn is a weapon used like any
+// other, and the turn is over.
+TEST_CASE("World: a second mine ends the turn", "[game][world][weapons]") {
+    const auto map = flatMap();
+    auto hogs = duel(map, {WeaponId::Mine});
+    hogs[1].position.x = 3000.0f;
+    World world(map, hogs);
+    runWorld(world, fireKey(), 1);
+    runWorld(world, PlayerInput{}, 2);
+    PlayerInput turnAway;
+    turnAway.movement.turnLeft = true;  // the next one goes elsewhere
+    runWorld(world, turnAway, 50);
+    runWorld(world, fireKey(), 1);
+    CHECK(world.phase() == MatchPhase::Resolving);
+}
+
+// The anti-personnel mine throws four fragments around when it goes off,
+// as the wiki says: five blasts in all, not one.
+TEST_CASE("World: an anti-personnel mine bursts into four fragments", "[game][world][weapons]") {
+    const auto map = flatMap();
+    auto hogs = duel(map, {WeaponId::AntiPersonnelMine});
+    hogs[1].position.x = 3000.0f;
+    World world(map, hogs);
+    runWorld(world, fireKey(), 1);
+    world.endTurn();  // armed, with its hog beside it
+    const auto events = runWorld(world, PlayerInput{}, 50 * 6);
+    CHECK(count(events, GameEventType::Explosion) == 5);
+}
+
+// The executable keeps a mortar at 45 degrees or more (it lobs its shell)
+// and marks the limit on the angle gauge; the hog cannot aim it lower.
+TEST_CASE("World: a mortar is never aimed below 45 degrees", "[game][world][weapons]") {
+    const auto map = flatMap();
+    auto hogs = duel(map, {WeaponId::Mortar});
+    hogs[0].aimDegrees = 0.0f;
+    World world(map, hogs);
+    PlayerInput down;
+    down.aimDown = true;
+    runWorld(world, down, 50);
+    CHECK(world.hogs()[0].aimDegrees == Approx(45.0f));
 }
