@@ -30,6 +30,7 @@
 #include "openhogs/game/Training.h"
 #include "openhogs/game/TurnSystem.h"
 
+#include <cstdint>
 #include <functional>
 #include <map>
 #include <set>
@@ -74,6 +75,9 @@ struct ExplosionEffect {
     glm::vec3 position{0.0f};
     float radius = 0.0f;
     float ageSeconds = 0.0f;
+    // Counts every explosion of the match (1 for the first), so the
+    // renderer can tell which ones are new.
+    std::uint32_t serial = 0;
 };
 struct TracerEffect {
     glm::vec3 from{0.0f};
@@ -197,6 +201,7 @@ private:
     void damageObjects(const glm::vec3& centre, float radius, float damage, std::vector<GameEvent>& events);
     void removeDestroyedObject(const Destructible& target, std::vector<GameEvent>& events);
     void burnDrums(double seconds, std::vector<GameEvent>& events);
+    void addExplosion(const glm::vec3& centre, float radius);
     void refreshStockWeapons(int team);
     void useStock(std::size_t hogIndex);
     std::optional<glm::vec3> nearestShore(const glm::vec3& from) const;
@@ -245,6 +250,7 @@ private:
         bool poison = false;
     };
     std::vector<BurningDrum> burningDrums_;
+    std::uint32_t explosionCount_ = 0;
     bool training_ = false;
     std::map<std::size_t, std::vector<CollisionBox>> hiddenBoxes_;  // hidden object -> its boxes
     std::vector<std::size_t> trainingCrates_;  // pickups of the Boot Camp's chain

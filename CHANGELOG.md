@@ -43,6 +43,8 @@ the `project()` call in `CMakeLists.txt`.
   enough blows up two seconds later. Walls and houses hold out a little
   longer below two thirds of their health, and a hog standing on an object
   that is destroyed takes the rest of the blow.
+- **Effects** with the original pictures: explosions throw fire, smoke and
+  earth (foam in water) and leave a scorch mark; hogs have shadows.
 
 ## 0.1.0 — first prototype release
 

@@ -85,7 +85,7 @@ animations.
 | refinement: `controls` | ✅ done | Keys changed on the CONTROLS screen as in the original (the row blinks until a key is pressed) and saved in `[Controls]`; the camera stays behind the hog; through the rifle sight the mouse turns the hog and aims; volumes changed in VOLUME CONTROL are saved |
 | refinement: `match-rules` | ✅ done | The PlayStation's label over the hog in play (name or rank, heart and health) instead of health bars; DEATHMATCH LIMIT and SELECT PIG in FIELD CONDITIONS; one nation per team; the PlayStation rules by default; the executable's slip in the battle awards; swimming and the jetpack as the Hogs of War Wiki describes them (drowned hogs explode; the jetpack is dropped with fire and explodes where it lands) |
 | refinement: `original-hud-2` | ✅ done | The original's weapon menu (brass panel with four tabs, icons, uses left, selection frame); the angle gauge's limit mark for the mortar and the guided missile; TNT and mines as the wiki describes them, used by the computer too. The radar in the bottom-left corner (the map tilted and turned with the camera, hogs and crates marked) and the text box that brings crate messages, Boot Camp instructions and the teams' strength down from the top |
-| refinement: `effects` | 🔍 in review (part 1) | Deaths as the original (17 dying animations, the hog blows up and leaves its boots); crates come down by parachute; crates, explosive drums and animals can be destroyed, drums blow up two seconds after catching fire; scenery holds out longer below two thirds; a hog on a destroyed object takes the rest of the blow. Part 2: the original's effect sprites |
+| refinement: `effects` | 🔍 in review (part 2) | Deaths as the original (17 dying animations, the hog blows up and leaves its boots); crates come down by parachute; crates, explosive drums and animals can be destroyed, drums blow up two seconds after catching fire; scenery holds out longer below two thirds; a hog on a destroyed object takes the rest of the blow. Part 2: the original's effect pictures for fire, smoke, earth, foam, scorch marks and hog shadows |
 
 ## Requirements
 
@@ -356,7 +356,8 @@ The weapons, their names, models and sounds are described in
 pictures in [`docs/formats/fonts.md`](docs/formats/fonts.md) and
 [`docs/formats/mgl.md`](docs/formats/mgl.md), the menus' layout and animation in
 [`docs/formats/front-end.md`](docs/formats/front-end.md), the campaign
-in [`docs/formats/campaign.md`](docs/formats/campaign.md).
+in [`docs/formats/campaign.md`](docs/formats/campaign.md), the effects (particles,
+explosions, shadows) in [`docs/formats/effects.md`](docs/formats/effects.md).
 
 ### Extracting the game data
 

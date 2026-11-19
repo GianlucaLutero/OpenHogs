@@ -54,6 +54,19 @@ std::vector<scene::Vertex> makeSphere() {
     return v;
 }
 
+// A square 1 unit wide in the XY plane, centred, texture upright.
+std::vector<scene::Vertex> makeQuad() {
+    std::vector<scene::Vertex> v;
+    const glm::vec3 a{-0.5f, -0.5f, 0.0f}, b{0.5f, -0.5f, 0.0f}, c{0.5f, 0.5f, 0.0f}, d{-0.5f, 0.5f, 0.0f};
+    v.push_back({a, {0.0f, 1.0f}, 1.0f});
+    v.push_back({b, {1.0f, 1.0f}, 1.0f});
+    v.push_back({c, {1.0f, 0.0f}, 1.0f});
+    v.push_back({a, {0.0f, 1.0f}, 1.0f});
+    v.push_back({c, {1.0f, 0.0f}, 1.0f});
+    v.push_back({d, {0.0f, 0.0f}, 1.0f});
+    return v;
+}
+
 } // namespace
 
 EffectsRenderer::EffectsRenderer() {
@@ -61,6 +74,94 @@ EffectsRenderer::EffectsRenderer() {
     whiteTexture_ = std::make_unique<GlTexture>(formats::RgbaImage{1, 1, {255, 255, 255, 255}});
     cube_ = std::make_unique<GlMesh>(makeCube());
     sphere_ = std::make_unique<GlMesh>(makeSphere());
+    quad_ = std::make_unique<GlMesh>(makeQuad());
+}
+
+void EffectsRenderer::setPictures(const EffectPictures& pictures) {
+    GpuPictures gpu{GlTexture(pictures.fireball), GlTexture(pictures.smoke), GlTexture(pictures.foam),
+                    GlTexture(pictures.scorch), GlTexture(pictures.shadow), {}};
+    for (const auto& frame : pictures.clod) gpu.clod.emplace_back(frame);
+    pictures_.emplace(std::move(gpu));
+}
+
+void EffectsRenderer::drawFacing(const GlTexture& texture, const glm::vec3& centre, float size,
+                                 const glm::vec4& tint) const {
+    glm::mat4 model(1.0f);
+    model[0] = glm::vec4(cameraRight_ * size, 0.0f);
+    model[1] = glm::vec4(cameraUp_ * size, 0.0f);
+    model[2] = glm::vec4(glm::cross(cameraRight_, cameraUp_), 0.0f);
+    model[3] = glm::vec4(centre, 1.0f);
+    shader_->setMatrix("uModel", model);
+    shader_->setVector("uTint", tint);
+    texture.bind();
+    quad_->draw();
+}
+
+void EffectsRenderer::drawFlat(const GlTexture& texture, const glm::vec3& centre, float size,
+                               const glm::vec4& tint) const {
+    // Lying on the ground, a little above it so the terrain does not hide it.
+    glm::mat4 model(1.0f);
+    model[0] = glm::vec4(size, 0.0f, 0.0f, 0.0f);
+    model[1] = glm::vec4(0.0f, 0.0f, -size, 0.0f);
+    model[2] = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
+    model[3] = glm::vec4(centre + glm::vec3(0.0f, 4.0f, 0.0f), 1.0f);
+    shader_->setMatrix("uModel", model);
+    shader_->setVector("uTint", tint);
+    texture.bind();
+    quad_->draw();
+}
+
+void EffectsRenderer::drawParticles(const std::vector<scene::Particle>& particles) const {
+    if (!pictures_) return;
+    using scene::ParticleSprite;
+    glEnable(GL_BLEND);
+    glDepthMask(GL_FALSE);
+
+    // Mixed over the scene: marks, then smoke, foam and clods.
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    for (const auto& particle : particles) {
+        if (particle.visible() && particle.sprite == ParticleSprite::Scorch) {
+            drawFlat(pictures_->scorch, particle.position, particle.size(), glm::vec4(1.0f, 1.0f, 1.0f, particle.opacity()));
+        }
+    }
+    for (const auto& particle : particles) {
+        if (!particle.visible()) continue;
+        const glm::vec4 tint(glm::vec3(particle.shade), particle.opacity());
+        switch (particle.sprite) {
+        case ParticleSprite::Smoke: drawFacing(pictures_->smoke, particle.position, particle.size(), tint); break;
+        case ParticleSprite::Foam: drawFacing(pictures_->foam, particle.position, particle.size(), tint); break;
+        case ParticleSprite::Clod:
+            if (!pictures_->clod.empty()) {
+                drawFacing(pictures_->clod[particle.frame(pictures_->clod.size())], particle.position, particle.size(), tint);
+            }
+            break;
+        case ParticleSprite::Fireball:
+        case ParticleSprite::Scorch: break;
+        }
+    }
+    // Fire is added to the scene: its black surround adds nothing.
+    glBlendFunc(GL_ONE, GL_ONE);
+    for (const auto& particle : particles) {
+        if (particle.visible() && particle.sprite == ParticleSprite::Fireball) {
+            const float glow = particle.opacity();
+            drawFacing(pictures_->fireball, particle.position, particle.size(), glm::vec4(glow, glow, glow, 1.0f));
+        }
+    }
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDepthMask(GL_TRUE);
+    glDisable(GL_BLEND);
+    whiteTexture_->bind();
+}
+
+void EffectsRenderer::drawShadow(const glm::vec3& feet, float width, float opacity) const {
+    if (!pictures_) return;
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDepthMask(GL_FALSE);
+    drawFlat(pictures_->shadow, feet, width, glm::vec4(1.0f, 1.0f, 1.0f, opacity));
+    glDepthMask(GL_TRUE);
+    glDisable(GL_BLEND);
+    whiteTexture_->bind();
 }
 
 void EffectsRenderer::begin(const Camera& camera, int width, int height) const {
@@ -69,7 +170,11 @@ void EffectsRenderer::begin(const Camera& camera, int width, int height) const {
     glDisable(GL_CULL_FACE);
     const float aspect = height > 0 ? static_cast<float>(width) / static_cast<float>(height) : 1.0f;
     shader_->use();
-    shader_->setMatrix("uViewProjection", camera.projectionMatrix(aspect) * camera.viewMatrix());
+    const glm::mat4 view = camera.viewMatrix();
+    shader_->setMatrix("uViewProjection", camera.projectionMatrix(aspect) * view);
+    // The camera's right and up directions are the view matrix's first rows.
+    cameraRight_ = glm::vec3(view[0][0], view[1][0], view[2][0]);
+    cameraUp_ = glm::vec3(view[0][1], view[1][1], view[2][1]);
     shader_->setInt("uTexture", 0);
     glActiveTexture(GL_TEXTURE0);
     whiteTexture_->bind();

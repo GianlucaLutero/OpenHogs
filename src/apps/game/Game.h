@@ -59,6 +59,7 @@
 #include "openhogs/render/EffectsRenderer.h"
 #include "openhogs/render/MapRenderer.h"
 #include "openhogs/scene/CharacterLibrary.h"
+#include "openhogs/scene/Particles.h"
 #include "openhogs/ui/Hud.h"
 #include "openhogs/ui/MessageBanner.h"
 #include "openhogs/ui/PauseMenu.h"
@@ -210,7 +211,12 @@ private:
     // Where each crate rests (map object number), and the crates now
     // coming down by parachute (pickup index).
     std::map<std::size_t, glm::mat4> crateTransforms_;
-    std::set<std::size_t> fallingCrates_;  // the round the strength bar was last shown in
+    std::set<std::size_t> fallingCrates_;
+    // The effects' particles, and the last explosion they were made for.
+    scene::ParticleSystem particles_;
+    std::uint32_t lastExplosion_ = 0;
+    void spawnExplosionParticles();
+    void drawShadows();  // the round the strength bar was last shown in
     void openWeaponMenu();
     GameRequest handleWeaponMenuKey(const SDL_Event& event);
     // Mouse movement through the rifle sight since the last step, in

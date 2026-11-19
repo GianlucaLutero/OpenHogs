@@ -4,6 +4,8 @@
 
 #include "MenuControls.h"
 
+#include "openhogs/formats/PackageArchive.h"
+#include "openhogs/formats/TimImage.h"
 #include "openhogs/game/Weapons.h"
 #include "openhogs/scene/CharacterExpressions.h"
 #include "openhogs/scene/MapScene.h"
@@ -90,6 +92,31 @@ constexpr std::size_t kBootsObject = 2'000'000;
 constexpr std::size_t kParachuteObject = 3'000'000;
 // Where a falling crate's parachute starts, above the crate's middle.
 constexpr float kParachuteHeight = 96.0f;  // the crate's half height: WE_CHUT2 hangs from its origin
+// Hog shadows: the blob's width on the ground and how dark it is.
+constexpr float kShadowWidth = 150.0f;
+constexpr float kShadowOpacity = 0.45f;
+// The effect pictures (scene/Particles.h).
+const char* const kEffectPictures = "Language/Tims/expltims.mad";
+
+render::EffectPictures loadEffectPictures(const core::VirtualFileSystem& vfs) {
+    const auto archive = formats::PackageArchive::parse(vfs.readFile(kEffectPictures));
+    const auto picture = [&](const std::string& name) {
+        const auto* entry = archive.find(name);
+        if (entry == nullptr) throw std::runtime_error(name + " missing from " + kEffectPictures);
+        return formats::decodeTim(archive.entryData(*entry));
+    };
+    render::EffectPictures pictures;
+    pictures.fireball = picture("ptp0.tim");
+    pictures.smoke = picture("ptp1.tim");
+    pictures.foam = picture("ptp2.tim");
+    pictures.scorch = picture("pcfx013.tim");
+    pictures.shadow = picture("Shad_org.tim");
+    for (int frame = 3; frame <= 11; ++frame) {
+        pictures.clod.push_back(picture("pcfx0" + std::string(frame < 10 ? "0" : "") + std::to_string(frame) + ".tim"));
+    }
+    return pictures;
+}
+
 // Half the height of the BOOTS model, so it stands on the ground.
 constexpr float kBootsHalfHeight = 27.0f;
 constexpr float kDisguiseHalfHeight = 96.0f;
@@ -125,6 +152,11 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Inter
     }
     hogRenderer_ = std::make_unique<render::CharacterRenderer>();
     effects_ = std::make_unique<render::EffectsRenderer>();
+    try {
+        effects_->setPictures(loadEffectPictures(vfs));
+    } catch (const std::exception& error) {
+        std::cerr << "Warning: no effect pictures (" << error.what() << "): explosions drawn as balls\n";
+    }
     try {
         const auto textures = library_.loadWeaponTextures();
         weaponTextures_ = std::make_unique<render::CharacterTextureSet>(textures);
@@ -465,7 +497,10 @@ void Game::handleEvents(const std::vector<game::GameEvent>& events) {
         switch (event.type) {
         case GameEventType::Footstep: playSound(game::footstepSoundName(event.surface)); break;
         case GameEventType::Landed: playSound(kLandingSound); break;
-        case GameEventType::Splash: playSound(kSplashSound); break;
+        case GameEventType::Splash:
+            playSound(kSplashSound);
+            particles_.splash(event.position);
+            break;
         case GameEventType::Fired:
             if (!game::weaponSpec(event.weapon).launchSound.empty()) playSound(game::weaponSpec(event.weapon).launchSound);
             break;
@@ -477,7 +512,10 @@ void Game::handleEvents(const std::vector<game::GameEvent>& events) {
             }
             break;
         case GameEventType::Bounce: playSound(kBounceSound); break;
-        case GameEventType::BulletHit: playSound(kBulletHitSound); break;
+        case GameEventType::BulletHit:
+            playSound(kBulletHitSound);
+            particles_.bulletHit(event.position);
+            break;
         case GameEventType::Explosion: playSound(kExplosionSound); break;
         case GameEventType::Died: playSound(kDeathSound); break;
         case GameEventType::SuddenDeath: playSound(kSuddenDeathSound); break;
@@ -522,6 +560,9 @@ void Game::handleEvents(const std::vector<game::GameEvent>& events) {
                                                glm::vec3(0.0f, 1.0f, 0.0f));
                 mapRenderer_->showObject(kBootsObject + event.hog);
                 mapRenderer_->addObject({"BOOTS", placed, kBootsObject + event.hog});
+                // Two puffs of smoke beside them (effect 0x3C).
+                particles_.puff(event.position + glm::vec3(30.0f, 20.0f, 0.0f));
+                particles_.puff(event.position + glm::vec3(-30.0f, 20.0f, 0.0f));
             }
             break;
         case GameEventType::PickedPocket: playSound("I_PICKUP"); break;
@@ -571,6 +612,33 @@ void Game::objectiveDone(const game::GameEvent& event) {
     placeFallingCrates();  // up in the sky from the first frame
 }
 
+void Game::spawnExplosionParticles() {
+    // The explosions that happened since the last frame, each once.
+    const auto& terrain = world_.terrain();
+    for (const auto& explosion : world_.explosions()) {
+        if (explosion.serial <= lastExplosion_) continue;
+        lastExplosion_ = std::max(lastExplosion_, explosion.serial);
+        const glm::vec3& at = explosion.position;
+        const bool inWater = terrain.tileAt(at.x, at.z).isWater && at.y - terrain.heightAt(at.x, at.z) < 100.0f;
+        particles_.explosion(at, explosion.radius, terrain.heightAt(at.x, at.z), inWater);
+    }
+}
+
+void Game::drawShadows() {
+    // A blob under each hog standing in the open (Shad_org), smaller the
+    // higher it is above the ground (decision 160).
+    for (std::size_t i = 0; i < world_.hogs().size(); ++i) {
+        const auto& hog = world_.hogs()[i];
+        if (hog.blownUp || hog.hidden() || hog.sheltered()) continue;
+        if (hog.motion.state == game::MotionState::Swimming) continue;
+        const float ground = world_.map().groundHeight(hog.position.x, hog.position.z, hog.position.y);
+        const float height = std::max(0.0f, hog.position.y - ground);
+        const float width = std::max(0.0f, kShadowWidth - height / 3.0f);
+        if (width <= 0.0f) continue;
+        effects_->drawShadow({hog.position.x, ground, hog.position.z}, width, kShadowOpacity);
+    }
+}
+
 void Game::placeFallingCrates() {
     // A falling crate is drawn dropHeight above its place, under an open
     // parachute (WE_CHUT2); the parachute goes once it has landed.
@@ -616,6 +684,8 @@ void Game::step(double seconds) {
     handleEvents(world_.update(seconds, input, library_.animations()));
     placeMounts();
     placeFallingCrates();
+    spawnExplosionParticles();
+    particles_.update(seconds);
     banner_.update(seconds);
     // The weapon menu closes when the hog's chance to use it is over.
     const bool newTurn = world_.turns() && world_.turns()->turnNumber() != weaponMenuTurn_;
@@ -723,9 +793,14 @@ void Game::drawEffects(const render::Camera& camera, int width, int height) {
         }
         effects_->drawDots(dots, 8.0f, kTracerColour);
     }
-    for (const auto& explosion : world_.explosions()) {
-        effects_->drawExplosion(explosion.position, explosion.radius,
-                                explosion.ageSeconds / game::kExplosionEffectSeconds);
+    if (effects_->hasPictures()) {
+        drawShadows();
+        effects_->drawParticles(particles_.particles());
+    } else {
+        for (const auto& explosion : world_.explosions()) {
+            effects_->drawExplosion(explosion.position, explosion.radius,
+                                    explosion.ageSeconds / game::kExplosionEffectSeconds);
+        }
     }
 }
 
