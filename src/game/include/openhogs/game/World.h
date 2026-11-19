@@ -103,6 +103,10 @@ public:
     // The objects weapons can destroy; destroyed ones stay, marked.
     const std::vector<Destructible>& destructibles() const { return destructibles_; }
     void setDestructibles(std::vector<Destructible> destructibles) { destructibles_ = std::move(destructibles); }
+    // Takes `amount` of health from a map object (Destructibles.h), with
+    // what follows: drums catch fire, crates lose their contents, leftover
+    // damage goes to a hog standing on it, destroyed objects go.
+    void damageMapObject(std::size_t object, float amount, std::vector<GameEvent>& events);
     // Training mode (the Boot Camp, Training.h): set before the first update.
     void setTraining(bool training);
     bool training() const { return training_; }
@@ -178,9 +182,10 @@ private:
     void fire(std::size_t hogIndex, float power, std::vector<GameEvent>& events);
     void updateWeaponStance(Hog& hog) const;
     void hurtSwimmers(double seconds, std::vector<GameEvent>& events);
-    void explodeDrownedHogs(std::vector<GameEvent>& events);
+    void explodeDeadHogs(std::vector<GameEvent>& events);
     void armMines();            // mines put down this turn become dangerous
     bool chargeBurning() const; // a TNT fuse is still burning
+    void lowerFallingCrates(double seconds);
     void collectPickups(std::vector<GameEvent>& events);
     void updateObjectives(std::vector<GameEvent>& events);
     void recordDeeds(std::optional<std::size_t> active, const std::vector<GameEvent>& events);
@@ -190,7 +195,8 @@ private:
     void trainingTips(std::optional<std::size_t> active, std::vector<GameEvent>& events);
     bool trainingComplete() const;
     void damageObjects(const glm::vec3& centre, float radius, float damage, std::vector<GameEvent>& events);
-    void damageMapObject(std::size_t object, float amount, std::vector<GameEvent>& events);
+    void removeDestroyedObject(const Destructible& target, std::vector<GameEvent>& events);
+    void burnDrums(double seconds, std::vector<GameEvent>& events);
     void refreshStockWeapons(int team);
     void useStock(std::size_t hogIndex);
     std::optional<glm::vec3> nearestShore(const glm::vec3& from) const;
@@ -231,6 +237,14 @@ private:
     std::vector<Pickup> pickups_;
     std::vector<Objective> objectives_;
     std::vector<Destructible> destructibles_;
+    // Drums on fire, waiting to blow up (Destructibles.h).
+    struct BurningDrum {
+        std::size_t object = 0;
+        glm::vec3 centre{0.0f};
+        float secondsLeft = 0.0f;
+        bool poison = false;
+    };
+    std::vector<BurningDrum> burningDrums_;
     bool training_ = false;
     std::map<std::size_t, std::vector<CollisionBox>> hiddenBoxes_;  // hidden object -> its boxes
     std::vector<std::size_t> trainingCrates_;  // pickups of the Boot Camp's chain

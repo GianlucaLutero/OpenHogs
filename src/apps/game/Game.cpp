@@ -84,6 +84,14 @@ constexpr double kTurnMessageSeconds = 2.5;
 constexpr double kEndMessageSeconds = -1.0;  // until the players leave
 // Hiding hogs' disguises are drawn as extra objects with these numbers.
 constexpr std::size_t kDisguiseObject = 1'000'000;
+// The boots a hog leaves when it blows up, and the parachutes of falling
+// crates, drawn as map objects with numbers of their own.
+constexpr std::size_t kBootsObject = 2'000'000;
+constexpr std::size_t kParachuteObject = 3'000'000;
+// Where a falling crate's parachute starts, above the crate's middle.
+constexpr float kParachuteHeight = 96.0f;  // the crate's half height: WE_CHUT2 hangs from its origin
+// Half the height of the BOOTS model, so it stands on the ground.
+constexpr float kBootsHalfHeight = 27.0f;
 constexpr float kDisguiseHalfHeight = 96.0f;
 constexpr glm::vec4 kHealColour{0.3f, 1.0f, 0.3f, 1.0f};
 
@@ -104,6 +112,11 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Inter
     mapRenderer_ = std::make_unique<render::MapRenderer>(scene);
     for (const auto& object : mapRenderer_->objects()) {
         if (world_.isHidden(object.object)) mapRenderer_->hideObject(object.object);  // until revealed
+    }
+    for (const auto& pickup : world_.pickups()) {
+        for (const auto& object : mapRenderer_->objects()) {
+            if (object.object == pickup.object) crateTransforms_[pickup.object] = object.transform;
+        }
     }
     for (const auto& mount : world_.mounts()) {
         for (const auto& object : mapRenderer_->objects()) {
@@ -494,6 +507,22 @@ void Game::handleEvents(const std::vector<game::GameEvent>& events) {
         case GameEventType::HogUnhidden:
         case GameEventType::Respawned:  // back as it began (deathmatch): no disguise left
             mapRenderer_->hideObject(kDisguiseObject + event.hog);
+            mapRenderer_->hideObject(kBootsObject + event.hog);
+            break;
+        case GameEventType::HogBlownUp:
+            if (event.amount > 0.0f) {
+                // Its boots stay where it stood (FUN_004680e0: object BOOTS),
+                // standing on the ground (models are centred on their position).
+                formats::MapObject boots;
+                boots.modelName = "BOOTS";
+                boots.x = static_cast<std::int16_t>(event.position.x);
+                boots.y = static_cast<std::int16_t>(event.position.y + kBootsHalfHeight);
+                boots.z = static_cast<std::int16_t>(event.position.z);
+                glm::mat4 placed = glm::rotate(scene::objectTransform(boots), world_.hogs()[event.hog].yawRadians,
+                                               glm::vec3(0.0f, 1.0f, 0.0f));
+                mapRenderer_->showObject(kBootsObject + event.hog);
+                mapRenderer_->addObject({"BOOTS", placed, kBootsObject + event.hog});
+            }
             break;
         case GameEventType::PickedPocket: playSound("I_PICKUP"); break;
         case GameEventType::TurnSlept: break;  // the turn simply passes
@@ -537,7 +566,39 @@ void Game::objectiveDone(const game::GameEvent& event) {
     placed.x = static_cast<std::int16_t>(crate.centre.x);
     placed.y = static_cast<std::int16_t>(crate.centre.y);
     placed.z = static_cast<std::int16_t>(crate.centre.z);
-    mapRenderer_->addObject({crate.model, scene::objectTransform(placed), crate.object});
+    crateTransforms_[crate.object] = scene::objectTransform(placed);
+    mapRenderer_->addObject({crate.model, crateTransforms_[crate.object], crate.object});
+    placeFallingCrates();  // up in the sky from the first frame
+}
+
+void Game::placeFallingCrates() {
+    // A falling crate is drawn dropHeight above its place, under an open
+    // parachute (WE_CHUT2); the parachute goes once it has landed.
+    for (std::size_t index = 0; index < world_.pickups().size(); ++index) {
+        const auto& pickup = world_.pickups()[index];
+        const auto place = crateTransforms_.find(pickup.object);
+        if (place == crateTransforms_.end()) continue;
+        const std::size_t parachute = kParachuteObject + index;
+        const bool falling = pickup.falling() && !pickup.hidden && !pickup.taken;
+        if (!falling && !fallingCrates_.contains(index)) continue;
+        const glm::mat4 lift = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, pickup.dropHeight, 0.0f));
+        mapRenderer_->moveObject(pickup.object, lift * place->second);
+        if (!falling) {
+            mapRenderer_->hideObject(parachute);
+            fallingCrates_.erase(index);
+            continue;
+        }
+        // Models are twice the world's size with Y down (scene::objectTransform).
+        constexpr float scale = formats::kModelToWorldScale;
+        const glm::vec3 top = glm::vec3(place->second[3]) + glm::vec3(0.0f, pickup.dropHeight + kParachuteHeight, 0.0f);
+        const glm::mat4 chute = glm::scale(glm::translate(glm::mat4(1.0f), top), glm::vec3(scale, -scale, scale));
+        if (!fallingCrates_.contains(index)) {
+            fallingCrates_.insert(index);
+            mapRenderer_->addObject({"WE_CHUT2", chute, parachute});
+        } else {
+            mapRenderer_->moveObject(parachute, chute);
+        }
+    }
 }
 
 void Game::step(double seconds) {
@@ -554,6 +615,7 @@ void Game::step(double seconds) {
     }
     handleEvents(world_.update(seconds, input, library_.animations()));
     placeMounts();
+    placeFallingCrates();
     banner_.update(seconds);
     // The weapon menu closes when the hog's chance to use it is over.
     const bool newTurn = world_.turns() && world_.turns()->turnNumber() != weaponMenuTurn_;
@@ -723,6 +785,7 @@ void Game::drawScene(int width, int height) {
 
     for (std::size_t i = 0; i < world_.hogs().size(); ++i) {
         if (world_.hogs()[i].hidden()) continue;  // its disguise (a crate) is drawn instead
+        if (world_.hogs()[i].blownUp) continue;   // nothing left but its boots
         if (sighting && world_.activeHog() == i) continue;  // we look out of its eyes
         if (world_.hogs()[i].sheltered()) continue;         // inside a building or vehicle
         drawHog(camera, width, height, world_.hogs()[i], i);

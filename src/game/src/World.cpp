@@ -298,14 +298,25 @@ bool World::chargeBurning() const {
     });
 }
 
-void World::explodeDrownedHogs(std::vector<GameEvent>& events) {
+void World::explodeDeadHogs(std::vector<GameEvent>& events) {
+    // FUN_004680e0: once its dying animation is over, a dead hog blows up.
+    // On land it leaves its boots behind (object 29, BOOTS), except in a
+    // deathmatch, where it comes back; in water it sinks first.
     for (std::size_t i = 0; i < hogs_.size(); ++i) {
         Hog& hog = hogs_[i];
-        const bool sunk = !hog.alive && hog.motion.state == MotionState::Dead &&
-                          hog.animation.animation() == kDrowningAnimation && hog.animation.finished();
-        if (!sunk || hog.drownedBlastDone) continue;
-        hog.drownedBlastDone = true;
+        const std::size_t animation = hog.animation.animation();
+        const bool drowned = animation == kDrowningAnimation;
+        const bool over = !hog.alive && hog.motion.state == MotionState::Dead && hog.animation.finished() &&
+                          (drowned || isDyingAnimation(animation));
+        if (!over || hog.blownUp) continue;
+        hog.blownUp = true;
         const glm::vec3 centre = hog.position + glm::vec3(0.0f, kExplosionLift, 0.0f);
+        GameEvent blown;
+        blown.type = GameEventType::HogBlownUp;
+        blown.hog = i;
+        blown.position = hog.position;
+        blown.amount = !drowned && !(turns_ && turns_->rules().deathmatchLimit > 0) ? 1.0f : 0.0f;
+        events.push_back(blown);
         GameEvent explosion;
         explosion.type = GameEventType::Explosion;
         explosion.position = centre;
@@ -428,10 +439,17 @@ void World::useStock(std::size_t hogIndex) {
     if (count == 0) refreshStockWeapons(hog.team);
 }
 
+void World::lowerFallingCrates(double seconds) {
+    for (auto& pickup : pickups_) {
+        if (!pickup.falling() || pickup.hidden) continue;
+        pickup.dropHeight = std::max(0.0f, pickup.dropHeight - kCrateFallSpeed * static_cast<float>(seconds));
+    }
+}
+
 void World::collectPickups(std::vector<GameEvent>& events) {
     for (std::size_t p = 0; p < pickups_.size(); ++p) {
         Pickup& pickup = pickups_[p];
-        if (pickup.taken || pickup.hidden) continue;
+        if (pickup.taken || pickup.hidden || pickup.falling()) continue;
         for (std::size_t h = 0; h < hogs_.size(); ++h) {
             Hog& hog = hogs_[h];
             if (!hog.alive || !touches(pickup, hog.position)) continue;
@@ -542,6 +560,7 @@ void World::reveal(std::size_t object, std::vector<GameEvent>& events) {
     for (auto& pickup : pickups_) {
         if (pickup.object != object) continue;
         pickup.hidden = false;
+        pickup.dropHeight = kCrateDropHeight;  // crates come down by parachute
         if (training_) {
             if (const auto tip = tipWhenCrateAppears(pickup)) trainingTip(*tip, events);
         }
@@ -615,6 +634,7 @@ void World::objectiveDone(const ObjectiveResult& result, std::vector<GameEvent>&
     if (result.drop) {
         Pickup drop = *result.drop;
         drop.object = nextDropObject_++;
+        drop.dropHeight = kCrateDropHeight;  // it comes down by parachute
         event.position = drop.centre;
         event.pickup = pickups_.size();
         event.dropped = true;
@@ -638,19 +658,61 @@ void World::damageObjects(const glm::vec3& centre, float radius, float damage, s
     }
 }
 
+namespace {
+// How close to the top of an object a hog's feet must be for it to count
+// as standing on it.
+constexpr float kStandingTolerance = 16.0f;
+} // namespace
+
 void World::damageMapObject(std::size_t object, float amount, std::vector<GameEvent>& events) {
     const auto target = std::find_if(destructibles_.begin(), destructibles_.end(),
                                      [&](const Destructible& d) { return d.object == object; });
-    if (target == destructibles_.end() || !damageObject(*target, amount)) return;
+    if (target == destructibles_.end()) return;
+    const float healthBefore = target->health;
+    if (!damageObject(*target, amount)) return;
 
+    const auto box = std::find_if(map_.boxes().begin(), map_.boxes().end(),
+                                  [&](const CollisionBox& b) { return b.object == object; });
+    const glm::vec3 centre = box != map_.boxes().end() ? box->centre : glm::vec3(0.0f);
+
+    if (target->objectClass == ObjectClass::Drum) {
+        // It catches fire and blows up later (burnDrums).
+        burningDrums_.push_back({object, centre, kDrumFuseSeconds, target->poison});
+        return;
+    }
+    if (target->objectClass == ObjectClass::Crate) {
+        // What it held is lost with it.
+        for (auto& pickup : pickups_) {
+            if (pickup.object == object) pickup.taken = true;
+        }
+    }
+    if (target->objectClass == ObjectClass::Scenery && box != map_.boxes().end()) {
+        // FUN_0048d990: the damage the object could not take, in whole
+        // points, goes to a hog standing on it, which then falls.
+        const float leftover = std::floor(amount - healthBefore);
+        if (leftover > 0.0f) {
+            for (std::size_t h = 0; h < hogs_.size(); ++h) {
+                const Hog& hog = hogs_[h];
+                const bool onTop = hog.alive && box->footprintDistance(hog.position.x, hog.position.z) <= 0.0f &&
+                                   std::abs(hog.position.y - box->top()) < kStandingTolerance;
+                if (onTop) damageHog(hogs_, h, leftover, events);
+            }
+        }
+    }
+    removeDestroyedObject(*target, events);
+}
+
+void World::removeDestroyedObject(const Destructible& target, std::vector<GameEvent>& events) {
+    const std::size_t object = target.object;
     GameEvent destroyed;
     destroyed.type = GameEventType::ObjectDestroyed;
     destroyed.object = object;
-    destroyed.amount = target->blowsUp() ? 1.0f : 0.0f;
+    const bool blowsUp = target.blowsUp() || target.objectClass == ObjectClass::Drum;
+    destroyed.amount = blowsUp ? 1.0f : 0.0f;
     for (const auto& box : map_.boxes()) {
         if (box.object == object) {
             destroyed.position = box.centre;
-            if (target->blowsUp()) {
+            if (target.blowsUp()) {
                 explosions_.push_back({box.centre, std::max({box.halfSize.x, box.halfSize.y, box.halfSize.z}), 0.0f});
             }
             break;
@@ -667,6 +729,40 @@ void World::damageMapObject(std::size_t object, float amount, std::vector<GameEv
             const std::size_t inside = *mount.occupant;
             leaveMount(inside, events);
             damageHog(hogs_, inside, mountSpec(mount.kind).damageWhenDestroyed, events);
+        }
+    }
+}
+
+void World::burnDrums(double seconds, std::vector<GameEvent>& events) {
+    // A drum on fire blows up after its fuse (the wiki's Explosive barrel
+    // page): up to 75 points around it, or 15 and poison close by for a
+    // poison drum. Its blast can set other drums off.
+    std::vector<BurningDrum> due;
+    for (auto& drum : burningDrums_) {
+        drum.secondsLeft -= static_cast<float>(seconds);
+        if (drum.secondsLeft <= 0.0f) due.push_back(drum);
+    }
+    std::erase_if(burningDrums_, [](const BurningDrum& drum) { return drum.secondsLeft <= 0.0f; });
+    for (const auto& drum : due) {
+        const auto target = std::find_if(destructibles_.begin(), destructibles_.end(),
+                                         [&](const Destructible& d) { return d.object == drum.object; });
+        if (target != destructibles_.end()) removeDestroyedObject(*target, events);
+        GameEvent explosion;
+        explosion.type = GameEventType::Explosion;
+        explosion.position = drum.centre;
+        events.push_back(explosion);
+        const float radius = drum.poison ? kPoisonDrumRadius : kDrumBlastRadius;
+        const float damage = drum.poison ? kPoisonDrumDamage : kDrumBlastDamage;
+        explosions_.push_back({drum.centre, radius, 0.0f});
+        explode(hogs_, drum.centre, radius, damage, drum.poison ? 0.0f : kDrumKnockback, events);
+        if (drum.poison) {
+            for (std::size_t h = 0; h < hogs_.size(); ++h) {
+                if (hogs_[h].alive && glm::distance(hogCentre(hogs_[h]), drum.centre) < radius) {
+                    afflict(h, WeaponEffect::Poison);
+                }
+            }
+        } else {
+            damageObjects(drum.centre, radius, damage, events);
         }
     }
 }
@@ -1693,7 +1789,9 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
     }
 
     hurtSwimmers(seconds, events);
-    explodeDrownedHogs(events);
+    explodeDeadHogs(events);
+    burnDrums(seconds, events);
+    lowerFallingCrates(seconds);
     collectPickups(events);
 
     if (burst_) {

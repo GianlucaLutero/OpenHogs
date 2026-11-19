@@ -66,13 +66,14 @@ inline formats::MapObject makeObject(const std::string& name, int x, int y, int 
     return object;
 }
 
-// 40 animations (enough for every animation number the game module uses)
+// 80 animations (enough for every animation number the game module uses,
+// up to drowning, 74)
 // of 12 frames (about half a second, longer than the cross-fade) for a
 // two-bone skeleton. All angles are zero, except in every animation but
 // standing, where the root is turned by one radian, so standing and any
 // other animation are clearly different poses.
 inline std::vector<formats::Animation> makeAnimations() {
-    std::vector<formats::Animation> animations(40);
+    std::vector<formats::Animation> animations(80);
     for (std::size_t i = 0; i < animations.size(); ++i) {
         formats::AnimationFrame frame;
         frame.bones.resize(2);

@@ -206,7 +206,11 @@ private:
     ui::WeaponMenu weaponMenu_;
     std::optional<std::size_t> chosenWeapon_;
     int weaponMenuTurn_ = -1;  // the turn it was opened in
-    int teamStrengthRound_ = 0;  // the round the strength bar was last shown in
+    int teamStrengthRound_ = 0;
+    // Where each crate rests (map object number), and the crates now
+    // coming down by parachute (pickup index).
+    std::map<std::size_t, glm::mat4> crateTransforms_;
+    std::set<std::size_t> fallingCrates_;  // the round the strength bar was last shown in
     void openWeaponMenu();
     GameRequest handleWeaponMenuKey(const SDL_Event& event);
     // Mouse movement through the rifle sight since the last step, in
@@ -226,6 +230,7 @@ private:
     // into, to place the driven ones from (map object -> transform).
     std::map<std::size_t, glm::mat4> mountTransforms_;
     void placeMounts();
+    void placeFallingCrates();
     std::unique_ptr<render::CharacterRenderer> hogRenderer_;
     std::unique_ptr<render::EffectsRenderer> effects_;
     std::unique_ptr<render::CharacterTextureSet> weaponTextures_;

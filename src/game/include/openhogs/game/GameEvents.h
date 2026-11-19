@@ -50,6 +50,10 @@ enum class GameEventType {
     HogMounted,   // hog: who got in; object: into which building or vehicle
     HogDismounted,// hog: who got out (or was thrown out); object: of which
     Respawned,    // hog: back where the map placed it (deathmatch); team: its team
+    // A dead hog blew up at the end of its dying animation. hog: who;
+    // position: where; amount: 1 if it left its boots (on land, outside
+    // deathmatches), 0 if not.
+    HogBlownUp,
 };
 
 struct GameEvent {

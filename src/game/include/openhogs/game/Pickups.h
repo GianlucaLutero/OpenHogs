@@ -46,10 +46,21 @@ struct Pickup {
     // Hidden until revealed (a Boot Camp crate, see Training.h): it cannot
     // be picked up or seen.
     bool hidden = false;
+    // How far above its place it still is while it comes down by
+    // parachute (dropped rewards and revealed crates); it can only be
+    // picked up once it has landed.
+    float dropHeight = 0.0f;
+    bool falling() const { return dropHeight > 0.0f; }
 
     // The weapon a weapon crate holds, if OpenHogs has it.
     std::optional<WeaponId> weapon() const;
 };
+
+// Crates that appear during a match come down by parachute from 0xC00
+// above their place (FUN_004aa170, decision 111), at kCrateFallSpeed
+// (the speed is OpenHogs' choice, decision 157).
+inline constexpr float kCrateDropHeight = 3072.0f;
+inline constexpr float kCrateFallSpeed = 600.0f;
 
 // The map script type of a pickup.
 inline constexpr int kPickupScriptType = 19;
