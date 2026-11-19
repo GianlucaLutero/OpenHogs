@@ -82,7 +82,6 @@ game::TurnRules turnRules(const GameOptions& options) {
 // How long the match messages stay on screen.
 constexpr double kTurnMessageSeconds = 2.5;
 constexpr double kEndMessageSeconds = -1.0;  // until the players leave
-constexpr double kTrainingTipSeconds = 8.0;
 // Hiding hogs' disguises are drawn as extra objects with these numbers.
 constexpr std::size_t kDisguiseObject = 1'000'000;
 constexpr float kDisguiseHalfHeight = 96.0f;
@@ -158,6 +157,8 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Inter
     if (const auto message = ui::turnMessage(world_, interface_.strings(), computerIsPlaying())) {
         showMessage(*message, kTurnMessageSeconds, true);
     }
+    hud_.setRadarMap(ui::radarMapPicture(world_.terrain()));
+    showTeamStrength();
     audio_.matchStarted();
     if (options.openWeaponMenu) openWeaponMenu();
 }
@@ -470,6 +471,9 @@ void Game::handleEvents(const std::vector<game::GameEvent>& events) {
         case GameEventType::PickedUp:
             playSound(kPickupSound);
             pickedUp(event);
+            if (const auto message = ui::pickupMessage(event, world_, interface_.strings(), interface_.gameText())) {
+                hud_.postMessage(interface_, *message);
+            }
             break;
         case GameEventType::ObjectiveDone: objectiveDone(event); break;
         case GameEventType::HogMounted:
@@ -495,16 +499,17 @@ void Game::handleEvents(const std::vector<game::GameEvent>& events) {
         case GameEventType::TurnSlept: break;  // the turn simply passes
         case GameEventType::ObjectRevealed: mapRenderer_->showObject(event.object); break;
         case GameEventType::TrainingTip:
-            // The Boot Camp's instruction stays a while (the instructor says it: MatchAudio).
-            showMessage(interface_.strings().trainingText(event.text), kTrainingTipSeconds, false);
+            // The Boot Camp's instruction comes down in the text box (the
+            // instructor says it: MatchAudio).
+            hud_.postMessage(interface_, interface_.strings().trainingText(event.text), ui::TextBox::kTrainingScroll);
             break;
         case GameEventType::ObjectDestroyed:
             // The object goes from the picture; buildings and vehicles blow up.
             mapRenderer_->hideObject(event.object);
             if (event.amount > 0.0f) playSound(kExplosionSound);
             break;
+        case GameEventType::TurnStarted: showTeamStrength(); break;
         case GameEventType::Hurt:         // voices and music: MatchAudio
-        case GameEventType::TurnStarted:
         case GameEventType::MatchOver: break;
         }
     }
@@ -555,7 +560,8 @@ void Game::step(double seconds) {
     if (weaponMenu_.isOpen() && (world_.phase() != game::MatchPhase::Playing || computerIsPlaying() || newTurn)) {
         weaponMenu_.close();
     }
-    hud_.update(seconds, ui::describeTurn(world_, interface_.strings(), interface_.gameText()), weaponMenu_.isOpen());
+    const auto turn = ui::describeTurn(world_, interface_.strings(), interface_.gameText());
+    hud_.update(seconds, turn, weaponMenu_.isOpen(), turn && !world_.sightView() && !world_.binocularView());
     audio_.update(seconds);
 
     // The camera stays behind the active hog (decision 15), swinging round
@@ -744,6 +750,8 @@ void Game::drawHud(int width, int height) {
     if (world_.sightView()) hud_.drawRifleSight(interface_.renderer());
     if (world_.binocularView()) hud_.drawRifleSight(interface_.renderer(), false);  // the round view, no crosshair
     hud_.draw(interface_, turn);
+    hud_.drawRadar(interface_.renderer(), ui::radarMarks(world_, world_.activeHog()), camera.forward());
+    hud_.drawTextBox(interface_, teamStrengths());
     hud_.drawWeaponMenu(interface_, weaponMenu_);  // also while it slides away
     if (const auto& message = banner_.current()) {
         // Turn messages fade out over their last quarter.
@@ -751,6 +759,30 @@ void Game::drawHud(int width, int height) {
         const float alpha = progress > 0.75 ? static_cast<float>((1.0 - progress) / 0.25) : 1.0f;
         interface_.drawBanner(*message, kBannerY, alpha, bannerColour_);
     }
+}
+
+void Game::showTeamStrength() {
+    // At the start of the match and of every round after, the big tube
+    // shows how strong each team still is (FUN_0045ec50, not in the Boot
+    // Camp).
+    if (world_.training() || !world_.turns()) return;
+    const int round = world_.turns()->round();
+    if (round == teamStrengthRound_) return;
+    teamStrengthRound_ = round;
+    hud_.postTeamStrength();
+}
+
+std::vector<OriginalHud::TeamStrength> Game::teamStrengths() const {
+    // The health left in each team, in team order, in its message colour.
+    std::map<int, float> health;
+    for (const auto& hog : world_.hogs()) {
+        health[hog.team] += hog.alive ? std::max(hog.health, 0.0f) : 0.0f;
+    }
+    std::vector<OriginalHud::TeamStrength> strengths;
+    for (const auto& [team, points] : health) {
+        strengths.push_back({points, ui::teamMessageColour(world_.nationOf(team))});
+    }
+    return strengths;
 }
 
 void Game::showMessage(const std::string& message, double seconds, bool turnMessage) {

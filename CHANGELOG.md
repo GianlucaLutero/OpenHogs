@@ -30,6 +30,12 @@ the `project()` call in `CMakeLists.txt`.
   first mine of a turn keeps the turn and waits for the turn to end; the
   computer uses both. The mortar and the guided missile aim at 45 degrees
   or more, with the angle gauge's limit mark.
+- **Radar** as the original: the map in the bottom-left corner, tilted
+  and turned with the camera, with the hogs in their nation's colour and
+  the crates.
+- **Text box** as the original: crate messages and the Boot Camp's
+  instructions come down from the top in a brass tube (long ones scroll);
+  the teams' strength comes in the big tube at the start of each round.
 
 ## 0.1.0 — first prototype release
 

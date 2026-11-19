@@ -20,7 +20,8 @@ Addresses are virtual addresses in the executable (file offset = VA −
 | `Language/Tims/tboxtims.mad` | `npro1`–`npro4`, a frame for text boxes |
 | `Language/Tims/mapicons.mtd` | the radar map: `map1`, icons for hogs, health, pick-ups, props, bombs, rain, snow |
 | `Language/Tims/menutims.mad` | weapon icons (56 × 34), loaded by `FUN_00457690` |
-| `Chars/sight.mtd`, `Chars/top.mad`, `Chars/sight.mad` | the rifle sight (`sight.mad` holds the model `hole`) and the 3D radar |
+| `Chars/sight.mtd`, `Chars/sight.mad` | the rifle sight (`sight.mad` holds the model `hole`) |
+| `Chars/top.mad` | asked for as the radar's object; not in the PC folder (the renderer draws the radar without it) |
 
 `dashtims.mad` (46 TIMs), by index:
 
@@ -137,5 +138,70 @@ and keeps the arrow at 45° or more; hogs in vehicles and buildings get
 flags 2, 3 or 5 (`divide2`, both). OpenHogs keeps the mortar and the
 guided missile at 45° or more and draws `divide1` (decision 153).
 
-Not reproduced yet (`docs/open-decisions.md`): the 3D radar
-(`FUN_004582f0`, `Chars/top.mad`) and the text boxes (`npro1`–`4`).
+## Radar
+
+`FUN_004582f0` places the radar each frame: an object made from
+`Chars/top.mad` (missing on PC) with `mapicons.mtd` as its textures, whose
+screen position is packed in its word +0x4C (x in bits 20–31, y in bits
+8–19): x = 110, y = height − 75, plus a slide of 200 pixels in 19 ticks
+like the clock (HUD flag +0xC69, set when the match starts). The renderer
+(`_d3d.dll`) does the rest:
+
+- `afInitScanner` (called through `DAT_00538000` when the HUD is made)
+  paints a 64 × 64 texture into the slot of `map1`, one pixel per tile:
+  the tile's surface colour from the table at 0x1002BEB8 (mud 60,50,40;
+  grass 40,70,40; metal 128; wood 153,94,34; water 90,90,150; stone and
+  rock 50; sand 100,80,30; ice 180,240,240; snow 100; quagmire 60,50,40;
+  lava 240,100,53) × a brightness of 64 + 130 × (height of the tile's
+  corner − lowest) / (highest − lowest), divided by 512 and capped at 31
+  (5-bit channels); a tile with the mine flag (0x40) is plain red. The
+  first column repeats the second.
+- `FUN_10009810`, at the end of every frame, draws the texture on a 4 × 4
+  grid of a square plane (half size 0.151, set by
+  `afSetScannerSizeSmall(0)`; 0.121 for the small size), projected with
+  the camera's rotation and a focal length of 480, then a 10 × 11 mark
+  5 pixels up and left of each thing it collected while drawing the
+  scene: every animated model (hogs) with `iconpig`, tinted by the table
+  at 0x1002BE70 indexed by the model's nation (green, cyan, blue, grey,
+  red, yellow; white for models with flag 2), and objects whose word +0x48
+  is 4 — the exe gives that to `CRATE1`, `CRATE2`, `CRATE4` and
+  `PROPOINT` (object names 20–23) with kind = name − 20 — as `iconpkup`
+  (kinds 0 and 2, tint 169,148,63), `iconhart` (1, tint 255,64,121) or
+  `iconprop` (3, tint 219,136,53). Positions are divided by 18884 / 0.151.
+
+OpenHogs: `ui::radarMapPicture`, `ui::radarMarks`, `ui::RadarView`,
+`OriginalHud::drawRadar` (decision 154).
+
+## Text box
+
+`FUN_0045e530` makes it: a queue of 8 messages (0x118 bytes each), the
+tube's ends at x0 = middle − 120 and x1 = middle + 122, a text window from
+middle − 102 to middle + 104 (206 pixels). `FUN_0045eb10` queues a message
+(text, duration in hundredths, scroll speed, a flag for the big tube);
+callers: crates (`FUN_00465420`: the weapon's name and `X<count>` — just
+the name in the Boot Camp — or gtext 172 for health, 171 when the hog
+already has 14 weapons; 10 s, 3 pixels a tick), Boot Camp instructions
+(10 s, 5 pixels a tick), a hog leaving a network game (gtext 258–270), and
+`FUN_0045ec50`, the big tube with the teams' strength (4 s), at the start
+of the match and of each round (+0x420 is cleared when the turn count is a
+multiple of the number of teams); not in the Boot Camp.
+
+`FUN_0045e6a0` draws it each tick. The tube comes down in 10 ticks along
+the table at 0x4D0190 (0, 10, 15, 30, 40, 90, 100, 95, 100, 100 %), stays,
+then goes up the same way and the next message starts:
+
+- small tube: `npro4` (32 × 64) at x0 − 14 (turned round) and x1 − 18,
+  four `npro3` (64 × 64) at x0 + 18 + 48 i; y = 45 % − 50;
+- big tube: `npro2` at x0 − 64 (turned round) and x1, four `npro1` at
+  x0 + 64 i; y = 105 % − 110; `FUN_0045efb0` draws the strength bar at
+  y + 35 from x0 + 1: 240 pixels shared by the teams' health (+0xE4 >> 7),
+  8 tall in the team's message colour fading to it − 70, and a second row
+  under it.
+
+`FUN_0045ecb0` measures the text (with `macfont.bmp`, missing on PC): a
+text under 207 pixels stays centred for 3 s from the start; a longer one
+(`FUN_0045ee30`) enters at the window's right edge and moves left by the
+speed each tick, and the tube goes up once it has gone by. The text is cut
+to the window, 22 pixels tall, 33 below the tube's top.
+
+OpenHogs: `ui::TextBox`, `OriginalHud::drawTextBox` (decision 155).

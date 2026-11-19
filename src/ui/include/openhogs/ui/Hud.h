@@ -63,8 +63,15 @@ std::optional<HudInfo> describeTurn(const game::World& world, const UiStrings& s
 // team played by a person, "THE ENEMY RETALIATES..." for the computer.
 std::optional<std::string> turnMessage(const game::World& world, const UiStrings& strings, bool computerTurn = false);
 
-// The message a game event deserves, if any: the start of a turn (see
-// turnMessage) or the end of the match.
+// The text box's message for a crate picked up (FUN_00465420): ">S FINDS
+// USEFUL PROVISIONS!" for health, the weapon's name and how many for a
+// weapon crate, nothing for a promotion point.
+std::optional<std::string> pickupMessage(const game::GameEvent& event, const game::World& world,
+                                         const UiStrings& strings, const std::vector<std::string>& gameText);
+
+// The message a game event deserves in the middle of the screen, if any:
+// the start of a turn (see turnMessage), sudden death or the end of the
+// match.
 std::optional<std::string> messageForEvent(const game::GameEvent& event, const game::World& world,
                                            const UiStrings& strings, bool computerTurn = false);
 

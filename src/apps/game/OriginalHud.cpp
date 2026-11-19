@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <iostream>
 
 namespace openhogs::gameapp {
@@ -20,6 +21,9 @@ const char* const kDashboardPictures = "Language/Tims/dashtims.mad";
 const char* const kEffectPictures = "Language/Tims/expltims.mad";
 // The weapon menu frame and the rifle sight's crosshair.
 const char* const kFacePictures = "Language/Tims/facetims.mad";
+// The radar's marks, and the text box's tubes.
+const char* const kRadarPictures = "Language/Tims/mapicons.mtd";
+const char* const kTextBoxPictures = "Language/Tims/tboxtims.mad";
 const glm::vec4 kSightBlack{0.0f, 0.0f, 0.0f, 1.0f};
 
 // The label over the hog in play: each of its two lines (name, then heart
@@ -61,6 +65,32 @@ constexpr int kMenuMostUsesShown = 9;  // the executable shows 9 for more
 const glm::vec4 kMenuTabHighlight{1.0f, 0.9f, 0.5f, 0.3f};
 const glm::vec4 kMenuNameColour{1.0f, 0.88f, 0.12f, 1.0f};
 
+// The radar's marks (FUN_10009810): 10 x 11 pixels, drawn 5 pixels left
+// of and above the point they mark.
+constexpr float kRadarMarkWidth = 10.0f, kRadarMarkHeight = 11.0f, kRadarMarkOffset = 5.0f;
+
+// The text box (FUN_0045e6a0), from the middle of the 640-pixel screen:
+// the tube's ends (x0, x1) and the window the text shows through.
+constexpr float kBoxLeft = -120.0f, kBoxRight = 122.0f;
+constexpr float kBoxWindowLeft = -102.0f;
+// The small tube: npro4 ends (32 wide) at x0 - 14 (turned round) and
+// x1 - 18, four npro3 pieces (64 wide) 48 apart from x0 + 18; it comes
+// down from y = -50 to -5, the text 33 lower in a window 22 tall.
+constexpr float kSmallEndLeft = -14.0f, kSmallEndRight = -18.0f, kSmallPieceStart = 18.0f, kSmallPieceStep = 48.0f;
+constexpr float kSmallTravel = 45.0f, kSmallHidden = -50.0f, kSmallTextOffset = 33.0f, kTextWindowHeight = 22.0f;
+// The big tube: npro2 ends (64 wide) at x0 - 64 (turned round) and x1,
+// four npro1 pieces 64 apart from x0; it comes down from y = -110 to -5;
+// the strength bar (240 wide, two rows of 8) 35 lower, from x0 + 1.
+constexpr float kBigEndLeft = -64.0f, kBigPieceStep = 64.0f;
+constexpr float kBigTravel = 105.0f, kBigHidden = -110.0f, kBarOffset = 35.0f;
+constexpr float kBarLeft = 1.0f, kBarWidth = 240.0f, kBarRowHeight = 8.0f;
+constexpr int kTubePieces = 4;
+// The bar's second row is the team's colour less 70 in each channel.
+constexpr float kBarShade = 70.0f / 255.0f;
+// The text: the game's BIG font (the executable's macfont.bmp is not in
+// the PC folder) at this height.
+constexpr float kBoxTextHeight = 16.0f;
+
 // TIM entry names end in ".tim"; the layout uses the bare names.
 std::string bareName(std::string_view entryName) {
     std::string name(entryName);
@@ -74,7 +104,7 @@ std::string bareName(std::string_view entryName) {
 } // namespace
 
 OriginalHud::OriginalHud(const core::VirtualFileSystem& vfs) {
-    for (const char* path : {kDashboardPictures, kEffectPictures, kFacePictures}) {
+    for (const char* path : {kDashboardPictures, kEffectPictures, kFacePictures, kRadarPictures, kTextBoxPictures}) {
         try {
             const auto archive = formats::PackageArchive::parse(vfs.readFile(path));
             for (const auto& entry : archive.entries()) {
@@ -149,6 +179,115 @@ void OriginalHud::drawWeaponMenu(Interface& userInterface, const ui::WeaponMenu&
     }
 }
 
+void OriginalHud::setRadarMap(const formats::RgbaImage& picture) {
+    radarMap_.emplace(picture);
+}
+
+void OriginalHud::drawRadar(render::UiRenderer& ui, const std::vector<ui::RadarMark>& marks,
+                            const glm::vec3& cameraForward) const {
+    if (!radarSlide_.visible() || !radarMap_) return;
+    const ui::RadarView view(cameraForward, ui::kRadarCentre + glm::vec2(0.0f, radarSlide_.offset()));
+    ui.drawImageQuad(*radarMap_, view.pictureCorners());
+    for (const auto& mark : marks) {
+        const char* name = "iconpig";
+        switch (mark.kind) {
+        case ui::RadarMarkKind::Hog: name = "iconpig"; break;
+        case ui::RadarMarkKind::WeaponCrate: name = "iconpkup"; break;
+        case ui::RadarMarkKind::HealthCrate: name = "iconhart"; break;
+        case ui::RadarMarkKind::PromotionPoint: name = "iconprop"; break;
+        }
+        const auto* icon = picture(name);
+        if (!icon) continue;
+        const glm::vec2 point = view.project(mark.mapPoint);
+        ui.drawImage(*icon, point.x - kRadarMarkOffset, point.y - kRadarMarkOffset, kRadarMarkWidth, kRadarMarkHeight,
+                     mark.colour);
+    }
+}
+
+void OriginalHud::postMessage(const Interface& userInterface, const std::string& text, float scrollPerTick) {
+    const auto& font = userInterface.bigFont();
+    const float scale = kBoxTextHeight / static_cast<float>(std::max(font.font().lineHeight, 1));
+    textBox_.post(text, render::UiRenderer::textWidth(font, text, scale), scrollPerTick);
+}
+
+void OriginalHud::drawTextBox(Interface& userInterface, const std::vector<TeamStrength>& teams) const {
+    const auto* entry = textBox_.current();
+    if (!entry) return;
+    auto& ui = userInterface.renderer();
+    const float middle = ui.canvasWidth() / 2.0f;
+    const float x0 = middle + kBoxLeft;
+    const float x1 = middle + kBoxRight;
+
+    // An end of the tube; the left one is the right one turned round.
+    const auto drawEnd = [&](const render::UiImage& image, float x, float y, bool left) {
+        if (left) {
+            ui.drawImageRegion(image, x, y, image.width(), image.height(), 1.0f, 0.0f, 0.0f, 1.0f);
+        } else {
+            ui.drawImage(image, x, y, image.width(), image.height());
+        }
+    };
+
+    if (entry->kind == ui::TextBoxKind::Message) {
+        const float y = kSmallHidden + textBox_.lowered() * kSmallTravel;
+        if (const auto* piece = picture("npro3")) {
+            for (int i = 0; i < kTubePieces; ++i) {
+                ui.drawImage(*piece, x0 + kSmallPieceStart + static_cast<float>(i) * kSmallPieceStep, y, piece->width(),
+                             piece->height());
+            }
+        }
+        if (const auto* end = picture("npro4")) {
+            drawEnd(*end, x0 + kSmallEndLeft, y, true);
+            drawEnd(*end, x1 + kSmallEndRight, y, false);
+        }
+        // The text, cut to the tube's window.
+        const auto& font = userInterface.bigFont();
+        render::TextStyle style;
+        style.scale = kBoxTextHeight / static_cast<float>(std::max(font.font().lineHeight, 1));
+        style.shadow = false;
+        const float windowLeft = middle + kBoxWindowLeft;
+        const float windowTop = y + kSmallTextOffset;
+        ui.setClip(windowLeft, std::max(windowTop, 0.0f), ui::TextBox::kWindowWidth, kTextWindowHeight);
+        ui.drawText(font, entry->text, windowLeft + textBox_.textX(), windowTop + (kTextWindowHeight - kBoxTextHeight) / 2.0f,
+                    style);
+        ui.clearClip();
+        return;
+    }
+
+    // The teams' strength: the big tube and a bar shared by health left.
+    const float y = kBigHidden + textBox_.lowered() * kBigTravel;
+    if (const auto* piece = picture("npro1")) {
+        for (int i = 0; i < kTubePieces; ++i) {
+            ui.drawImage(*piece, x0 + static_cast<float>(i) * kBigPieceStep, y, piece->width(), piece->height());
+        }
+    }
+    if (const auto* end = picture("npro2")) {
+        drawEnd(*end, x0 + kBigEndLeft, y, true);
+        drawEnd(*end, x1, y, false);
+    }
+    float total = 0.0f;
+    for (const auto& team : teams) total += std::max(team.health, 0.0f);
+    if (total <= 0.0f) return;
+    float x = x0 + kBarLeft;
+    const float right = x + kBarWidth;
+    const float barTop = y + kBarOffset;
+    std::size_t shown = 0;
+    for (const auto& team : teams) {
+        if (team.health > 0.0f) ++shown;
+    }
+    for (const auto& team : teams) {
+        if (team.health <= 0.0f) continue;
+        --shown;
+        // The last team takes what is left, so rounding leaves no gap; the
+        // others leave one pixel between them.
+        const float width = shown == 0 ? right - x : std::round(kBarWidth * team.health / total);
+        const float drawn = shown == 0 ? width : width - 1.0f;
+        ui.drawRect(x, barTop, drawn, kBarRowHeight, team.colour);
+        const glm::vec4 shade = glm::max(team.colour - glm::vec4(kBarShade, kBarShade, kBarShade, 0.0f), glm::vec4(0.0f));
+        ui.drawRect(x, barTop + kBarRowHeight, drawn, kBarRowHeight, shade);
+        x += width;
+    }
+}
+
 void OriginalHud::drawRifleSight(render::UiRenderer& ui, bool crosshair) const {
     ui.drawTriangles(ui::sightMaskTriangles(ui.canvasWidth()), kSightBlack);
     if (!crosshair) return;
@@ -217,7 +356,8 @@ const render::UiImage* OriginalHud::picture(std::string_view name) const {
     return found == pictures_.end() ? nullptr : &found->second;
 }
 
-void OriginalHud::update(double elapsedSeconds, const std::optional<ui::HudInfo>& turn, bool weaponMenuOpen) {
+void OriginalHud::update(double elapsedSeconds, const std::optional<ui::HudInfo>& turn, bool weaponMenuOpen,
+                         bool radarShown) {
     // Which instruments are wanted now.
     const bool playing = turn && turn->playing;
     const bool wantClock = turn.has_value();
@@ -238,6 +378,8 @@ void OriginalHud::update(double elapsedSeconds, const std::optional<ui::HudInfo>
     for (int tick = ticker_.advance(elapsedSeconds); tick > 0; --tick) {
         powerSlide_.tick(wantPower);
         weaponMenuSlide_.tick(weaponMenuOpen);
+        radarSlide_.tick(radarShown);
+        textBox_.tick();
         clockSlide_.tick(wantClock);
         aimFade_.tick(wantAim);
     }

@@ -6,6 +6,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <utility>
 
@@ -81,6 +82,8 @@ UiRenderer::~UiRenderer() {
 
 void UiRenderer::begin(int widthPixels, int heightPixels) {
     glViewport(0, 0, widthPixels, heightPixels);
+    widthPixels_ = widthPixels;
+    heightPixels_ = heightPixels;
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
     glEnable(GL_BLEND);
@@ -96,7 +99,20 @@ void UiRenderer::begin(int widthPixels, int heightPixels) {
     glActiveTexture(GL_TEXTURE0);
 }
 
+void UiRenderer::setClip(float x, float y, float width, float height) const {
+    // Canvas units to pixels; OpenGL counts rows from the bottom.
+    const float scale = static_cast<float>(heightPixels_) / kCanvasHeight;
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(static_cast<GLint>(x * scale), static_cast<GLint>(static_cast<float>(heightPixels_) - (y + height) * scale),
+              static_cast<GLsizei>(std::max(width * scale, 0.0f)), static_cast<GLsizei>(std::max(height * scale, 0.0f)));
+}
+
+void UiRenderer::clearClip() const {
+    glDisable(GL_SCISSOR_TEST);
+}
+
 void UiRenderer::end() const {
+    glDisable(GL_SCISSOR_TEST);
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
 }

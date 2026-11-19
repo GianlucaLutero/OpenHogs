@@ -107,6 +107,11 @@ public:
     // (top-centre or top-right for the other alignments).
     void drawText(const UiFont& font, std::string_view text, float x, float y, const TextStyle& style = {}) const;
 
+    // Limits what the next draw calls change to a rectangle (canvas
+    // units), until clearClip(): text scrolling through a window.
+    void setClip(float x, float y, float width, float height) const;
+    void clearClip() const;
+
     // Width of `text` in canvas units at `scale`.
     static float textWidth(const UiFont& font, std::string_view text, float scale = 1.0f);
 
@@ -125,6 +130,8 @@ private:
     GLuint vertexArray_ = 0;
     GLuint vertexBuffer_ = 0;
     float canvasWidth_ = kCanvasHeight;
+    int widthPixels_ = 0;
+    int heightPixels_ = 0;
 };
 
 } // namespace openhogs::render

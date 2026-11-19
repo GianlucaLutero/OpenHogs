@@ -72,6 +72,8 @@ add_executable(openhogs_tests
     ui/OriginalMenuTests.cpp
     ui/HudTests.cpp
     ui/RifleSightTests.cpp
+    ui/RadarTests.cpp
+    ui/TextBoxTests.cpp
     ui/CampaignMenuTests.cpp
     langpack/LangpackTests.cpp)
 
