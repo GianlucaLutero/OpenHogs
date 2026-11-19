@@ -14,6 +14,8 @@
 #   KeyBindings   - which keys do what in a match (the CONTROLS screen, [Controls])
 #   WeaponMenu    - the original weapon menu: tabs, windows, cursor
 #   RifleSight    - the original rifle sight: the round hole and the crosshair
+#   Radar         - the original radar: the map picture, the marks, the tilted view
+#   TextBox       - the original text box: the tube that brings messages down
 #   OriginalMenu  - the original list menu's layout and animation (from the executable)
 #   OriginalDialog - the original yes/no question's layout and animation
 #   OriginalVolume - the original VOLUME CONTROL panel's layout and animation
@@ -34,6 +36,8 @@ add_library(openhogs_ui STATIC
     src/WeaponMenu.cpp
     src/KeyBindings.cpp
     src/RifleSight.cpp
+    src/Radar.cpp
+    src/TextBox.cpp
     src/Menu.cpp
     src/OriginalDialog.cpp
     src/OriginalVolume.cpp

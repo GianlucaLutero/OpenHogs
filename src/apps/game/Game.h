@@ -171,6 +171,9 @@ private:
     void drawScene(int width, int height);
     void drawHud(int width, int height);
     void showMessage(const std::string& message, double seconds, bool turnMessage);
+    // The teams' strength in the text box, once a round.
+    void showTeamStrength();
+    std::vector<OriginalHud::TeamStrength> teamStrengths() const;
     void drawHog(const render::Camera& camera, int width, int height, const game::Hog& hog, std::size_t index);
     const formats::Model& modelFor(const scene::CharacterClass& characterClass);
     const TeamLook& lookFor(int team);
@@ -203,6 +206,7 @@ private:
     ui::WeaponMenu weaponMenu_;
     std::optional<std::size_t> chosenWeapon_;
     int weaponMenuTurn_ = -1;  // the turn it was opened in
+    int teamStrengthRound_ = 0;  // the round the strength bar was last shown in
     void openWeaponMenu();
     GameRequest handleWeaponMenuKey(const SDL_Event& event);
     // Mouse movement through the rifle sight since the last step, in

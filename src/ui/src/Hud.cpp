@@ -81,16 +81,35 @@ std::optional<std::string> messageForEvent(const game::GameEvent& event, const g
             return strings.draw;
         }
         return fillPlaceholders(strings.victory, {strings.teamName(world.nationOf(event.team))});
-    case game::GameEventType::PickedUp: {
+    default:
+        return std::nullopt;
+    }
+}
+
+std::optional<std::string> pickupMessage(const game::GameEvent& event, const game::World& world,
+                                        const UiStrings& strings, const std::vector<std::string>& gameText) {
+    if (event.type != game::GameEventType::PickedUp || event.pickup >= world.pickups().size()) return std::nullopt;
+    const auto& pickup = world.pickups()[event.pickup];
+    switch (pickup.kind) {
+    case game::PickupKind::Health: {
         // ">S FINDS USEFUL PROVISIONS!": the hog's name, or its team's.
         if (event.hog >= world.hogs().size()) return std::nullopt;
         const auto& hog = world.hogs()[event.hog];
         const std::string who = hog.name.empty() ? strings.teamName(world.nationOf(hog.team)) : hog.name;
         return fillPlaceholders(strings.findsProvisions, {who});
     }
-    default:
-        return std::nullopt;
+    case game::PickupKind::Weapon: {
+        // The weapon's name and how many ("%u X%d"); just the name in the
+        // Boot Camp, where crate weapons never run out ("%u").
+        if (!pickup.weapon()) return std::nullopt;
+        std::string text = weaponDisplayName(*pickup.weapon(), gameText);
+        if (!world.training()) text += " X" + std::to_string(pickup.amount);
+        return text;
     }
+    case game::PickupKind::PromotionPoints:
+        return std::nullopt;  // the executable writes nothing
+    }
+    return std::nullopt;
 }
 
 } // namespace openhogs::ui

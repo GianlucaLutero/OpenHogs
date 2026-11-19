@@ -7,7 +7,10 @@
 // those of Language/Tims/dashtims.mad; where they go and how they move is
 // worked out by ui::HudLayout (see docs/formats/hud.md).
 //
-// It also draws the weapon menu (Language/Tims/MENUTIMS.MAD), the label
+// It also draws the radar in the bottom-left corner (ui/Radar.h, marks of
+// Language/Tims/mapicons.mtd), the text box that comes down from the top
+// with messages (ui/TextBox.h, Language/Tims/tboxtims.mad), the weapon menu
+// (Language/Tims/MENUTIMS.MAD), the label
 // over the hog in play (its name or rank and its
 // health after a heart, as on the PlayStation), the damage numbers that rise above hurt hogs (digits of
 // Language/Tims/expltims.mad) and the rifle sight (crosshair of
@@ -26,12 +29,15 @@
 #include "openhogs/ui/FloatingNumbers.h"
 #include "openhogs/ui/Hud.h"
 #include "openhogs/ui/HudLayout.h"
+#include "openhogs/ui/Radar.h"
+#include "openhogs/ui/TextBox.h"
 #include "openhogs/ui/WeaponMenu.h"
 
 #include <map>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace openhogs::gameapp {
 
@@ -43,7 +49,9 @@ public:
 
     // `turn` is the active hog's HUD information, empty between matches
     // or when the match is over.
-    void update(double elapsedSeconds, const std::optional<ui::HudInfo>& turn, bool weaponMenuOpen = false);
+    // `radarShown`: the radar is wanted (in a match, not through a sight).
+    void update(double elapsedSeconds, const std::optional<ui::HudInfo>& turn, bool weaponMenuOpen = false,
+                bool radarShown = false);
 
     void draw(Interface& userInterface, const std::optional<ui::HudInfo>& turn) const;
 
@@ -66,6 +74,30 @@ public:
     // left, the selection frame and the chosen weapon's name.
     void drawWeaponMenu(Interface& userInterface, const ui::WeaponMenu& menu) const;
 
+    // The picture of the map the radar shows (ui::radarMapPicture), made
+    // when a match starts.
+    void setRadarMap(const formats::RgbaImage& picture);
+
+    // The radar, sliding up from below the screen: the map seen along
+    // `cameraForward`, with `marks` on it.
+    void drawRadar(render::UiRenderer& ui, const std::vector<ui::RadarMark>& marks,
+                   const glm::vec3& cameraForward) const;
+
+    // A message for the text box (it waits its turn if one is showing).
+    // `scrollPerTick`: how fast it scrolls if it is too long to fit.
+    void postMessage(const Interface& userInterface, const std::string& text,
+                     float scrollPerTick = ui::TextBox::kPickupScroll);
+    // The teams' strength, in the big tube.
+    void postTeamStrength() { textBox_.postTeamStrength(); }
+    void clearMessages() { textBox_ = {}; }
+
+    // One team's share of the strength bar.
+    struct TeamStrength {
+        float health = 0.0f;
+        glm::vec4 colour{1.0f};
+    };
+    void drawTextBox(Interface& userInterface, const std::vector<TeamStrength>& teams) const;
+
     // The rifle sight over the view: black around a round hole and the
     // crosshair (ui/RifleSight.h).
     void drawRifleSight(render::UiRenderer& ui, bool crosshair = true) const;
@@ -87,6 +119,9 @@ private:
     ui::HudSlide powerSlide_;
     ui::HudSlide clockSlide_;
     ui::HudSlide weaponMenuSlide_;
+    ui::HudSlide radarSlide_;
+    std::optional<render::UiImage> radarMap_;
+    ui::TextBox textBox_;
     // The weapon menu's pictures (MENUTIMS.MAD, Language/Tims), if found.
     std::optional<render::UiImage> menuPanel_;
     std::optional<render::UiImage> menuFrame_;
