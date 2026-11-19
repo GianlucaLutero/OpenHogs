@@ -44,6 +44,7 @@ add_executable(openhogs_tests
     scene/CharacterPoseTests.cpp
     scene/CharacterLibraryTests.cpp
     scene/CharacterExpressionsTests.cpp
+    scene/ParticleTests.cpp
     game/GameTests.cpp
     game/MovementTests.cpp
     game/HogHandlingTests.cpp

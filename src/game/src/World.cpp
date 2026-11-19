@@ -321,7 +321,7 @@ void World::explodeDeadHogs(std::vector<GameEvent>& events) {
         explosion.type = GameEventType::Explosion;
         explosion.position = centre;
         events.push_back(explosion);
-        explosions_.push_back({centre, kDrownedBlastRadius, 0.0f});
+        addExplosion(centre, kDrownedBlastRadius);
         explode(hogs_, centre, kDrownedBlastRadius, kDrownedBlastDamage, 0.0f, events);
         damageObjects(centre, kDrownedBlastRadius, kDrownedBlastDamage, events);
     }
@@ -713,7 +713,7 @@ void World::removeDestroyedObject(const Destructible& target, std::vector<GameEv
         if (box.object == object) {
             destroyed.position = box.centre;
             if (target.blowsUp()) {
-                explosions_.push_back({box.centre, std::max({box.halfSize.x, box.halfSize.y, box.halfSize.z}), 0.0f});
+                addExplosion(box.centre, std::max({box.halfSize.x, box.halfSize.y, box.halfSize.z}));
             }
             break;
         }
@@ -731,6 +731,10 @@ void World::removeDestroyedObject(const Destructible& target, std::vector<GameEv
             damageHog(hogs_, inside, mountSpec(mount.kind).damageWhenDestroyed, events);
         }
     }
+}
+
+void World::addExplosion(const glm::vec3& centre, float radius) {
+    explosions_.push_back({centre, radius, 0.0f, ++explosionCount_});
 }
 
 void World::burnDrums(double seconds, std::vector<GameEvent>& events) {
@@ -753,7 +757,7 @@ void World::burnDrums(double seconds, std::vector<GameEvent>& events) {
         events.push_back(explosion);
         const float radius = drum.poison ? kPoisonDrumRadius : kDrumBlastRadius;
         const float damage = drum.poison ? kPoisonDrumDamage : kDrumBlastDamage;
-        explosions_.push_back({drum.centre, radius, 0.0f});
+        addExplosion(drum.centre, radius);
         explode(hogs_, drum.centre, radius, damage, drum.poison ? 0.0f : kDrumKnockback, events);
         if (drum.poison) {
             for (std::size_t h = 0; h < hogs_.size(); ++h) {
@@ -837,7 +841,7 @@ void World::fire(std::size_t hogIndex, float power, std::vector<GameEvent>& even
         explosion.position = centre;
         explosion.weapon = spec.id;
         events.push_back(explosion);
-        explosions_.push_back({centre, spec.blastRadius, 0.0f});
+        addExplosion(centre, spec.blastRadius);
         damageHog(hogs_, hogIndex, hogs_[hogIndex].health, events);
         explode(hogs_, centre, spec.blastRadius, spec.damage, spec.knockback, events);
         damageObjects(centre, spec.blastRadius, spec.damage, events);
@@ -1448,7 +1452,7 @@ void World::detonate(const Projectile& projectile, std::vector<GameEvent>& event
     explosion.position = centre;
     explosion.weapon = spec.id;
     events.push_back(explosion);
-    explosions_.push_back({centre, spec.blastRadius, 0.0f});
+    addExplosion(centre, spec.blastRadius);
 
     if (spec.effect == WeaponEffect::Heal) {
         // Medicine: health for everyone within reach, most at the centre.

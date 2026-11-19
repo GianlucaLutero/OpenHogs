@@ -14,6 +14,7 @@
 #                    blinking, rules per animation
 #   CharacterPose  - bone transforms of a hog from its skeleton and an
 #                    animation frame
+#   Particles      - the effects' particles (fire, smoke, earth, foam, scorch marks)
 #   MapScene       - loads a whole map (terrain, textures, objects) from the
 #                    virtual file system
 
@@ -22,6 +23,7 @@ add_library(openhogs_scene STATIC
     src/CharacterLibrary.cpp
     src/CharacterPose.cpp
     src/MapScene.cpp
+    src/Particles.cpp
     src/ModelMesh.cpp
     src/TerrainMesh.cpp)
 

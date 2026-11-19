@@ -13,7 +13,7 @@ listed before it below.
 | `tools/text` | done | `openhogs-text`: converts text tables to editable UTF-8 listings and back. |
 | `tools/langpack` | done | `openhogs-langpack`: builds a language pack from the PlayStation disc (text alignment, overrides, briefing conversion). |
 | `tools/extractor` | done | `openhogs-extract`: unpacks archives, converts textures to PNG and text tables to text. |
-| `scene`   | done | Turns map data into triangles grouped by texture, places objects. Poses the hogs (`CharacterPose`: bone transforms, blending between frames) and loads them (`CharacterLibrary`: classes, teams, animation names); carries weapons rigidly on the hand bone (`buildCarriedModelMesh`); facial expressions and blinking (`CharacterExpressions`). Pure CPU code, unit tested. |
+| `scene`   | done | Turns map data into triangles grouped by texture, places objects. Poses the hogs (`CharacterPose`: bone transforms, blending between frames) and loads them (`CharacterLibrary`: classes, teams, animation names); carries weapons rigidly on the hand bone (`buildCarriedModelMesh`); facial expressions and blinking (`CharacterExpressions`). The effects' particles (`Particles`: fire, smoke, earth, foam, scorch marks). Pure CPU code, unit tested. |
 | `ui`      | in progress | What the player sees and does around a match, with no drawing code: text layout in the bitmap fonts and `>S`/`>N` placeholders (`TextLayout`), menu and HUD texts from the text tables (`UiStrings`), menu screens (`Menu`), the menus before a match (`FrontEnd`), the player's keys (`KeyBindings`, chosen on CONTROLS and saved in `[Controls]`), the original weapon menu (`WeaponMenu`), the pause menu (`PauseMenu`), timed messages (`MessageBanner`), what the HUD shows (`Hud`), the original HUD's layout and moving parts read from the executable (`HudLayout`), the rifle sight's mask and crosshair (`RifleSight`), the radar's map picture, marks and tilted view (`Radar`), the text box that brings messages down (`TextBox`), the original list menu's, yes/no question's and volume panel's layout and animation (`OriginalMenu`, `OriginalDialog`, `OriginalVolume`) of the longer list (`OriginalSelectList`), of the level panel and team holders (`OriginalLevelPanel`) of CONTROLS and CREDITS (`OriginalOptionPages`) of the campaign's squad page (`OriginalSquad`) and of its career board (`OriginalCareer`), the damage numbers (`FloatingNumbers`), the campaign pages (`CampaignMenu`). Unit tested. |
 | `render`  | done | OpenGL 3.3 renderers for maps, characters (and any textured model), effects and the 2D interface (`UiRenderer`: font text, panels, icons) (glad), RAII GPU objects, free camera. No window code: the application creates the context. |
 | `apps/common` | done | Shared by the applications: opening the game files (`--game` or configuration + packs), the SDL3/OpenGL window, PNG screenshots. |
@@ -76,7 +76,7 @@ this order:
    or killed, a new turn...), which the application turns into sounds.
 3. **Drawing**: the map, each hog posed by its animation player (the
    active one with its weapon), the projectiles, then the effects
-   (aiming line, tracers, explosions, health bars), and finally the HUD
+   (aiming line, tracers, shadows, explosion particles), and finally the HUD
    (`ui::describeTurn` drawn by `OriginalHud`: damage numbers, angle and
    power gauges, clock, the radar in the bottom-left corner, the text box
    at the top, the weapon menu) and the current message. While the player holds
