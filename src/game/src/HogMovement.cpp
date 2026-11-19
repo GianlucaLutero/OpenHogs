@@ -5,6 +5,7 @@
 #include <glm/gtc/constants.hpp>
 
 #include <cmath>
+#include <random>
 
 namespace openhogs::game {
 
@@ -148,13 +149,22 @@ void moveInAir(std::vector<Hog>& hogs, std::size_t self, double seconds, const M
             hog.motion.state = MotionState::Dead;
             hog.position = next;
             const bool inWater = isInWater(hog, map);
-            hog.animation.play(inWater ? kDrowningAnimation : kFirstDyingAnimation + self % 3, Repeat::Once);
+            hog.animation.play(inWater ? kDrowningAnimation : randomDyingAnimation(), Repeat::Once);
         }
     }
     hog.position = next;
 }
 
 } // namespace
+
+std::size_t randomDyingAnimation() {
+    static std::minstd_rand generator(20261119);
+    return kFirstDyingAnimation + generator() % kDyingAnimationCount;
+}
+
+bool isDyingAnimation(std::size_t animation) {
+    return animation >= kFirstDyingAnimation && animation < kFirstDyingAnimation + kDyingAnimationCount;
+}
 
 std::string_view footstepSoundName(formats::SurfaceType surface) {
     using formats::SurfaceType;

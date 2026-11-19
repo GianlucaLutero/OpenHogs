@@ -157,6 +157,32 @@ is set returns at once and takes no damage. The explosion code that calls
 the method has not been read; OpenHogs damages objects as it damages hogs
 (decision 114).
 
+The scenery method (`0x48D990`) does more:
+
+- damage numbers are only shown for targets and dummies (table entries
+  95–103) and for a hog standing on the object (object + 0x80);
+- once less than a point is left, the damage the object could not take,
+  in whole points, goes to the hog standing on it, which is knocked off;
+- the first time the health drops below two thirds of the table's value,
+  the flag at +0x89 is cleared and a quarter of that value (+0xA8 / 4) is
+  added back. The scenery update (`0x48DC10`) uses the flag to move
+  windmills, water wheels, pistons and the other machines, so they stop.
+  The constructor (`FUN_0048D000`) leaves the rule out (+0xB2 = 0) for
+  bushes, stumps, trees, cacti, flowers and grass (entries 104–135), the
+  bog and the machines with moving parts.
+
+When a house, wall or roof (entries 138–379) is destroyed, the update
+pushes it over with a physics impulse of 70–101 (`FUN_004A9440`). Pickups
+(class 0x135B) have an empty damage method (`0x4A9ED0`): in the PC game
+crates cannot be destroyed.
+
+A hog that has finished dying (`FUN_004680e0`) blows up (effect 0x56 and
+sound 12 on land; 0x5B and a splash in water; 0x42 in lava) and, on land
+and outside deathmatches, leaves object 29, `BOOTS`, with two puffs of
+smoke (effect 0x3C) beside it; for some of its weapons (those with the
+flag at +8 of their 12-byte entry set) it may also leave `CRATE1` crates
+around it, 132 units away, a quarter turn apart.
+
 
 Each objective is a 20-byte node hung on its object (object + 0x48),
 made by `FUN_004a7130`:

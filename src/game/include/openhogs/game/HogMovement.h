@@ -36,8 +36,17 @@ inline constexpr std::size_t kJumpStartAnimation = 8;     // "Jumping - Start"
 inline constexpr std::size_t kJumpMiddleAnimation = 9;    // "Jumping - Middle"
 inline constexpr std::size_t kJumpEndAnimation = 10;      // "Jumping - End"
 inline constexpr std::size_t kFallAnimation = 38;         // "Flying through air/falling"
-inline constexpr std::size_t kFirstDyingAnimation = 47;   // "Dying #1", #2 and #3 follow
+// Dying on land: the executable picks one of 17 animations at random
+// (FUN_0046cb50: rand % 17 + 57); some end with the hog still standing,
+// and every one ends with the hog blowing up (World).
+inline constexpr std::size_t kFirstDyingAnimation = 57;
+inline constexpr std::size_t kDyingAnimationCount = 17;
 inline constexpr std::size_t kDrowningAnimation = 74;     // sinking: the executable's death in water
+
+// One of the dying animations, at random (a fixed sequence, so matches
+// can be replayed).
+std::size_t randomDyingAnimation();
+bool isDyingAnimation(std::size_t animation);
 
 // Speeds in world units per second.
 // The run cycle's feet travel 326 model units (163 world units) per step,

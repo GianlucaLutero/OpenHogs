@@ -64,8 +64,9 @@ CollisionBox objectBox(std::size_t object, glm::vec3 centre, glm::vec3 halfSize)
 TEST_CASE("Objects take their health from the executable's tables", "[game][destructibles]") {
     // Buildings, vehicles and scenery each have their own table; village
     // walls and roofs share the usual 60 points; a map may set its own
-    // value; scenery marked indestructible, hogs and crates cannot be
-    // destroyed at all (bunkers keep their health even when marked).
+    // value; scenery marked indestructible and hogs cannot be destroyed at
+    // all (bunkers keep their health even when marked). Crates, drums and
+    // animals can, as the owner chose (decision 115).
     CHECK(objectHealth(makeObject("PILLBOX", 0, 0, 0)) == 100.0f);
     CHECK(objectHealth(makeObject("tent_s", 0, 0, 0)) == 25.0f);  // names are not case-sensitive
     CHECK(objectHealth(makeObject("TANK", 0, 0, 0)) == 150.0f);
@@ -87,8 +88,10 @@ TEST_CASE("Objects take their health from the executable's tables", "[game][dest
     CHECK(objectHealth(markedBunker) == 100.0f);
 
     CHECK_FALSE(objectHealth(makeObject("GR_ME", 0, 0, 0)).has_value());
-    CHECK_FALSE(objectHealth(makeObject("CRATE1", 0, 0, 0)).has_value());
-    CHECK_FALSE(objectHealth(makeObject("FISH", 0, 0, 0)).has_value());
+    CHECK(objectHealth(makeObject("CRATE1", 0, 0, 0)) == kCrateHealth);
+    CHECK(objectHealth(makeObject("DRUM", 0, 0, 0)) == kDrumHealth);  // the wiki: 20 points set it off
+    CHECK(objectHealth(makeObject("FISH", 0, 0, 0)) == kAnimalHealth);
+    CHECK(objectClass("DRUM2") == ObjectClass::Drum);
 }
 
 TEST_CASE("An object is gone once it has less than one point left", "[game][destructibles]") {
@@ -151,4 +154,85 @@ TEST_CASE("A bullet that hits an object damages it, and stops there", "[game][de
     CHECK(wall.destructibles()[0].health == Approx(250.0f - weaponSpec(WeaponId::Rifle).damage));
     CHECK_FALSE(wall.destructibles()[0].destroyed);
     CHECK(wall.map().boxes().size() == 1);
+}
+
+TEST_CASE("Scenery below two thirds of its health gets a quarter back, once", "[game][destructibles]") {
+    // FUN_0048d990: walls and houses hold out a little longer than their
+    // health says; trees and bushes do not. Without this, walls would fall
+    // to fewer shots than in the original.
+    auto targets = findDestructibles({makeObject("WALL", 0, 0, 0), makeObject("TREEG", 0, 0, 0)});
+    REQUIRE(targets.size() == 2);
+    Destructible& wall = targets[0];
+    Destructible& tree = targets[1];
+    CHECK_FALSE(damageObject(wall, 40.0f));  // 60 left: below 66.7
+    CHECK(wall.health == Approx(85.0f));
+    CHECK_FALSE(damageObject(wall, 40.0f));  // only once
+    CHECK(wall.health == Approx(45.0f));
+    CHECK_FALSE(damageObject(tree, 40.0f));
+    CHECK(tree.health == Approx(40.0f));
+}
+
+TEST_CASE("A drum hit hard enough catches fire and blows up two seconds later", "[game][destructibles]") {
+    // The wiki's Explosive barrel page: 20 points set it off, it explodes
+    // two seconds later and hurts those around it (up to 75). A hog shot
+    // next to a drum must still have time to read what is coming.
+    const glm::vec3 drumCentre{200.0f, 150.0f, 0.0f};  // a tall one, so the level shot hits it
+    const auto map = flatMap({objectBox(0, drumCentre, {40.0f, 200.0f, 40.0f})});
+    std::vector<Hog> hogs = duel(map, WeaponId::Rifle, 400.0f);
+    hogs.push_back(makeHog(map, 300, 150, 1));  // a bystander next to the drum
+    World world(map, hogs);
+    Destructible drum;
+    drum.object = 0;
+    drum.objectClass = ObjectClass::Drum;
+    drum.health = kDrumHealth;
+    world.setDestructibles({drum});
+
+    const auto shot = runWorld(world, fireKey(), 1);
+    const auto soon = runWorld(world, PlayerInput{}, 50);  // one second: still burning
+    CHECK(count(shot, GameEventType::ObjectDestroyed) + count(soon, GameEventType::ObjectDestroyed) == 0);
+    CHECK(world.hogs()[2].health == Approx(kMaxHealth));
+    const auto later = runWorld(world, PlayerInput{}, 75);
+    CHECK(count(later, GameEventType::ObjectDestroyed) == 1);
+    CHECK(world.hogs()[2].health < kMaxHealth);
+    CHECK(world.map().boxes().empty());
+}
+
+TEST_CASE("A crate that is destroyed takes its contents with it", "[game][destructibles]") {
+    // Shooting a crate is a way to deny it to the enemy (decision 115): it
+    // must not stay behind invisible and still give its weapon.
+    const auto map = flatMap({objectBox(0, {200.0f, 100.0f, 0.0f}, {60.0f, 100.0f, 60.0f})});
+    std::vector<Pickup> pickups(1);
+    pickups[0].object = 0;
+    pickups[0].centre = {200.0f, 100.0f, 0.0f};
+    pickups[0].halfSize = {60.0f, 100.0f, 60.0f};
+    World world(map, duel(map, WeaponId::Bazooka, 2000.0f), {}, pickups);
+    Destructible crate;
+    crate.object = 0;
+    crate.objectClass = ObjectClass::Crate;
+    crate.health = kCrateHealth;
+    world.setDestructibles({crate});
+    runWorld(world, fireKey(), 1);
+    const auto events = runWorld(world, PlayerInput{}, 50 * 3);
+    CHECK(count(events, GameEventType::ObjectDestroyed) == 1);
+    CHECK(world.pickups()[0].taken);
+}
+
+TEST_CASE("The damage an object cannot take goes to the hog standing on it", "[game][destructibles]") {
+    // FUN_0048d990: a hog on a crumbling wall is hurt by what is left of
+    // the blow, in whole points, and falls. Standing on scenery is not a
+    // safe place from a strong shot.
+    const glm::vec3 wallCentre{1000.0f, 50.0f, 0.0f};
+    const auto map = flatMap({objectBox(0, wallCentre, {100.0f, 50.0f, 100.0f})});
+    std::vector<Hog> hogs{makeHog(map, -1500, 0, 0), makeHog(map, 1000, 0, 1)};
+    hogs[1].position.y = 100.0f;  // on top of the wall
+    World world(map, hogs);
+    Destructible wall;
+    wall.object = 0;
+    wall.objectClass = ObjectClass::Scenery;
+    wall.health = 10.0f;
+    world.setDestructibles({wall});
+    std::vector<GameEvent> events;
+    world.damageMapObject(0, 35.5f, events);
+    CHECK(world.destructibles()[0].destroyed);
+    CHECK(world.hogs()[1].health == Approx(kMaxHealth - 25.0f));
 }

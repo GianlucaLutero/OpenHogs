@@ -108,7 +108,8 @@ TEST_CASE("Some objectives cost points, and a hog that dies loses its errand", "
 TEST_CASE("In a match, reaching the target drops a crate the hog picks up", "[game][objectives]") {
     // The whole chain as the player sees it: the hog walks into the target
     // cell, the reward crate appears (with an object number after the
-    // map's objects, so it can be drawn and hidden) and the hog takes it.
+    // map's objects, so it can be drawn and hidden), comes down by
+    // parachute, and the hog takes it once it has landed.
     const auto map = flatMap();
     std::vector<Hog> hogs{makeHog(map, 0, 0, 0), makeHog(map, -3000, 0, 1)};
     hogs[0].object = 0;
@@ -122,12 +123,16 @@ TEST_CASE("In a match, reaching the target drops a crate the hog picks up", "[ga
 
     int done = 0;
     int picked = 0;
-    for (int step = 0; step < 150; ++step) {
-        for (const auto& event : world.update(kStep, walkForward(), {})) {
+    // Walk to the target cell, then wait for the crate, which comes down by
+    // parachute at the hog's feet.
+    for (int step = 0; step < 150 + 50 * 6; ++step) {
+        const PlayerInput input = done == 0 ? walkForward() : PlayerInput{};
+        for (const auto& event : world.update(kStep, input, {})) {
             if (event.type == GameEventType::ObjectiveDone) {
                 ++done;
                 CHECK(event.dropped);
                 CHECK(event.sergeantSection == 5);
+                CHECK(world.pickups()[event.pickup].dropHeight == Approx(kCrateDropHeight));  // up in the sky
             }
             if (event.type == GameEventType::PickedUp) ++picked;
         }

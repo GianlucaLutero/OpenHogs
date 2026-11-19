@@ -27,6 +27,8 @@ namespace {
 // pixel, the usual "missing texture" colour, easy to spot on screen.
 // The models of the crates objectives drop; every map's archive has them.
 constexpr const char* kRewardCrateModels[] = {"CRATE1", "CRATE2", "PROPOINT"};
+// Left by a hog that blows up, and opened over falling crates.
+constexpr const char* kEffectModels[] = {"BOOTS", "WE_CHUT2"};
 
 formats::RgbaImage makeMissingTexture() {
     return {1, 1, {255, 0, 255, 255}};
@@ -148,6 +150,9 @@ void loadObjects(const core::VirtualFileSystem& vfs, const std::string& base, Ma
     // their models are loaded even when the map places none.
     for (const char* crate : kRewardCrateModels) {
         loadModel(crate);
+    }
+    for (const char* model : kEffectModels) {
+        loadModel(model);
     }
 }
 

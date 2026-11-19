@@ -76,7 +76,9 @@ struct Hog {
 
     float waterDamageOwed = 0.0f;   // swimming damage not yet charged (it is charged in whole points)
     float secondsSwumInItsTurn = 0.0f;  // swimming under the player's control, this turn
-    bool drownedBlastDone = false;  // a drowned hog explodes once, when it has sunk
+    // A dead hog blows up once, when its dying (or sinking) animation is
+    // over; on land only its boots are left (World::explodeDeadHogs).
+    bool blownUp = false;
 
     float health = kMaxHealth;
     float maxHealth = kMaxHealth;   // unhurt health (campaign ranks differ)
@@ -183,8 +185,9 @@ inline constexpr float kSteeredSwimRampSeconds = 3.0f;
 // The damage per second of a hog that has swum `steeredSeconds` under the
 // player's control in its turn (0 for a hog nobody steers).
 float swimDamagePerSecond(float steeredSeconds);
-// The drowned hog's explosion: the wiki gives no figures, so a grenade's
-// reach and the jetpack's 20 points (decision 149).
+// The explosion of a dead hog, drowned (the wiki gives no figures, so a
+// grenade's reach and the jetpack's 20 points, decision 149) or on land
+// (the same, decision 156).
 inline constexpr float kDrownedBlastRadius = 325.0f;
 inline constexpr float kDrownedBlastDamage = 20.0f;
 

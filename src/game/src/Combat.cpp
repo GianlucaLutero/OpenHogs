@@ -77,8 +77,7 @@ void damageHog(std::vector<Hog>& hogs, std::size_t index, float amount, std::vec
         // A hog that dies in the water sinks (the executable's animation 74).
         const bool inWater = hog.motion.state == MotionState::Swimming;
         hog.motion.state = MotionState::Dead;
-        hog.animation.play(inWater ? kDrowningAnimation : kFirstDyingAnimation + index % 3,
-                           AnimationPlayer::Repeat::Once);
+        hog.animation.play(inWater ? kDrowningAnimation : randomDyingAnimation(), AnimationPlayer::Repeat::Once);
     }
 }
 

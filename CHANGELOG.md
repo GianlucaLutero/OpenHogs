@@ -36,6 +36,13 @@ the `project()` call in `CMakeLists.txt`.
 - **Text box** as the original: crate messages and the Boot Camp's
   instructions come down from the top in a brass tube (long ones scroll);
   the teams' strength comes in the big tube at the start of each round.
+- **Deaths** as the original: one of 17 dying animations, then the hog
+  blows up and only its boots are left.
+- **Crates** that appear during a match come down by parachute.
+- **Crates, explosive drums and animals** can be destroyed; a drum hit hard
+  enough blows up two seconds later. Walls and houses hold out a little
+  longer below two thirds of their health, and a hog standing on an object
+  that is destroyed takes the rest of the blow.
 
 ## 0.1.0 — first prototype release
 

@@ -8,6 +8,7 @@
 #include "GameTestSupport.h"
 
 #include "openhogs/game/AnimationPlayer.h"
+#include "openhogs/game/Combat.h"
 #include "openhogs/game/HogMovement.h"
 #include "openhogs/game/Weapons.h"
 #include "openhogs/game/World.h"
@@ -230,4 +231,52 @@ TEST_CASE("World: a hog in the water that nobody controls swims to the shore", "
     for (int i = 0; i < 50 * 6; ++i) world.update(kStep, PlayerInput{}, animations);
     CHECK(world.hogs()[1].position.x < 0.0f);
     CHECK(world.hogs()[1].motion.state != MotionState::Swimming);
+}
+
+TEST_CASE("World: a hog killed on land plays one of 17 deaths, then blows up leaving its boots", "[game][world][death]") {
+    // The executable (FUN_0046cb50, FUN_004680e0): a random animation among
+    // 57-73, then the hog explodes, hurting those nearby, and its boots stay
+    // where it stood. Players read the explosion as the moment the hog is
+    // gone; a neighbour must not be safe from it.
+    const auto map = flatMap();
+    std::vector<Hog> hogs{makeHog(map, -1800, 0, 0), makeHog(map, 1000, 0, 1), makeHog(map, 1150, 0, 1)};
+    std::vector<GameEvent> events;
+    damageHog(hogs, 1, 500.0f, events);
+    World world(map, hogs);
+    const auto animations = makeAnimations();
+    REQUIRE_FALSE(world.hogs()[1].alive);
+    CHECK(isDyingAnimation(world.hogs()[1].animation.animation()));
+
+    std::optional<GameEvent> blown;
+    for (int i = 0; i < 50 * 5 && !blown; ++i) {
+        for (const auto& event : world.update(kStep, PlayerInput{}, animations)) {
+            if (event.type == GameEventType::HogBlownUp) blown = event;
+        }
+    }
+    REQUIRE(blown);
+    CHECK(blown->hog == 1);
+    CHECK(blown->amount == 1.0f);  // boots left
+    CHECK(world.hogs()[1].blownUp);
+    CHECK(world.hogs()[2].health < kMaxHealth);
+}
+
+TEST_CASE("World: hogs blown up in a deathmatch leave no boots", "[game][world][death]") {
+    // They come back at the start of the next turn (FUN_004680e0 skips the
+    // boots when the deathmatch limit is on), so nothing must stay behind.
+    const auto map = flatMap();
+    std::vector<Hog> hogs{makeHog(map, -1800, 0, 0), makeHog(map, 1000, 0, 1)};
+    TurnRules rules;
+    rules.deathmatchLimit = 3;
+    std::vector<GameEvent> events;
+    damageHog(hogs, 1, 500.0f, events);
+    World world(map, hogs, rules);
+    const auto animations = makeAnimations();
+    std::optional<GameEvent> blown;
+    for (int i = 0; i < 50 * 5 && !blown; ++i) {
+        for (const auto& event : world.update(kStep, PlayerInput{}, animations)) {
+            if (event.type == GameEventType::HogBlownUp) blown = event;
+        }
+    }
+    REQUIRE(blown);
+    CHECK(blown->amount == 0.0f);
 }

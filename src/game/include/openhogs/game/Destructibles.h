@@ -16,7 +16,17 @@
 //   - scenery marked indestructible (offset 58, bit 6) takes no damage
 //     (FUN_0048d990 returns at once).
 //
-// Hogs, crates and animals are not handled here.
+// The owner also wants crates, explosive drums and animals to be
+// destroyable (decision 115; in the PC executable a crate's damage method
+// does nothing): crates and animals simply go, a drum catches fire and
+// blows up two seconds later as the wiki describes (World).
+//
+// Scenery that drops below two thirds of its health for the first time
+// gets a quarter of its health back (FUN_0048d990, where the same moment
+// also stops windmills and other moving parts); trees, bushes, flowers,
+// grass and the moving machines do not.
+//
+// Hogs are not handled here.
 
 #pragma once
 
@@ -29,7 +39,7 @@
 
 namespace openhogs::game {
 
-enum class ObjectClass { Building, Vehicle, Scenery, Other };
+enum class ObjectClass { Building, Vehicle, Scenery, Crate, Drum, Animal, Other };
 
 // The class of a map object, from its model name.
 ObjectClass objectClass(std::string_view modelName);
@@ -43,13 +53,35 @@ struct Destructible {
     ObjectClass objectClass = ObjectClass::Scenery;
     float health = 0.0f;
     bool destroyed = false;
+    float startingHealth = 0.0f;  // for the two-thirds rule (0: none)
+    bool toughens = false;        // the two-thirds rule applies to it
+    bool toughened = false;       // and has already been used
+    bool poison = false;          // a poison drum (DRUM2)
 
-    // Buildings and vehicles blow up when destroyed; scenery just goes.
-    bool blowsUp() const { return objectClass != ObjectClass::Scenery; }
+    // Buildings and vehicles blow up when destroyed; scenery, crates and
+    // animals just go (drums blow up too, after their fuse: World).
+    bool blowsUp() const { return objectClass == ObjectClass::Building || objectClass == ObjectClass::Vehicle; }
 };
 
 // The objects of a map that can be destroyed.
 std::vector<Destructible> findDestructibles(const std::vector<formats::MapObject>& objects);
+
+// Health of the objects the owner added (decision 115, figures from the
+// wiki where it has them): a drum catches fire after 20 points (Explosive
+// barrel page); crates take 40 like the scenery CRATE4; animals one hit.
+inline constexpr float kCrateHealth = 40.0f;
+inline constexpr float kDrumHealth = 20.0f;
+inline constexpr float kAnimalHealth = 1.0f;
+
+// A drum that has caught fire blows up this long after (the wiki), up to
+// 75 points (an explosive drum) or 15 and poison (a poison drum, smaller).
+inline constexpr float kDrumFuseSeconds = 2.0f;
+inline constexpr float kDrumBlastDamage = 75.0f;
+inline constexpr float kDrumBlastRadius = 600.0f;
+inline constexpr float kDrumKnockback = 1200.0f;
+inline constexpr float kPoisonDrumDamage = 15.0f;
+inline constexpr float kPoisonDrumRadius = 250.0f;
+bool isPoisonDrum(std::string_view modelName);
 
 // Takes `amount` of health; returns true if that destroyed it. As in the
 // original, an object is gone once it has less than one point left.

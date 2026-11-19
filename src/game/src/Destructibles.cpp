@@ -66,6 +66,24 @@ constexpr std::array<NamedHealth, 105> kScenery{{
 // naming below.
 constexpr std::array<std::string_view, 5> kOtherUsualScenery{"CHECKP", "GRAV2", "GRAVE", "LU_B_SU", "MAST"};
 
+// The animals (object table entries 382-385).
+constexpr std::array<std::string_view, 4> kAnimals{"FISH", "BYRD2", "BEE", "BUTTFLY"};
+
+// Scenery the two-thirds rule leaves out (FUN_0048d000 clears the flag at
+// +0xB2 for them): bushes, stumps, trees, cacti, flowers and grass
+// (entries 104-135), the bog and the machines with moving parts.
+constexpr std::array<std::string_view, 12> kNoToughening{
+    "BOG", "WIN_SH", "WIN_SV", "WIND2H", "WIND2V", "WATWHE", "PIST", "SWILLARM", "SW2ARM", "CHIM", "CHIM2", "RADAR"};
+
+bool isPlant(std::string_view name) {
+    constexpr std::array<std::string_view, 32> kPlants{
+        "BUSH1", "BUSH2", "BUSH3", "STUMP1", "STUMP2", "TREEB", "TREEG", "TREEP", "TREEPA", "TREEW", "CACTUS",
+        "CACT2", "BUSH1H", "BUSH2H", "BUSH3H", "TREEBH", "TREEBH1", "TREEGH", "TREEGH1", "TREEGH2", "TREEPH",
+        "TREEPH1", "TREEPH2", "TREEPAH", "TREEPAH1", "TREEPAH2", "TREEWH", "TREEWH1", "FLOWERS", "FLOWERS2",
+        "FLOWERS3", "GRASS"};
+    return std::find(kPlants.begin(), kPlants.end(), name) != kPlants.end() || name == "GRASS1" || name == "GRASS2";
+}
+
 // The houses, walls and roofs of the villages are named by a style (S1,
 // ST, BR, M1, SN, CA, W1), a part (F floor, R roof, S stairs, W wall) and
 // a number, e.g. "M1W06PPP"; they all have the usual health.
@@ -95,6 +113,18 @@ std::optional<float> defaultHealth(std::string_view name, ObjectClass& objectCla
     if (const auto health = lookUp(kVehicles, name)) {
         objectClassOut = ObjectClass::Vehicle;
         return health;
+    }
+    if (name == "CRATE1" || name == "CRATE2") {
+        objectClassOut = ObjectClass::Crate;
+        return kCrateHealth;
+    }
+    if (name == "DRUM" || name == "DRUM2") {
+        objectClassOut = ObjectClass::Drum;
+        return kDrumHealth;
+    }
+    if (std::find(kAnimals.begin(), kAnimals.end(), name) != kAnimals.end()) {
+        objectClassOut = ObjectClass::Animal;
+        return kAnimalHealth;
     }
     objectClassOut = ObjectClass::Scenery;
     if (const auto health = lookUp(kScenery, name)) return health;
@@ -136,15 +166,31 @@ std::vector<Destructible> findDestructibles(const std::vector<formats::MapObject
         target.object = index;
         target.objectClass = objectClass(objects[index].modelName);
         target.health = *health;
+        target.startingHealth = *health;
+        target.poison = isPoisonDrum(objects[index].modelName);
+        const std::string name = core::toUpper(objects[index].modelName);
+        target.toughens = target.objectClass == ObjectClass::Scenery && !isPlant(name) &&
+                          std::find(kNoToughening.begin(), kNoToughening.end(), name) == kNoToughening.end();
         targets.push_back(target);
     }
     return targets;
 }
 
+bool isPoisonDrum(std::string_view modelName) {
+    return core::toUpper(modelName) == "DRUM2";
+}
+
 bool damageObject(Destructible& target, float amount) {
     if (target.destroyed || amount <= 0.0f) return false;
     target.health -= amount;
-    if (target.health >= 1.0f) return false;
+    if (target.health >= 1.0f) {
+        // Below two thirds for the first time: a quarter back (FUN_0048d990).
+        if (target.toughens && !target.toughened && target.health < target.startingHealth * 2.0f / 3.0f) {
+            target.toughened = true;
+            target.health += target.startingHealth / 4.0f;
+        }
+        return false;
+    }
     target.health = 0.0f;
     target.destroyed = true;
     return true;
