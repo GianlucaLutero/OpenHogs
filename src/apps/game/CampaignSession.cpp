@@ -3,6 +3,7 @@
 #include "CampaignSession.h"
 
 #include "openhogs/game/Cutscenes.h"
+#include "openhogs/game/MatchSounds.h"
 #include "openhogs/game/Newspaper.h"
 
 #include "MenuControls.h"
@@ -102,9 +103,61 @@ CampaignSession::CampaignSession(const core::VirtualFileSystem& vfs, Interface& 
         interface_.strings(), [this](const game::Campaign& campaign) { return deploymentFor(campaign); });
 }
 
-bool CampaignSession::hasSave(const std::filesystem::path& savePath) {
+namespace {
+
+constexpr std::size_t kSlots = ui::kSaveSlots;
+
+std::filesystem::path slotFile(const std::filesystem::path& savePath, std::size_t slot) {
+    return savePath.parent_path() / ("army" + std::to_string(slot + 1) + ".ini");
+}
+
+// A campaign.ini from before the slots becomes slot 1 (when that is free).
+void moveOldSave(const std::filesystem::path& savePath) {
     std::error_code error;
-    return std::filesystem::exists(savePath, error);
+    if (!std::filesystem::exists(savePath, error) || std::filesystem::exists(slotFile(savePath, 0), error)) return;
+    std::filesystem::rename(savePath, slotFile(savePath, 0), error);
+    if (error) std::cerr << "Warning: cannot move " << savePath.string() << " to slot 1: " << error.message() << "\n";
+}
+
+} // namespace
+
+bool CampaignSession::hasSave(const std::filesystem::path& savePath) {
+    moveOldSave(savePath);
+    std::error_code error;
+    for (std::size_t slot = 0; slot < kSlots; ++slot) {
+        if (std::filesystem::exists(slotFile(savePath, slot), error)) return true;
+    }
+    return false;
+}
+
+std::filesystem::path CampaignSession::slotPath(std::size_t slot) const { return slotFile(savePath_, slot); }
+
+std::vector<ui::SaveSlot> CampaignSession::readSlots() const {
+    std::vector<ui::SaveSlot> slots(kSlots);
+    for (std::size_t i = 0; i < kSlots; ++i) {
+        std::error_code error;
+        if (!std::filesystem::exists(slotPath(i), error)) continue;
+        try {
+            const auto campaign = game::loadCampaign(core::IniFile::load(slotPath(i)));
+            auto& slot = slots[i];
+            slot.used = true;
+            slot.name = campaign.teamName().empty() ? interface_.strings().teamName(campaign.nation()) : campaign.teamName();
+            slot.nextMission = campaign.nextMission();
+            for (const auto& member : campaign.squad()) slot.squad.push_back(member.rank);
+        } catch (const std::exception& problem) {
+            std::cerr << "Warning: " << slotPath(i).string() << ": " << problem.what() << "\n";
+        }
+    }
+    return slots;
+}
+
+std::optional<std::size_t> CampaignSession::firstFreeSlot() const {
+    const auto slots = readSlots();
+    for (std::size_t i = 0; i < slots.size(); ++i) {
+        std::error_code error;
+        if (!slots[i].used && !std::filesystem::exists(slotPath(i), error)) return i;
+    }
+    return std::nullopt;
 }
 
 std::size_t CampaignSession::deploymentFor(const game::Campaign& campaign) {
@@ -126,34 +179,68 @@ std::size_t CampaignSession::deploymentFor(const game::Campaign& campaign) {
 }
 
 void CampaignSession::save() const {
-    if (!campaign_) return;
+    if (!campaign_ || !slot_) return;
+    const auto path = slotPath(*slot_);
     std::error_code error;
-    std::filesystem::create_directories(savePath_.parent_path(), error);
-    std::ofstream file(savePath_);
+    std::filesystem::create_directories(path.parent_path(), error);
+    std::ofstream file(path);
     file << campaign_->save();
     if (!file) {
-        std::cerr << "Warning: cannot save the campaign to " << savePath_.string() << "\n";
+        std::cerr << "Warning: cannot save the campaign to " << path.string() << "\n";
     }
+}
+
+void CampaignSession::saveToSlot(std::size_t slot) {
+    slot_ = slot;
+    save();
+    menu_->setSlots(readSlots());
 }
 
 void CampaignSession::startNew(int nation) {
     campaign_.emplace(nation, interface_.strings().hogNames.at(static_cast<std::size_t>(nation)));
-    save();
+    slot_.reset();  // a slot once the team has a name
     briefing_.reset();
-    menu_->showSquad(*campaign_);
+    debrief_.reset();
+    newspaper_.reset();
+    menu_->showNameTeam(*campaign_);
 }
 
-bool CampaignSession::loadSaved() {
+void CampaignSession::openLoad() {
+    moveOldSave(savePath_);
+    campaign_.reset();
+    slot_.reset();
+    briefing_.reset();
+    debrief_.reset();
+    newspaper_.reset();
+    menu_->showLoad(readSlots());
+}
+
+bool CampaignSession::loadSlot(std::size_t slot) {
     try {
-        campaign_ = game::loadCampaign(core::IniFile::load(savePath_));
+        campaign_ = game::loadCampaign(core::IniFile::load(slotPath(slot)));
     } catch (const std::exception& error) {
-        std::cerr << "Error: cannot load the campaign " << savePath_.string() << ": " << error.what() << "\n";
+        std::cerr << "Error: cannot load the campaign " << slotPath(slot).string() << ": " << error.what() << "\n";
         return false;
     }
-    briefing_.reset();
+    slot_ = slot;
+    menu_->setSlots(readSlots());
     menu_->showSquad(*campaign_);
     return true;
 }
+
+void CampaignSession::type(char letter, SoundPlayer& sounds) {
+    if (!campaign_) return;
+    playMenuSound(sounds, menu_->type(letter, *campaign_).sound);
+}
+
+void CampaignSession::teamNamed() {
+    // A new campaign keeps itself in the first free slot, if there is one.
+    if (!slot_) slot_ = firstFreeSlot();
+    save();
+    menu_->setSlots(readSlots());
+}
+
+void CampaignSession::erase(SoundPlayer& sounds) { playMenuSound(sounds, menu_->erase().sound); }
 
 void CampaignSession::openBriefing() {
     const int number = campaign_->nextMission();
@@ -214,7 +301,30 @@ void CampaignSession::update(double seconds) {
     if (newspaper_->secondsLeft <= 0.0) newspaper_.reset();
 }
 
+void CampaignSession::givePromotionHint(SoundPlayer& sounds) {
+    if (promotionHintGiven_ || !campaign_ || menu_->screen() != ui::CampaignScreen::Squad) return;
+    if (!game::wantsPromotionHint(campaign_->nextMission(), campaign_->points())) return;
+    promotionHintGiven_ = true;
+    menu_->pointAtFirstHog();
+    sounds.say(game::promotionHintPath());
+}
+
 CampaignSession::Action CampaignSession::handleInput(ui::MenuInput input, SoundPlayer& sounds) {
+    const Action action = handleMenuInput(input, sounds);
+    if (action == Action::None) givePromotionHint(sounds);
+    return action;
+}
+
+CampaignSession::Action CampaignSession::handleMenuInput(ui::MenuInput input, SoundPlayer& sounds) {
+    if (menu_->screen() == ui::CampaignScreen::Load) {
+        const auto result = menu_->handleLoad(input);
+        playMenuSound(sounds, result.sound);
+        if (result.request == ui::CampaignMenuResult::Request::Leave) return Action::Leave;
+        if (result.request == ui::CampaignMenuResult::Request::LoadFromSlot && !loadSlot(result.slot)) {
+            playMenuSound(sounds, ui::MenuSound::Back);
+        }
+        return Action::None;
+    }
     if (!campaign_) return Action::Leave;
 
     if (newspaper_) {
@@ -253,11 +363,22 @@ CampaignSession::Action CampaignSession::handleInput(ui::MenuInput input, SoundP
         return Action::None;
     }
 
+    const bool namingTeam = menu_->screen() == ui::CampaignScreen::NameTeam;
     const auto result = menu_->handle(input, *campaign_);
     playMenuSound(sounds, result.sound);
     switch (result.request) {
     case ui::CampaignMenuResult::Request::Changed:
-        save();
+        if (namingTeam) {
+            teamNamed();
+        } else {
+            save();
+        }
+        break;
+    case ui::CampaignMenuResult::Request::SaveToSlot:
+        saveToSlot(result.slot);
+        break;
+    case ui::CampaignMenuResult::Request::LoadFromSlot:
+        loadSlot(result.slot);
         break;
     case ui::CampaignMenuResult::Request::StartMission:
         openBriefing();
@@ -266,7 +387,11 @@ CampaignSession::Action CampaignSession::handleInput(ui::MenuInput input, SoundP
         }
         break;
     case ui::CampaignMenuResult::Request::Leave:
-        save();
+        if (namingTeam) {
+            campaign_.reset();  // the unnamed team is dropped
+        } else {
+            save();
+        }
         return Action::Leave;
     case ui::CampaignMenuResult::Request::None:
         break;

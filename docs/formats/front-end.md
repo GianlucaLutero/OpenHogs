@@ -312,7 +312,88 @@ only once `DAT_00512958` is 400 again.
   fetext 306 + on (OFF, ON); the selected one's value blinks (tint 20 for
   31 ticks, then 200, out of every 101).
 
-Still to read: the campaign's team pages (type 4) and loading and saving
-(types 8 and 9: `pcsav`), which OpenHogs does not have; level choice, type 20; field conditions, type 21; saving
-`pcsav`; the keys `pckey*`), the steam puffs (`FUN_00419fa0`) and the
+## Where the entries lead
+
+Each screen has, per entry, an action (table 0x4C0FC0) and a next screen
+(0x4C1218), from the running sum of the entry counts at 0x4C0EE8
+(`FUN_0042f120`); `FUN_0042bb20` carries them out. The campaign's part:
+
+| Screen | Entries | Action → next screen |
+|--------|---------|----------------------|
+| 14 ONE PLAYER | NEW GAME, LOAD GAME | 1 → 3 (SELECT TEAM), 1 → 10 (LOAD) |
+| 3 SELECT TEAM | the six teams | 6 with 180-185: team = next % 10, screen = next / 10 = **18** |
+| 18 PLEASE NAME YOUR TEAM | | 1 → 12 (the squad) |
+| 12 the squad | START MISSION, SAVE TEAM, the eight hogs | 15 → 22, 1 → 21 (SAVE ARMY), 7 → a hog's page |
+| 19 a hog's page | PROMOTE, SWAP POSITION, RENAME | 10 → 25, 8, 3 → 13 (PLEASE NAME YOUR PIG) |
+| 10 LOAD, 21 SAVE ARMY | the eight slots | 26 (load), 25 (save) → 12 |
+| 4-9 the team pages | YES, NO | 6 → 180-185, 4 → 3 |
+
+So on the PC, SELECT TEAM leads straight to naming the team: nothing
+leads to the team pages (type 4, screens 4-9), whose texts (fetext
+31-44) are blank in the PC tables — a leftover of the PlayStation.
+
+### Types 8 and 9: the loading and saving board
+
+Screens 10 (LOAD), 21 (SAVE ARMY) and 33 (LOAD ARMY, multiplayer). The
+pictures (`FUN_00421ad0`): `pclit0`-`2` (a slot's lamp, off to lit),
+`pcsav` (476 × 440, the board with eight slots), `pcsvinf0`-`4` (the
+panel opening), and for its contents `pcHweap`, `snipr`, `sappr`,
+`pcmedic`, `cmndo`, `pcmedal`, `strp1`, `strp2`. With *D* the drop
+(`DAT_00512950` in pixels: from 800 units it springs to 1, gain 8,
+damping 20, top speed 20), from the top sprite down (`FUN_0041bef0`, case
+8; the arguments are in the assembly at 0x41E2A6-0x41E338):
+
+| Sprite | Picture | Position |
+|--------|---------|----------|
+| lamp *i* (0-7) | `pclit0`-`2`, element 2 + *i* | (385, *D* + 43 + 100 + 33.5*i* − 39) |
+| board | `pcsav` | (0, *D* + 43) |
+| panel | `pcsvinf0`-`4`, element 0 (0 → 4 a step a tick) | (474, *D* + 73) |
+
+Entering sets every lamp to 2 (lit); choosing a slot (`FUN_00427c90`, case
+8) starts animation 0x3EE on its lamp — index 32 of the table at 0x4C0A78:
+(1, 5 ticks), (2, 5 ticks), back two — and moves the others to 0. The
+slots' names are written in text boxes 39-46 (type 9: 47-54) of the table
+at 0x4C1728: x 200, width 270, y 193, 247, 302, 363, 420, 475, 529, 590
+(1024 × 820 units). A slot shows the name of the team saved there, or
+`---` (0x4C0E50) when empty; on the loading board the cursor skips empty
+slots (`FUN_00427770`).
+
+The saves are `savearmy0` ... `savearmy7` (`%s%d`, 0x4C0D80). For each,
+`FUN_0042cd70` keeps the team's name (20 bytes at 0x51A740 + 20*i*), the
+ranks of its ten hogs and its mission number. Once the panel is open
+(element 0 at 4), `FUN_0042e310` shows the chosen slot's squad: a row per
+hog from y 110, 29 apart, with the stripes (`strp1` / `strp2`, from the
+rank table 0x4D29C0: career, stripes, legend level) at x 527 and the
+career badge at 513 (499 beside stripes), and "MISSION *n*" (fetext 248
+and `" %d"`) in the box (801, 600, 250, 30).
+
+### Type 0 as a name: PLEASE NAME YOUR TEAM, PLEASE NAME YOUR PIG
+
+Screens 13 and 18 (and 11, ENTER THE LEVEL CODE; 15) are the information
+board of type 0 with a letter grid on its monitor (`FUN_00431380`): the
+font's letters (fetext 0, `ABCDEFGHIJKLMNOPQRSTUVWXYZ-*&'+,0123456789`) in
+rows that fit the box, then three keys in a column: delete (font glyph
+5; the PC also has `chardel`), space (glyph 6, `charspc`) and END (fetext
+462 OK; `charent`). Picking a letter adds it (`FUN_0042af50`), up to 13
+for a team (screens 15, 18: the team's name at +0x270) and 7 for a hog
+(screen 13: its name at +0xA0 of its 64 bytes); END copies the name
+only if a key was used (`DAT_0051AAFC`), and refuses an emptied one. A
+letter typed on the keyboard (`FUN_0042e440`: A-Z and space) is picked the
+same way, then the cursor goes back to END.
+
+After naming, `FUN_0042b1f0` checks the team name against three cheats
+(fetext 747, 749, 751): NAUGHTY PIGS sets the promotion points to 99,
+MARDY PIGS turns the team into Team Lard, PRYING PIGS sets a flag
+(0x5207AA) whose use was not traced.
+
+### The sergeant on the squad page
+
+`FUN_0042ccc0`: on the squad page (screen 12), once per session
+(`DAT_0051AAD4` bit 0), when the team has promotion points and its
+mission number is below 6 (and a team flag, +4 bit 0, is clear), the
+cursor goes to the first hog and the sergeant says section 21 variant 1
+(SGEN2201). Variant 7 (SGEN2207) goes with an unlocking of Team Lard
+(`FUN_00426ce0`, the team's byte +0x15 = 1), not traced further.
+
+Still to read: the keys `pckey*`, the steam puffs (`FUN_00419fa0`) and the
 leaving animations.

@@ -196,3 +196,14 @@ TEST_CASE("Background sounds come now and then, quiet", "[game][matchsounds]") {
         CHECK((sound.name.rfind("BATT_", 0) == 0 || sound.name.rfind("AMB_", 0) == 0));
     }
 }
+
+TEST_CASE("The sergeant urges promotions only early in the campaign", "[game][audio]") {
+    // FUN_0042ccc0: with points to spend and the next mission before the
+    // second island he says SGEN2201; later, or with nothing to spend, he
+    // stays quiet, so the hint never nags a seasoned player.
+    CHECK(wantsPromotionHint(1, 2));
+    CHECK(wantsPromotionHint(5, 1));
+    CHECK_FALSE(wantsPromotionHint(6, 4));
+    CHECK_FALSE(wantsPromotionHint(2, 0));
+    CHECK(promotionHintPath() == "Speech/Sku1/Sarge/SGEN2201.wav");
+}

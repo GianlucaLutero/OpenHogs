@@ -7,8 +7,12 @@
 //         ▲                                                   │
 //         └──────────── mission results <─────────────────────┘
 //
-// The campaign is saved to a file after every change (promotion, swap,
-// mission), so quitting never loses progress.
+// Saves: the original's eight numbered slots (LOAD GAME, SAVE TEAM), as
+// saves/army1.ini ... army8.ini. A new campaign takes the first free slot
+// when its team is named, and the campaign is saved to its slot after
+// every change (promotion, swap, mission), so quitting never loses
+// progress; SAVE TEAM copies it to another slot, which becomes its own.
+// A saves/campaign.ini from before the slots becomes slot 1.
 //
 // Briefings are the game's pictures Language/Tims/Briefing/level<N>.bmp
 // (translated by the language packs); mission 1 also shows a photo of a
@@ -44,13 +48,19 @@ public:
     CampaignSession(const core::VirtualFileSystem& vfs, Interface& userInterface, std::filesystem::path savePath,
                     game::VersionRules rules = {});
 
+    // `savePath`: saves/campaign.ini; the slots go next to it.
     static bool hasSave(const std::filesystem::path& savePath);
 
-    // Starts a new campaign (replacing any saved one) or continues the
-    // saved one; both open the squad page. loadSaved() returns false, with
-    // a message on the console, if the file cannot be read.
+    // Starts a new campaign: PLEASE NAME YOUR TEAM, then the squad page.
     void startNew(int nation);
-    bool loadSaved();
+    // LOAD GAME: the loading board; picking a slot opens its squad page.
+    void openLoad();
+
+    // A key typed while a name is being written (NameEntry): letters and
+    // Backspace. Returns false when no name is being written.
+    bool typingName() const { return menu_->typingName(); }
+    void type(char letter, SoundPlayer& sounds);
+    void erase(SoundPlayer& sounds);
 
     enum class Action { None, StartMission, Leave };
     Action handleInput(ui::MenuInput input, SoundPlayer& sounds);
@@ -76,7 +86,14 @@ public:
     std::size_t squadSize() const { return campaign_ ? campaign_->squad().size() : 0; }
 
 private:
+    Action handleMenuInput(ui::MenuInput input, SoundPlayer& sounds);
     void save() const;
+    std::filesystem::path slotPath(std::size_t slot) const;
+    std::vector<ui::SaveSlot> readSlots() const;
+    bool loadSlot(std::size_t slot);
+    void saveToSlot(std::size_t slot);
+    std::optional<std::size_t> firstFreeSlot() const;
+    void teamNamed();
     void openBriefing();
     bool showingDebrief() const;
     void openDebrief(const std::vector<game::SquadMember>& squad, const game::MissionReport& report,
@@ -93,6 +110,9 @@ private:
     std::filesystem::path savePath_;
     game::VersionRules rules_;
     std::optional<game::Campaign> campaign_;
+    std::optional<std::size_t> slot_;  // where the campaign is saved
+    bool promotionHintGiven_ = false;  // the sergeant's squad-page line, once a session
+    void givePromotionHint(SoundPlayer& sounds);
     std::unique_ptr<ui::CampaignMenu> menu_;
     std::map<std::string, std::size_t> slotsByMap_;  // places for the player's team, per map
 

@@ -42,7 +42,10 @@
 #include "openhogs/ui/OriginalMenu.h"
 #include "openhogs/ui/OriginalOptionPages.h"
 #include "openhogs/ui/OriginalSelectList.h"
+#include "openhogs/ui/OriginalSaveBoard.h"
 #include "openhogs/ui/OriginalSquad.h"
+#include "openhogs/ui/CampaignMenu.h"
+#include "openhogs/ui/NameEntry.h"
 #include "openhogs/ui/OriginalVolume.h"
 
 #include <cstddef>
@@ -68,6 +71,8 @@ enum class OriginalScreen {
     HogPage,     // a hog's page over the squad (`under` is the squad page)
     Results,     // MISSION RESULTS: words only, over the background
     Promotion,   // PROMOTE / CAREER PATH on the information board
+    SaveBoard,   // LOAD / SAVE ARMY: the eight slots and the information panel
+    NameEntry,   // PLEASE NAME YOUR TEAM / PIG: the letters on the information board
 };
 
 class OriginalMenuView {
@@ -130,6 +135,8 @@ private:
     void drawHogPage(render::UiRenderer& ui, const ui::Menu& menu, float originX);
     void drawResults(render::UiRenderer& ui, const ui::Menu& menu, float originX);
     void drawPromotion(render::UiRenderer& ui, const ui::Menu& menu, float originX);
+    void drawSaveBoard(render::UiRenderer& ui, const ui::Menu& menu, float originX);
+    void drawNameEntry(render::UiRenderer& ui, const ui::Menu& menu, float originX);
 
 public:
     // The lines of the squad's monitor (mission, points) and the chosen hog
@@ -138,6 +145,15 @@ public:
         squadLines_ = std::move(lines);
         squadHog_ = hog;
     }
+
+    // The loading and saving board's slots (in the menu's order) and the
+    // panel's MISSION word; the name being typed. Owned by the caller,
+    // which keeps them alive while the screen is shown.
+    void setSaveSlots(const std::vector<ui::SaveSlot>* slots, std::string missionWord) {
+        saveSlots_ = slots;
+        missionWord_ = std::move(missionWord);
+    }
+    void setNameEntry(const ui::NameEntry* entry) { nameEntry_ = entry; }
 
 private:
 
@@ -156,6 +172,10 @@ private:
     ui::CreditsRoll credits_;
     ui::OriginalSquad squad_;
     ui::OriginalCareerBoard career_;
+    ui::OriginalSaveBoard saveBoard_;
+    const std::vector<ui::SaveSlot>* saveSlots_ = nullptr;
+    std::string missionWord_;
+    const ui::NameEntry* nameEntry_ = nullptr;
     std::vector<std::string> squadLines_;
     std::size_t squadHog_ = 0;
     std::vector<std::pair<std::string, std::string>> creditRows_;

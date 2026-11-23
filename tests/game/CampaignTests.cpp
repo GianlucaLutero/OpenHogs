@@ -211,9 +211,13 @@ TEST_CASE("A campaign saved and loaded is the same campaign", "[game][campaign]"
     campaign.recordMission(won(), 3);
     campaign.promote(2, RankId::Sapper);
     campaign.swap(0, 7);
+    campaign.setTeamName("THE PORKERS");
+    CHECK(campaign.rename(3, "BACON"));
 
     const auto loaded = loadCampaign(IniFile::parse(campaign.save()));
     CHECK(loaded.nation() == 0);
+    CHECK(loaded.teamName() == "THE PORKERS");
+    CHECK(loaded.squad()[3].name == "BACON");
     CHECK(loaded.nextMission() == 2);
     CHECK(loaded.points() == campaign.points());
     REQUIRE(loaded.squad().size() == kSquadSize);
@@ -221,6 +225,16 @@ TEST_CASE("A campaign saved and loaded is the same campaign", "[game][campaign]"
         CHECK(loaded.squad()[i].name == campaign.squad()[i].name);
         CHECK(loaded.squad()[i].rank == campaign.squad()[i].rank);
     }
+}
+
+TEST_CASE("A hog cannot be renamed to nothing", "[game][campaign]") {
+    // RENAME with nothing typed must leave the hog its name: a nameless hog
+    // would show blank on every page and in the match.
+    auto campaign = britishCampaign();
+    const std::string before = campaign.squad()[0].name;
+    CHECK_FALSE(campaign.rename(0, ""));
+    CHECK_FALSE(campaign.rename(kSquadSize, "LOST"));
+    CHECK(campaign.squad()[0].name == before);
 }
 
 TEST_CASE("Broken save files are rejected", "[game][campaign]") {

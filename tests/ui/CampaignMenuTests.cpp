@@ -36,7 +36,7 @@ TEST_CASE("The squad page marks the hogs that go on the mission", "[ui][campaign
     CampaignMenu menu(UiStrings{}, [](const Campaign&) { return std::size_t{3}; });
     menu.showSquad(campaign);
     const auto& items = menu.menu().items();
-    REQUIRE(items.size() == kSquadSize + 2);  // the hogs, START MISSION, BACK
+    REQUIRE(items.size() == kSquadSize + 2);  // the hogs, START MISSION, SAVE TEAM
     CHECK(items[0].label == "* NOBBY");
     CHECK(items[2].label == "* DEN");
     CHECK(items[3].label == "MONTY");
@@ -134,4 +134,91 @@ TEST_CASE("The debriefing page's keys do what is printed on them", "[ui][campaig
     menu.showResults(campaign, {1, false, campaign.recordMission({true, {}}, 3)});
     menu.answerDebrief(MenuInput::Back, campaign);
     CHECK(menu.screen() == CampaignScreen::Squad);
+}
+
+namespace {
+
+std::vector<SaveSlot> slotsWithSecondUsed() {
+    std::vector<SaveSlot> slots(kSaveSlots);
+    slots[1].used = true;
+    slots[1].name = "THE PORKERS";
+    slots[1].nextMission = 4;
+    return slots;
+}
+
+} // namespace
+
+TEST_CASE("SAVE TEAM saves in the chosen slot and comes back to the squad", "[ui][campaign]") {
+    // The executable's SAVE ARMY (action 25): any slot, empty or not, is
+    // written at once and the squad page comes back.
+    Campaign campaign(0, kNames);
+    CampaignMenu menu(UiStrings{});
+    menu.setSlots(slotsWithSecondUsed());
+    menu.showSquad(campaign);
+    moveTo(menu, campaign, 107);  // SAVE TEAM
+    press(menu, campaign, {MenuInput::Confirm});
+    REQUIRE(menu.screen() == CampaignScreen::Save);
+    CHECK(menu.menu().items()[0].label == "---");
+    CHECK(menu.menu().items()[1].label == "THE PORKERS");
+    const auto result = press(menu, campaign, {MenuInput::Down, MenuInput::Down, MenuInput::Confirm});
+    CHECK(result.request == CampaignMenuResult::Request::SaveToSlot);
+    CHECK(result.slot == 2);
+    CHECK(menu.screen() == CampaignScreen::Squad);
+}
+
+TEST_CASE("LOAD offers only the slots that hold a campaign", "[ui][campaign]") {
+    // The executable's cursor skips empty slots on the loading board, so
+    // loading can never pick a slot with nothing in it; Esc leaves.
+    CampaignMenu menu(UiStrings{});
+    menu.showLoad(slotsWithSecondUsed());
+    CHECK(menu.screen() == CampaignScreen::Load);
+    CHECK(menu.menu().selectedItem().id == 1);
+    CHECK(menu.handleLoad(MenuInput::Down).request == CampaignMenuResult::Request::None);
+    CHECK(menu.menu().selectedItem().id == 1);
+    const auto result = menu.handleLoad(MenuInput::Confirm);
+    CHECK(result.request == CampaignMenuResult::Request::LoadFromSlot);
+    CHECK(result.slot == 1);
+    CHECK(menu.handleLoad(MenuInput::Back).request == CampaignMenuResult::Request::Leave);
+}
+
+TEST_CASE("A new team is named before its squad page, and NAUGHTY PIGS gives 99 points", "[ui][campaign]") {
+    // SELECT TEAM leads to PLEASE NAME YOUR TEAM (screen 18), which starts
+    // from the nation's name; the executable's cheat name sets the points.
+    Campaign campaign(0, kNames);
+    CampaignMenu menu(UiStrings{});
+    menu.showNameTeam(campaign);
+    REQUIRE(menu.typingName());
+    CHECK(menu.nameEntry().current() == "TOMMY'S TROTTERS");
+    CHECK(menu.nameEntry().name().empty());
+    for (const char letter : std::string("naughty pigs")) menu.type(letter, campaign);
+    const auto result = press(menu, campaign, {MenuInput::Confirm});
+    CHECK(result.request == CampaignMenuResult::Request::Changed);
+    CHECK(menu.screen() == CampaignScreen::Squad);
+    CHECK(campaign.teamName() == "NAUGHTY PIGS");
+    CHECK(campaign.points() == kNaughtyPigsPoints);
+    CHECK(menu.menu().title() == "NAUGHTY PIGS");
+}
+
+TEST_CASE("RENAME on a hog's page gives the hog the typed name", "[ui][campaign]") {
+    // The hog page's third entry (screen 19) leads to PLEASE NAME YOUR
+    // PIG; Esc there keeps the old name.
+    Campaign campaign(0, kNames);
+    CampaignMenu menu(UiStrings{});
+    menu.showSquad(campaign);
+    moveTo(menu, campaign, 2);  // DEN
+    press(menu, campaign, {MenuInput::Confirm});
+    moveTo(menu, campaign, 108);  // RENAME
+    press(menu, campaign, {MenuInput::Confirm});
+    REQUIRE(menu.screen() == CampaignScreen::NameHog);
+    menu.type('Z', campaign);
+    press(menu, campaign, {MenuInput::Back});
+    CHECK(menu.screen() == CampaignScreen::Hog);
+    CHECK(campaign.squad()[2].name == "DEN");
+
+    press(menu, campaign, {MenuInput::Confirm});  // RENAME is still chosen
+    REQUIRE(menu.screen() == CampaignScreen::NameHog);
+    menu.type('Z', campaign);
+    CHECK(press(menu, campaign, {MenuInput::Confirm}).request == CampaignMenuResult::Request::Changed);
+    CHECK(campaign.squad()[2].name == "Z");  // the typed name replaces the old one
+    CHECK(menu.screen() == CampaignScreen::Hog);
 }

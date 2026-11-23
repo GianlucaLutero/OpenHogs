@@ -53,6 +53,14 @@ the `project()` call in `CMakeLists.txt`.
 - **Debriefing page** as the original: the squad's faces (bandaged, or a
   gravestone for hogs lost for good), uniforms, names and rank badges, and
   the mission's medals.
+- **Eight save slots** on the original's loading and saving board: LOAD
+  GAME and SAVE TEAM, with the saved squad's badges and mission on the
+  panel. An old `saves/campaign.ini` becomes slot 1.
+- **Names**: a new team is named (PLEASE NAME YOUR TEAM) and hogs can be
+  renamed (RENAME), on the original's letter grid or the keyboard; the
+  NAUGHTY PIGS cheat works.
+- **Sergeant** on the squad page: early in the campaign, with points to
+  spend, he says to promote a hog.
 
 ## 0.1.0 — first prototype release
 

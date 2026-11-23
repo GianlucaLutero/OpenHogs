@@ -93,6 +93,7 @@ public:
 
 private:
     void handleEvent(const SDL_Event& event, bool& running);
+    bool typeIntoName(SDL_Keycode key);
     bool handleMenuInput(ui::MenuInput input);  // false: quit
     void startCampaignMission();
     bool handleFrontEndResult(const ui::FrontEndResult& result);
