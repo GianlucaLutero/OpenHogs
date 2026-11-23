@@ -23,6 +23,8 @@
 #   Levels             - the game's numbered levels: maps, names, skies
 #   Campaign           - the missions, the squad, points and saving
 #   Cutscenes          - which videos the original plays, and when
+#   Debrief            - the campaign's debriefing page: faces, badges
+#   Newspaper          - which front page follows a campaign victory
 #   FieldConditions    - multiplayer settings: teams off, hogs per team, health
 #   MatchSounds        - which voice, music and background sound the original
 #                        plays during a match (the files, not the playing)
@@ -34,6 +36,7 @@ add_library(openhogs_game STATIC
     src/ChaseCamera.cpp
     src/ComputerPlayer.cpp
     src/Cutscenes.cpp
+    src/Debrief.cpp
     src/Destructibles.cpp
     src/Combat.cpp
     src/FieldConditions.cpp
@@ -44,6 +47,7 @@ add_library(openhogs_game STATIC
     src/Levels.cpp
     src/MatchSounds.cpp
     src/MapCollision.cpp
+    src/Newspaper.cpp
     src/Projectiles.cpp
     src/Ranks.cpp
     src/TerrainHeightField.cpp

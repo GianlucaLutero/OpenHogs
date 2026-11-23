@@ -50,6 +50,7 @@ public:
 private:
     void turnStarted();
     void turnEnded();
+    game::BattleState battleState() const;
     bool say(std::size_t hog, game::HogLine line);  // false if nothing was said
     bool isPerson(int team) const { return !isComputerTeam_(team); }
 

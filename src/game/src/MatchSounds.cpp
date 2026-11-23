@@ -32,6 +32,10 @@ constexpr float kDesperateHealth = 20.0f;
 // Sergeant sections (file SGEN<section + 1>).
 constexpr int kScornSection = 0;
 constexpr int kPraiseSection = 2;
+constexpr int kGroanSection = 1;        // a bad turn, many of one's own hogs lost
+constexpr int kCheerSection = 3;        // a good turn, few enemies left
+constexpr int kPointsReminderSection = 10;  // promotion points still to get
+constexpr int kCratesReminderSection = 11;  // crates still to get
 constexpr int kHurrySection = 12;       // and 13: sixteen lines
 constexpr int kFirstNationSection = 14; // + the executable's nation
 
@@ -142,6 +146,39 @@ std::optional<std::string> Sergeant::afterTurn(const TurnOutcome& outcome, bool 
     const auto line = sargeSpeechPath(section, nationScorn_);
     nationScorn_ = nationScorn_ >= 8 ? 5 : nationScorn_ + 1;
     return line;
+}
+
+std::optional<std::string> Sergeant::afterTurnExtra(const TurnOutcome& outcome, const BattleState& battle,
+                                                    std::mt19937& random) {
+    const bool oneTimeInFour = random() % 4 == 0;
+    const auto anyLine = [&](int section) {
+        // FUN_0043b850(section, 1, 8): one of the eight at random.
+        return sargeSpeechPath(section, static_cast<int>(random() % 8) + 1);
+    };
+    if (battle.enemyAlive == 1 && battle.enemyDead > 0) {
+        if (battle.pointsLeft && !remindedPoints_) {
+            remindedPoints_ = true;
+            return anyLine(kPointsReminderSection);
+        }
+        if (battle.cratesLeft && !remindedCrates_) {
+            remindedCrates_ = true;
+            return anyLine(kCratesReminderSection);
+        }
+        if (oneTimeInFour && battle.pointsLeft) return anyLine(kPointsReminderSection);
+        if (oneTimeInFour && battle.cratesLeft) return anyLine(kCratesReminderSection);
+    }
+    const int verdict = turnVerdict(outcome);
+    if (verdict > 0 && battle.enemyAlive < 3 && battle.enemyDead > 0 && oneTimeInFour) {
+        const auto line = sargeSpeechPath(kCheerSection, cheer_);
+        cheer_ = cheer_ % 8 + 1;
+        return line;
+    }
+    if (verdict < 0 && battle.ownDead > 2 && oneTimeInFour) {
+        const auto line = sargeSpeechPath(kGroanSection, groan_);
+        groan_ = groan_ % 8 + 1;
+        return line;
+    }
+    return std::nullopt;
 }
 
 std::optional<std::string> Sergeant::hurryUp(double secondsLeft, double turnSeconds, bool attacked,

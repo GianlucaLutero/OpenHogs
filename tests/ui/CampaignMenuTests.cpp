@@ -118,3 +118,20 @@ TEST_CASE("After a failed mission the player can retry at once", "[ui][campaign]
     press(menu, campaign, {MenuInput::Down, MenuInput::Confirm});
     CHECK(menu.screen() == CampaignScreen::Squad);
 }
+
+TEST_CASE("The debriefing page's keys do what is printed on them", "[ui][campaign]") {
+    // The pictures print SPACE CONTINUE after a victory and SPACE RETRY /
+    // ESCAPE EDIT SQUAD after a defeat; a key doing something else would
+    // send the player into the wrong mission or out of the campaign.
+    Campaign campaign(0, kNames);
+    CampaignMenu menu(UiStrings{});
+    menu.showResults(campaign, {1, false, campaign.recordMission({false, {}}, 3)});
+    CHECK(menu.answerDebrief(MenuInput::Down, campaign).request == CampaignMenuResult::Request::None);
+    CHECK(menu.answerDebrief(MenuInput::Confirm, campaign).request == CampaignMenuResult::Request::StartMission);
+    menu.answerDebrief(MenuInput::Back, campaign);
+    CHECK(menu.screen() == CampaignScreen::Squad);
+
+    menu.showResults(campaign, {1, false, campaign.recordMission({true, {}}, 3)});
+    menu.answerDebrief(MenuInput::Back, campaign);
+    CHECK(menu.screen() == CampaignScreen::Squad);
+}

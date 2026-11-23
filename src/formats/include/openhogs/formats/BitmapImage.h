@@ -23,6 +23,10 @@ enum class BitmapTransparency {
     // Magenta is transparent, the key colour of the PC menus: (255, 0, 255)
     // and the 15-bit form (248, 0, 248) most pictures were made in.
     Magenta,
+    // Red is transparent, the key colour of the newspapers (Papers/): pure
+    // (255, 0, 0) in the photos and a near red (252, 3, 15) in the stories,
+    // which a 4-bit-per-channel texture turns into the same red.
+    Red,
 };
 
 // Decodes a .BMP file into top-row-first RGBA. Throws core::FormatError for

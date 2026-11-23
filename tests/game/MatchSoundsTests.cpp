@@ -10,7 +10,9 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <random>
 #include <set>
+#include <string>
 
 using namespace openhogs::game;
 
@@ -79,6 +81,68 @@ TEST_CASE("The sergeant praises, scorns or says nothing", "[game][matchsounds]")
     // Russian (characterTeams index 5) is the executable's nation 4.
     CHECK(sergeant.afterTurn(good, false, 5) == "Speech/Sku1/Sarge/SGEN1901.wav");
     CHECK(sergeant.afterTurn(bad, false, 0) == "Speech/Sku1/Sarge/SGEN1505.wav");
+}
+
+TEST_CASE("With one enemy left the sergeant reminds the player of the objectives", "[game][matchsounds]") {
+    // FUN_00497f80: killing the last enemy ends the mission, so before it
+    // he points out promotion points (SGEN11) and crates (SGEN12) still to
+    // get, each once for sure, then only now and then.
+    Sergeant sergeant;
+    std::mt19937 random(7);
+    BattleState battle;
+    battle.enemyAlive = 1;
+    battle.enemyDead = 2;
+    battle.pointsLeft = true;
+    battle.cratesLeft = true;
+    const auto first = sergeant.afterTurnExtra({}, battle, random);
+    REQUIRE(first);
+    CHECK(first->find("SGEN11") != std::string::npos);
+    const auto second = sergeant.afterTurnExtra({}, battle, random);
+    REQUIRE(second);
+    CHECK(second->find("SGEN12") != std::string::npos);
+    int reminders = 0;
+    for (int i = 0; i < 400; ++i) {
+        if (sergeant.afterTurnExtra({}, battle, random)) ++reminders;
+    }
+    CHECK(reminders > 50);   // about one in four
+    CHECK(reminders < 150);
+
+    // Several enemies left: no reminder, and a neutral turn says nothing.
+    Sergeant quiet;
+    battle.enemyAlive = 3;
+    for (int i = 0; i < 50; ++i) CHECK_FALSE(quiet.afterTurnExtra({}, battle, random));
+}
+
+TEST_CASE("The sergeant cheers when the enemy is nearly beaten and groans at heavy losses", "[game][matchsounds]") {
+    // Sections 3 and 1 (SGEN04, SGEN02), one time in four, in turn.
+    Sergeant sergeant;
+    std::mt19937 random(3);
+    BattleState nearlyWon;
+    nearlyWon.enemyAlive = 2;
+    nearlyWon.enemyDead = 3;
+    TurnOutcome good;
+    good.enemiesHurt = 1;
+    std::set<std::string> cheers;
+    for (int i = 0; i < 200; ++i) {
+        if (const auto line = sergeant.afterTurnExtra(good, nearlyWon, random)) {
+            CHECK(line->find("SGEN04") != std::string::npos);
+            cheers.insert(*line);
+        }
+    }
+    CHECK(cheers.size() == 8);
+
+    BattleState losing;
+    losing.enemyAlive = 4;
+    losing.ownDead = 3;
+    TurnOutcome bad;
+    bad.friendsHurt = 1;
+    bool groaned = false;
+    for (int i = 0; i < 100; ++i) {
+        if (const auto line = sergeant.afterTurnExtra(bad, losing, random)) {
+            groaned = line->find("SGEN02") != std::string::npos;
+        }
+    }
+    CHECK(groaned);
 }
 
 TEST_CASE("A dawdler is told off once per turn", "[game][matchsounds]") {

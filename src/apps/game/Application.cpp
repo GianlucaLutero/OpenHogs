@@ -339,7 +339,8 @@ void Application::update(double seconds) {
         game_->advance(seconds);
         return;
     }
-    if (inCampaign_ && !campaign_->showingBriefing() && campaignScreen()) {
+    if (inCampaign_) campaign_->update(seconds);
+    if (inCampaign_ && !campaign_->showingPicture() && campaignScreen()) {
         const auto* pages = campaign_->menu();
         originalMenu_->setSquadInfo(
             pages->screen() == ui::CampaignScreen::Results || pages->screen() == ui::CampaignScreen::Promotion
@@ -442,7 +443,7 @@ void Application::advanceMenus(double seconds) {
 }
 
 void Application::drawMenus(int width, int height) {
-    const bool briefing = inCampaign_ && campaign_->showingBriefing();
+    const bool briefing = inCampaign_ && campaign_->showingPicture();
     glViewport(0, 0, width, height);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

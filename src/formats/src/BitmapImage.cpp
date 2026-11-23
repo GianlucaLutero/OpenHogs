@@ -124,6 +124,15 @@ RgbaImage decodeBitmap(std::span<const std::byte> data, BitmapTransparency trans
             }
         }
     }
+    if (transparency == BitmapTransparency::Red) {
+        // The top four bits, as the original's 16-bit (4-4-4-4) textures.
+        const auto top4 = [](std::uint8_t channel) { return channel >> 4; };
+        for (std::size_t i = 0; i + 3 < image.pixels.size(); i += 4) {
+            if (top4(image.pixels[i]) == 15 && top4(image.pixels[i + 1]) == 0 && top4(image.pixels[i + 2]) == 0) {
+                image.pixels[i + 3] = 0;
+            }
+        }
+    }
     return image;
 }
 

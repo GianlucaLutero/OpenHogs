@@ -45,6 +45,14 @@ the `project()` call in `CMakeLists.txt`.
   that is destroyed takes the rest of the blow.
 - **Effects** with the original pictures: explosions throw fire, smoke and
   earth (foam in water) and leave a scorch mark; hogs have shadows.
+- **Level names** from the game's text in the level lists.
+- **Sergeant**: a cheer or a groan after some turns, and reminders of the
+  promotion points and crates still to get when one enemy is left.
+- **Newspaper** after every won campaign mission, with the headline and
+  photo the original chooses for the battle.
+- **Debriefing page** as the original: the squad's faces (bandaged, or a
+  gravestone for hogs lost for good), uniforms, names and rank badges, and
+  the mission's medals.
 
 ## 0.1.0 — first prototype release
 

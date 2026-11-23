@@ -2,6 +2,9 @@
 
 #include "openhogs/ui/UiStrings.h"
 
+#include "openhogs/core/PathUtils.h"
+#include "openhogs/game/Levels.h"
+
 #include <cctype>
 #include <utility>
 
@@ -150,6 +153,14 @@ std::string UiStrings::missionName(const game::Mission& mission) const {
     return found != missionNames.end() ? found->second : "MISSION " + std::to_string(mission.number);
 }
 
+std::string UiStrings::levelName(std::string_view map) const {
+    if (const auto info = game::findLevel(map)) {
+        const auto found = missionNames.find(info->nameEntry);
+        if (found != missionNames.end()) return found->second;
+    }
+    return core::toUpper(map);  // a map that is not one of the levels
+}
+
 std::string UiStrings::rankName(game::RankId rank) const {
     const auto ranks = game::allRanks();
     for (std::size_t i = 0; i < ranks.size(); ++i) {
@@ -265,11 +276,11 @@ UiStrings loadUiStrings(const std::vector<std::string>& frontEndText, const std:
     take(strings.retry, gt, kGtRetry);
     take(strings.editSquad, gt, kGtEditSquad);
     take(strings.rip, gt, kGtRip);
-    std::vector<game::Mission> missions{game::campaignMission(game::kBootCampMission)};
-    for (const auto& mission : game::campaignMissions()) missions.push_back(mission);
-    for (const auto& mission : missions) {
-        if (mission.nameEntry < gt.size() && !isBlank(gt[mission.nameEntry])) {
-            strings.missionNames[mission.nameEntry] = gt[mission.nameEntry];
+    // Every level's name (gtext 11 + level number): the campaign's
+    // missions and the multiplayer arenas alike.
+    for (const auto& info : game::allLevels()) {
+        if (info.nameEntry < gt.size() && !isBlank(gt[info.nameEntry])) {
+            strings.missionNames[info.nameEntry] = gt[info.nameEntry];
         }
     }
     take(strings.paused, gt, kGtPaused);

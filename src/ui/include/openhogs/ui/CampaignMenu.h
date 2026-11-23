@@ -64,6 +64,13 @@ public:
 
     CampaignMenuResult handle(MenuInput input, game::Campaign& campaign);
 
+    // The results page drawn as the original's debriefing picture has two
+    // keys printed on it: after a victory, SPACE continues (and so does
+    // ESCAPE, whose RETRY OpenHogs does not offer: the victory is already
+    // recorded); after a defeat, SPACE retries and ESCAPE edits the squad.
+    // Confirm stands for SPACE, Back for ESCAPE; other keys do nothing.
+    CampaignMenuResult answerDebrief(MenuInput input, game::Campaign& campaign);
+
     CampaignScreen screen() const { return screen_; }
     const Menu& menu() const { return menu_; }
     // Information shown under the page's title (mission, points...).
@@ -81,6 +88,7 @@ private:
     CampaignMenuResult handlePromotion(const MenuResponse& response, game::Campaign& campaign);
     CampaignMenuResult handleSwap(const MenuResponse& response, game::Campaign& campaign);
     CampaignMenuResult handleResults(const MenuResponse& response, game::Campaign& campaign);
+    CampaignMenuResult chooseResult(int chosen, game::Campaign& campaign);
     void showHog(const game::Campaign& campaign);
     void showPromotion(const game::Campaign& campaign);
     void showSwap(const game::Campaign& campaign);
