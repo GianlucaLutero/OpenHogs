@@ -119,6 +119,11 @@ public:
     Campaign(int nation, std::vector<std::string> names);
 
     int nation() const { return nation_; }
+
+    // The name the player gave the team (PLEASE NAME YOUR TEAM); empty
+    // until named, when the nation's team name stands for it.
+    const std::string& teamName() const { return teamName_; }
+    void setTeamName(std::string name) { teamName_ = std::move(name); }
     int nextMission() const { return nextMission_; }  // kMissionCount + 1 when finished
     bool finished() const { return nextMission_ > kMissionCount; }
 
@@ -137,6 +142,14 @@ public:
 
     // Swaps two hogs of the squad (to bring a reserve into the team).
     void swap(std::size_t first, std::size_t second);
+
+    // Gives a hog another name (RENAME on its page). An empty name is
+    // refused: the hog keeps its own. Returns whether the name changed.
+    bool rename(std::size_t member, std::string name);
+
+    // The executable's team-name cheat NAUGHTY PIGS sets the promotion
+    // points to 99 (FUN_0042b1f0).
+    void setPoints(int points) { points_ = points < 0 ? 0 : points; }
 
     bool canPromote(std::size_t member, RankId rank) const;
     // Promotes a hog, paying the points. Returns false (and changes
@@ -160,6 +173,7 @@ private:
     friend Campaign loadCampaign(const core::IniFile& ini);
 
     int nation_ = 0;
+    std::string teamName_;
     int nextMission_ = kBootCampMission;
     bool hardMode_ = false;
     int points_ = 0;

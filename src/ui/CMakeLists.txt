@@ -24,6 +24,8 @@
 #   OriginalOptionPages - the original CREDITS roll and CONTROLS board
 #   OriginalSquad - the original campaign squad page and a hog's page
 #   OriginalCareer - the original career and promotion board
+#   OriginalSaveBoard - the original loading and saving board (LOAD, SAVE ARMY)
+#   NameEntry     - typing a name on the letter grid (PLEASE NAME YOUR TEAM / PIG)
 #   CampaignMenu  - the campaign pages: squad, promotions, mission results
 
 add_library(openhogs_ui STATIC
@@ -46,6 +48,8 @@ add_library(openhogs_ui STATIC
     src/OriginalOptionPages.cpp
     src/OriginalSquad.cpp
     src/OriginalCareer.cpp
+    src/OriginalSaveBoard.cpp
+    src/NameEntry.cpp
     src/OriginalMenu.cpp
     src/MessageBanner.cpp
     src/PauseMenu.cpp

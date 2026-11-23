@@ -76,6 +76,13 @@ private:
 // it goes on in the next section), e.g. "Speech/Sku1/Sarge/SGEN0301.wav".
 std::string sargeSpeechPath(int section, int variant);
 
+// The sergeant on the squad page (FUN_0042ccc0): in the first island's
+// missions (the Boot Camp and missions 1 to 5), when the team has
+// promotion points to spend, he says SGEN2201 (front-end section 21,
+// variant 1) and the cursor goes to the first hog; once per session.
+bool wantsPromotionHint(int nextMission, int points);
+std::string promotionHintPath();
+
 // What a team's turn did to the hogs.
 struct TurnOutcome {
     int enemiesKilled = 0;

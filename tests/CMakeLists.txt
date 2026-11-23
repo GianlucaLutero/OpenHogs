@@ -78,6 +78,7 @@ add_executable(openhogs_tests
     ui/RadarTests.cpp
     ui/TextBoxTests.cpp
     ui/CampaignMenuTests.cpp
+    ui/NameEntryTests.cpp
     langpack/LangpackTests.cpp)
 
 target_include_directories(openhogs_tests PRIVATE support)

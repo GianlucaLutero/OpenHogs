@@ -234,7 +234,8 @@ bool Application::handleFrontEndResult(const ui::FrontEndResult& result) {
         inCampaign_ = true;
         break;
     case ui::FrontEndResult::Request::LoadCampaign:
-        inCampaign_ = campaign_->loadSaved();
+        campaign_->openLoad();
+        inCampaign_ = true;
         break;
     case ui::FrontEndResult::Request::VolumesChanged:
         sounds_->setVolumes(mergeMenuVolumes(loadedVolumes_, frontEnd_->volumes()));
@@ -319,6 +320,9 @@ void Application::handleEvent(const SDL_Event& event, bool& running) {
         handleFrontEndResult(frontEnd_->keyPressed(keyName(event.key.scancode)));
         return;
     }
+    if (inCampaign_ && campaign_->typingName() && event.type == SDL_EVENT_KEY_DOWN && typeIntoName(event.key.key)) {
+        return;
+    }
     std::optional<ui::MenuInput> input;
     if (event.type == SDL_EVENT_KEY_DOWN) {
         input = menuInputForKey(event.key.key);
@@ -328,6 +332,23 @@ void Application::handleEvent(const SDL_Event& event, bool& running) {
     if (input) {
         running = handleMenuInput(*input);
     }
+}
+
+bool Application::typeIntoName(SDL_Keycode key) {
+    // While a name is written the keyboard types: letters, digits and the
+    // font's signs go into it, Backspace takes one out; the arrows, Enter
+    // and Esc still move over the grid, pick and leave.
+    if (key == SDLK_BACKSPACE) {
+        campaign_->erase(*sounds_);
+        return true;
+    }
+    if (key == SDLK_SPACE || (key >= SDLK_A && key <= SDLK_Z) || (key >= SDLK_0 && key <= SDLK_9) || key == SDLK_MINUS ||
+        key == SDLK_APOSTROPHE || key == SDLK_COMMA || key == SDLK_ASTERISK || key == SDLK_AMPERSAND ||
+        key == SDLK_PLUS) {
+        campaign_->type(static_cast<char>(key), *sounds_);
+        return true;
+    }
+    return false;
 }
 
 void Application::update(double seconds) {
@@ -347,6 +368,8 @@ void Application::update(double seconds) {
                 ? pages->lines()
                 : pages->squadLines(),
             pages->hogIndex());
+        originalMenu_->setSaveSlots(&pages->slots(), interface_->strings().missionNumber);
+        originalMenu_->setNameEntry(&pages->nameEntry());
         const auto screen = *campaignScreen();
         originalMenu_->show(campaignMenuShown(), screen, screen == OriginalScreen::HogPage ? &pages->squadMenu() : nullptr);
         originalMenu_->update(seconds);
@@ -401,8 +424,12 @@ std::optional<OriginalScreen> Application::campaignScreen() const {
         return std::nullopt;
     case ui::CampaignScreen::Results: return OriginalScreen::Results;
     case ui::CampaignScreen::Promotion: return OriginalScreen::Promotion;
-    default: return std::nullopt;
+    case ui::CampaignScreen::Load:
+    case ui::CampaignScreen::Save: return OriginalScreen::SaveBoard;
+    case ui::CampaignScreen::NameTeam:
+    case ui::CampaignScreen::NameHog: return OriginalScreen::NameEntry;
     }
+    return std::nullopt;
 }
 
 OriginalScreen Application::originalScreen() const {
@@ -457,6 +484,8 @@ void Application::drawMenus(int width, int height) {
                 ? pages->lines()
                 : pages->squadLines(),
             pages->hogIndex());
+        originalMenu_->setSaveSlots(&pages->slots(), interface_->strings().missionNumber);
+        originalMenu_->setNameEntry(&pages->nameEntry());
         const auto screen = *campaignScreen();
         originalMenu_->draw(ui, campaignMenuShown(), screen,
                             screen == OriginalScreen::HogPage ? &pages->squadMenu() : nullptr);

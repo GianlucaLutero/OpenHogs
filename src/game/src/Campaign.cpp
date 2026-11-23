@@ -110,6 +110,12 @@ Campaign::Campaign(int nation, std::vector<std::string> names) : nation_(nation)
     }
 }
 
+bool Campaign::rename(std::size_t member, std::string name) {
+    if (member >= squad_.size() || name.empty() || squad_[member].name == name) return false;
+    squad_[member].name = std::move(name);
+    return true;
+}
+
 std::string Campaign::newRecruitName() const {
     // The first of the nation's names that nobody in the squad has and no
     // fallen hog had, or else a number.
@@ -209,6 +215,7 @@ std::string Campaign::save() const {
     std::ostringstream out;
     out << "; OpenHogs campaign\n[" << kSection << "]\n";
     out << "Nation = " << nation_ << "\n";
+    out << "TeamName = " << teamName_ << "\n";
     out << "NextMission = " << nextMission_ << "\n";
     out << "HardMode = " << (hardMode_ ? 1 : 0) << "\n";
     out << "Points = " << points_ << "\n";
@@ -236,6 +243,7 @@ Campaign loadCampaign(const core::IniFile& ini) {
     }
     Campaign campaign;
     campaign.nation_ = ini.getInt(kSection, "Nation", -1);
+    campaign.teamName_ = ini.getString(kSection, "TeamName", "");
     campaign.nextMission_ = ini.getInt(kSection, "NextMission", 1);  // saves from before the Boot Camp: mission 1
     campaign.points_ = ini.getInt(kSection, "Points", 0);
     campaign.hardMode_ = ini.getInt(kSection, "HardMode", 0) != 0;

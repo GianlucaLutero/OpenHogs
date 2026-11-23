@@ -114,6 +114,16 @@ struct UiStrings {
     std::string startMission = "START MISSION";
     std::string promote = "PROMOTE";
     std::string swapPosition = "SWAP POSITION";
+    std::string rename = "RENAME";
+    std::string saveTeam = "SAVE TEAM";
+    std::string loadArmy = "LOAD";             // the loading board's title (screen 10)
+    std::string saveArmy = "SAVE ARMY";        // the saving board's title (screen 21)
+    std::string nameYourPig = "PLEASE NAME YOUR PIG";
+    std::string nameYourTeam = "PLEASE NAME YOUR TEAM";
+    std::string emptySlot = "---";             // a slot with nothing saved (the executable's own text)
+    std::string missionNumber = "MISSION ";    // the saving board's panel: "MISSION 4" (fetext 248)
+    // The team-name cheat that gives 99 promotion points (fetext 747).
+    std::string naughtyPigs = "NAUGHTY PIGS";
     std::string careerPath = "CAREER PATH";
     std::array<std::string, 4> careers{"HEAVY WEAPONS", "MEDIC", "ESPIONAGE", "ENGINEER"};
     // Not in the game's tables (OpenHogs' own words).

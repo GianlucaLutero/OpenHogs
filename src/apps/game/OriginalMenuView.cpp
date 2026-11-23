@@ -7,6 +7,7 @@
 #include "openhogs/ui/HudLayout.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdlib>
 
@@ -116,8 +117,12 @@ void OriginalMenuView::update(double seconds) {
         credits_.advance(seconds);
         return;
     }
-    if (screen_ == OriginalScreen::Promotion) {
+    if (screen_ == OriginalScreen::Promotion || screen_ == OriginalScreen::NameEntry) {
         career_.advance(seconds);
+        return;
+    }
+    if (screen_ == OriginalScreen::SaveBoard) {
+        saveBoard_.advance(seconds);
         return;
     }
     if (screen_ == OriginalScreen::Squad || screen_ == OriginalScreen::HogPage) {
@@ -158,6 +163,17 @@ void OriginalMenuView::show(const ui::Menu& menu, OriginalScreen screen, const u
             career_.open(selected);
         } else {
             career_.select(selected);
+        }
+        break;
+    case OriginalScreen::NameEntry:
+        // The same board as PROMOTE: from there it only stays.
+        if (changed && screen_ != OriginalScreen::Promotion) career_.open(0);
+        break;
+    case OriginalScreen::SaveBoard:
+        if (changed) {
+            saveBoard_.open(selected);
+        } else if (selected != selected_) {
+            saveBoard_.select(selected);
         }
         break;
     case OriginalScreen::Squad:
@@ -287,6 +303,8 @@ void OriginalMenuView::draw(render::UiRenderer& ui, const ui::Menu& menu, Origin
     case OriginalScreen::Squad: drawSquad(ui, menu, originX, true); break;
     case OriginalScreen::Results: drawResults(ui, menu, originX); break;
     case OriginalScreen::Promotion: drawPromotion(ui, menu, originX); break;
+    case OriginalScreen::SaveBoard: drawSaveBoard(ui, menu, originX); break;
+    case OriginalScreen::NameEntry: drawNameEntry(ui, menu, originX); break;
     case OriginalScreen::HogPage:
         if (under) drawSquad(ui, *under, originX, false);
         drawHogPage(ui, menu, originX);
@@ -449,6 +467,98 @@ void OriginalMenuView::drawPromotion(render::UiRenderer& ui, const ui::Menu& men
         if (!items[i].detail.empty()) text += "  " + items[i].detail;
         const auto at = career_.monitorLine(line++);
         ui.drawText(font_, text, originX + at.centreX, at.top, style);
+    }
+}
+
+namespace {
+
+// The loading and saving board's title, on the plate at the board's top
+// (the executable has no text box for it: OpenHogs' choice).
+constexpr float kSaveTitleCentreX = 238.0f, kSaveTitleTop = 54.0f;
+
+// The letter grid on the information board's monitor (x 205-420,
+// y 140-360): the name on the first line, the letters below it, eleven
+// to a row, and the DELETE, SPACE and END keys in a column after them
+// (the executable's FUN_00431380 fits the grid to the monitor's box).
+constexpr float kGridLeft = 220.0f;
+constexpr std::size_t kGridFirstLine = 2;
+constexpr float kGridColumn = 14.5f, kGridRow = 24.0f;
+constexpr float kKeysX = 402.0f;
+constexpr std::array<const char*, 3> kKeyPictures{"chardel", "charspc", "charent"};
+
+} // namespace
+
+void OriginalMenuView::drawSaveBoard(render::UiRenderer& ui, const ui::Menu& menu, float originX) {
+    const std::size_t selected = menu.items().empty() ? 0 : menu.selectedIndex();
+    std::vector<game::RankId> squad;
+    const ui::SaveSlot* chosen = nullptr;
+    if (saveSlots_ && selected < saveSlots_->size() && (*saveSlots_)[selected].used) {
+        chosen = &(*saveSlots_)[selected];
+        squad = chosen->squad;
+    }
+    drawPieces(ui, saveBoard_.pieces(squad), originX);
+    if (!saveBoard_.showsText()) return;
+    render::TextStyle style;
+    style.scale = kTextScale;
+    style.align = render::TextAlign::Centre;
+    style.shadow = false;
+    style.colour = kTitleColour;
+    ui.drawText(font_, menu.title(), originX + kSaveTitleCentreX, kSaveTitleTop, style);
+    const auto& items = menu.items();
+    for (std::size_t i = 0; i < items.size() && i < ui::kSaveBoardSlots; ++i) {
+        glm::vec4 colour = i == selected ? kSelectedColour : kEntryColour;
+        if (!items[i].enabled) colour = glm::vec4(glm::vec3(colour) * kDisabledDimming, 1.0f);
+        style.colour = colour;
+        const auto line = saveBoard_.slotLine(i);
+        ui.drawText(font_, items[i].label, originX + line.centreX, line.top, style);
+    }
+    if (chosen && saveBoard_.showsInfo()) {
+        // The panel's line (FUN_0042e310): "MISSION 4", written from its left.
+        style.align = render::TextAlign::Left;
+        style.colour = kLevelColour;
+        const auto line = saveBoard_.missionLine();
+        ui.drawText(font_, missionWord_ + std::to_string(chosen->nextMission), originX + line.centreX, line.top, style);
+    }
+}
+
+void OriginalMenuView::drawNameEntry(render::UiRenderer& ui, const ui::Menu& menu, float originX) {
+    drawPieces(ui, career_.pieces(false), originX);
+    render::TextStyle style;
+    style.scale = kTextScale;
+    style.align = render::TextAlign::Centre;
+    style.shadow = false;
+    style.colour = kTitleColour;
+    const auto title = career_.titleLine();
+    ui.drawText(font_, menu.title(), originX + title.centreX, title.top, style);
+    if (!career_.showsText() || !nameEntry_) return;
+    const auto& entry = *nameEntry_;
+    // The name, with a cursor while there is room for more; the old name,
+    // dimmer, until a key is used.
+    const auto nameLine = career_.monitorLine(0);
+    style.colour = entry.edited() ? kSelectedColour : kEntryColour;
+    const std::string typed = entry.name() + (entry.name().size() < entry.maxLength() ? "_" : "");
+    const std::string shown = entry.edited() ? typed : entry.current();
+    ui.drawText(font_, shown, originX + nameLine.centreX, nameLine.top, style);
+    // The grid starts two lines below the name and moves with the board.
+    const float top = career_.monitorLine(kGridFirstLine).top;
+    for (std::size_t row = 0; row < entry.rows(); ++row) {
+        for (std::size_t column = 0; column < ui::kNameGridColumns; ++column) {
+            const char letter = entry.letterAt(column, row);
+            if (letter == '\0') continue;
+            const bool chosen = entry.column() == column && entry.row() == row;
+            style.colour = chosen ? kSelectedColour : kEntryColour;
+            ui.drawText(font_, std::string(1, letter), originX + kGridLeft + kGridColumn * static_cast<float>(column),
+                        top + kGridRow * static_cast<float>(row), style);
+        }
+    }
+    // DELETE, SPACE, END: the executable's key pictures, the chosen one lit.
+    for (std::size_t key = 0; key < kKeyPictures.size(); ++key) {
+        const render::UiImage* image = pictures_.picture(kKeyPictures[key]);
+        if (!image) continue;
+        const bool chosen = entry.column() == ui::kNameGridColumns && entry.row() == key;
+        const glm::vec4 tint = chosen ? kSelectedColour : kEntryColour;
+        ui.drawImage(*image, originX + kKeysX - image->width() / 2.0f, top + kGridRow * static_cast<float>(key) - 6.0f,
+                     image->width(), image->height(), tint);
     }
 }
 

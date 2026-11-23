@@ -107,6 +107,16 @@ std::string HogSpeech::next(HogLine kind, int voice, int nation, float health) {
     return {};
 }
 
+bool wantsPromotionHint(int nextMission, int points) {
+    constexpr int kFirstIslandEnd = 6;  // the executable: mission byte below 6
+    return points > 0 && nextMission < kFirstIslandEnd;
+}
+
+std::string promotionHintPath() {
+    constexpr int kFrontEndSection = 21;
+    return sargeSpeechPath(kFrontEndSection, 1);
+}
+
 std::string sargeSpeechPath(int section, int variant) {
     while (variant > 8) {
         ++section;

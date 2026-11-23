@@ -23,6 +23,8 @@ constexpr int kSwap = 103;
 constexpr int kContinue = 104;
 constexpr int kRetry = 105;
 constexpr int kEditSquad = 106;
+constexpr int kSaveTeam = 107;
+constexpr int kRename = 108;
 
 MenuItem action(int id, std::string label, bool enabled = true, std::string detail = {}) {
     MenuItem item;
@@ -38,6 +40,19 @@ bool canPromoteAtAll(const game::Campaign& campaign, std::size_t hog) {
         if (campaign.canPromote(hog, rank)) return true;
     }
     return false;
+}
+
+MenuSound soundFor(NameEntry::Result result) {
+    using Result = NameEntry::Result;
+    switch (result) {
+    case Result::Moved: return MenuSound::Move;
+    case Result::Changed:
+    case Result::Done: return MenuSound::Select;
+    case Result::Refused:
+    case Result::Cancelled: return MenuSound::Back;
+    case Result::None: break;
+    }
+    return MenuSound::None;
 }
 
 MenuSound soundFor(const MenuResponse& response) {
@@ -78,9 +93,11 @@ void CampaignMenu::showSquad(const game::Campaign& campaign) {
         const std::string marker = i < deployed ? "* " : "";
         items.push_back(action(static_cast<int>(i), marker + squad[i].name, true, strings_.rankName(squad[i].rank)));
     }
+    // The executable's squad page (screen 12): START MISSION and SAVE TEAM.
     items.push_back(action(kStartMission, strings_.startMission, !campaign.finished()));
-    items.push_back(action(kBack, strings_.back));
-    menu_ = Menu(strings_.teamName(campaign.nation()), std::move(items));
+    items.push_back(action(kSaveTeam, strings_.saveTeam));
+    const std::string title = campaign.teamName().empty() ? strings_.teamName(campaign.nation()) : campaign.teamName();
+    menu_ = Menu(title, std::move(items));
     if (!campaign.finished()) menu_.select(kStartMission);
     squad_ = menu_;
     squadLines_ = lines_;
@@ -90,8 +107,96 @@ void CampaignMenu::showHog(const game::Campaign& campaign) {
     screen_ = CampaignScreen::Hog;
     const auto& member = campaign.squad()[hog_];
     lines_ = {strings_.rankName(member.rank), pointsLine(campaign.points())};
+    // The executable's hog page (screen 19): PROMOTE, SWAP POSITION, RENAME.
     menu_ = Menu(member.name, {action(kPromote, strings_.promote, canPromoteAtAll(campaign, hog_)),
-                               action(kSwap, strings_.swapPosition), action(kBack, strings_.back)});
+                               action(kSwap, strings_.swapPosition), action(kRename, strings_.rename)});
+}
+
+Menu CampaignMenu::slotMenu(const std::string& title, bool emptyAllowed) const {
+    std::vector<MenuItem> items;
+    for (std::size_t i = 0; i < slots_.size(); ++i) {
+        const auto& slot = slots_[i];
+        items.push_back(action(static_cast<int>(i), slot.used ? slot.name : strings_.emptySlot, slot.used || emptyAllowed));
+    }
+    return Menu(title, std::move(items));
+}
+
+void CampaignMenu::setSlots(std::vector<SaveSlot> slots) {
+    slots_ = std::move(slots);
+    if (screen_ == CampaignScreen::Load || screen_ == CampaignScreen::Save) {
+        const int selected = menu_.items().empty() ? 0 : menu_.selectedItem().id;
+        menu_ = slotMenu(menu_.title(), screen_ == CampaignScreen::Save);
+        menu_.select(selected);
+    }
+}
+
+void CampaignMenu::showLoad(std::vector<SaveSlot> slots) {
+    screen_ = CampaignScreen::Load;
+    slots_ = std::move(slots);
+    lines_.clear();
+    menu_ = slotMenu(strings_.loadArmy, false);  // the cursor skips the empty slots
+}
+
+void CampaignMenu::showSave(const game::Campaign& campaign) {
+    (void)campaign;
+    screen_ = CampaignScreen::Save;
+    lines_.clear();
+    menu_ = slotMenu(strings_.saveArmy, true);
+}
+
+void CampaignMenu::showNameTeam(const game::Campaign& campaign) {
+    screen_ = CampaignScreen::NameTeam;
+    const std::string name = campaign.teamName().empty() ? strings_.teamName(campaign.nation()) : campaign.teamName();
+    nameEntry_ = NameEntry(strings_.nameYourTeam, name, kTeamNameLength);
+    lines_.clear();
+    menu_ = Menu(strings_.nameYourTeam, {});
+}
+
+void CampaignMenu::showNameHog(const game::Campaign& campaign) {
+    screen_ = CampaignScreen::NameHog;
+    nameEntry_ = NameEntry(strings_.nameYourPig, campaign.squad()[hog_].name, kHogNameLength);
+    lines_.clear();
+    menu_ = Menu(strings_.nameYourPig, {});
+}
+
+CampaignMenuResult CampaignMenu::type(char letter, game::Campaign& campaign) {
+    if (!typingName()) return {};
+    return handleName(nameEntry_.type(letter), campaign);
+}
+
+CampaignMenuResult CampaignMenu::erase() {
+    if (!typingName()) return {};
+    CampaignMenuResult result;
+    result.sound = soundFor(nameEntry_.erase());
+    return result;
+}
+
+CampaignMenuResult CampaignMenu::handleName(NameEntry::Result entry, game::Campaign& campaign) {
+    CampaignMenuResult result;
+    result.sound = soundFor(entry);
+    const bool team = screen_ == CampaignScreen::NameTeam;
+    if (entry == NameEntry::Result::Done) {
+        const bool typed = nameEntry_.edited() && !nameEntry_.name().empty();
+        if (team) {
+            if (typed) campaign.setTeamName(nameEntry_.name());
+            // The executable's cheat (FUN_0042b1f0): this name gives 99 points.
+            if (campaign.teamName() == strings_.naughtyPigs) campaign.setPoints(kNaughtyPigsPoints);
+            showSquad(campaign);
+        } else {
+            if (typed) campaign.rename(hog_, nameEntry_.name());
+            showHog(campaign);
+            menu_.select(kRename);
+        }
+        result.request = Request::Changed;
+    } else if (entry == NameEntry::Result::Cancelled) {
+        if (team) {
+            result.request = Request::Leave;  // the new campaign is dropped
+        } else {
+            showHog(campaign);
+            menu_.select(kRename);
+        }
+    }
+    return result;
 }
 
 void CampaignMenu::showPromotion(const game::Campaign& campaign) {
@@ -169,6 +274,8 @@ void CampaignMenu::showResults(const game::Campaign& campaign, const MissionSumm
 }
 
 CampaignMenuResult CampaignMenu::handle(MenuInput input, game::Campaign& campaign) {
+    if (typingName()) return handleName(nameEntry_.handle(input), campaign);
+    if (screen_ == CampaignScreen::Load) return handleLoad(input);
     const auto response = menu_.handle(input);
     switch (screen_) {
     case CampaignScreen::Squad: return handleSquad(response, campaign);
@@ -176,18 +283,53 @@ CampaignMenuResult CampaignMenu::handle(MenuInput input, game::Campaign& campaig
     case CampaignScreen::Promotion: return handlePromotion(response, campaign);
     case CampaignScreen::Swap: return handleSwap(response, campaign);
     case CampaignScreen::Results: return handleResults(response, campaign);
+    case CampaignScreen::Save: return handleSave(response, campaign);
+    case CampaignScreen::Load:
+    case CampaignScreen::NameTeam:
+    case CampaignScreen::NameHog: break;  // handled above
     }
     return {};
+}
+
+CampaignMenuResult CampaignMenu::handleLoad(MenuInput input) {
+    const auto response = menu_.handle(input);
+    CampaignMenuResult result;
+    result.sound = soundFor(response);
+    if (response.type == Type::Back) {
+        result.request = Request::Leave;
+    } else if (response.type == Type::Activated) {
+        result.request = Request::LoadFromSlot;
+        result.slot = static_cast<std::size_t>(response.itemId);
+    }
+    return result;
+}
+
+CampaignMenuResult CampaignMenu::handleSave(const MenuResponse& response, game::Campaign& campaign) {
+    CampaignMenuResult result;
+    result.sound = soundFor(response);
+    if (response.type == Type::Back) {
+        showSquad(campaign);
+        menu_.select(kSaveTeam);
+    } else if (response.type == Type::Activated) {
+        // As the executable (action 25): saved at once, back to the squad.
+        result.request = Request::SaveToSlot;
+        result.slot = static_cast<std::size_t>(response.itemId);
+        showSquad(campaign);
+        menu_.select(kSaveTeam);
+    }
+    return result;
 }
 
 CampaignMenuResult CampaignMenu::handleSquad(const MenuResponse& response, game::Campaign& campaign) {
     CampaignMenuResult result;
     result.sound = soundFor(response);
-    if (response.type == Type::Back || (response.type == Type::Activated && response.itemId == kBack)) {
+    if (response.type == Type::Back) {
         result.request = Request::Leave;
         result.sound = MenuSound::Back;
     } else if (response.type == Type::Activated && response.itemId == kStartMission) {
         result.request = Request::StartMission;
+    } else if (response.type == Type::Activated && response.itemId == kSaveTeam) {
+        showSave(campaign);
     } else if (response.type == Type::Activated) {
         hog_ = static_cast<std::size_t>(response.itemId);
         showHog(campaign);
@@ -198,7 +340,7 @@ CampaignMenuResult CampaignMenu::handleSquad(const MenuResponse& response, game:
 CampaignMenuResult CampaignMenu::handleHog(const MenuResponse& response, game::Campaign& campaign) {
     CampaignMenuResult result;
     result.sound = soundFor(response);
-    if (response.type == Type::Back || (response.type == Type::Activated && response.itemId == kBack)) {
+    if (response.type == Type::Back) {
         showSquad(campaign);
         menu_.select(static_cast<int>(hog_));
         result.sound = MenuSound::Back;
@@ -206,6 +348,8 @@ CampaignMenuResult CampaignMenu::handleHog(const MenuResponse& response, game::C
         showPromotion(campaign);
     } else if (response.type == Type::Activated && response.itemId == kSwap) {
         showSwap(campaign);
+    } else if (response.type == Type::Activated && response.itemId == kRename) {
+        showNameHog(campaign);
     }
     return result;
 }
