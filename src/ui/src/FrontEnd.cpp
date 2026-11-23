@@ -135,7 +135,7 @@ FrontEnd::FrontEnd(UiStrings strings, std::vector<std::string> maps, VolumeLevel
 
     std::vector<MenuItem> levels;
     for (std::size_t i = 0; i < maps_.size(); ++i) {
-        levels.push_back(action(static_cast<int>(i), maps_[i]));
+        levels.push_back(action(static_cast<int>(i), strings_.levelName(maps_[i])));  // the level's name, not its file
     }
     levels.push_back(action(kLevelBack, strings_.back));
     selectLevel_ = Menu(strings_.selectLevel, std::move(levels));

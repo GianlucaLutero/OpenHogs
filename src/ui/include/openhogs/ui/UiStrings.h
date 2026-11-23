@@ -189,9 +189,13 @@ struct UiStrings {
         {"SIMON", "TAPPER", "JOHN", "ANDY", "MARK", "JAKE", "MARTYN", "IZZY", "RICKI"},
     }};
 
-    // Mission names (gtext), by game::Mission::nameEntry.
+    // Level names (gtext 11 + level number), by game::LevelInfo::nameEntry
+    // (which is also game::Mission::nameEntry).
     std::map<std::size_t, std::string> missionNames;
     std::string missionName(const game::Mission& mission) const;
+    // A map's level name (ROUTINE PATROL for ROAD, THE LAKE for LAKE...),
+    // or the map's own name for maps that are not levels.
+    std::string levelName(std::string_view map) const;
 
     // Campaign rank names, in game::allRanks() order (from gtext).
     std::vector<std::string> rankNames;

@@ -88,6 +88,16 @@ struct TurnOutcome {
 // and not the enemy, 0: neither or both.
 int turnVerdict(const TurnOutcome& outcome);
 
+// What the sergeant looks at after a person's turn against the computer
+// (FUN_00497f80).
+struct BattleState {
+    int enemyAlive = 0;       // the computer's hogs still standing
+    int enemyDead = 0;
+    int ownDead = 0;          // the person's hogs lost
+    bool pointsLeft = false;  // objectives that give promotion points (types 2, 8)
+    bool cratesLeft = false;  // objectives that give crates (types 1, 7, 13)
+};
+
 class Sergeant {
 public:
     // The line once a person's turn is over, or nothing. `singlePlayer`:
@@ -95,6 +105,17 @@ public:
     // lines are general; otherwise the lines of `nation` (index into
     // scene::characterTeams()).
     std::optional<std::string> afterTurn(const TurnOutcome& outcome, bool singlePlayer, int nation);
+
+    // His other comments to a person playing the computer, when afterTurn
+    // said nothing (FUN_00497f80). With one enemy left (and some already
+    // dead) he reminds the player of the objectives still to do before the
+    // mission ends: promotion points (section 10) or crates (section 11),
+    // each once, then one time in four. Otherwise, one time in four, he
+    // cheers a good turn when fewer than three enemies are left (section 3)
+    // or groans at a bad one when more than two of the player's hogs are
+    // dead (section 1).
+    std::optional<std::string> afterTurnExtra(const TurnOutcome& outcome, const BattleState& battle,
+                                              std::mt19937& random);
 
     // In a match between several people, a dawdler is told off once per
     // turn when 10 to 6 seconds are left and the hog has not attacked
@@ -116,6 +137,10 @@ private:
     int hurry_ = 1;           // sections 12-13, sixteen lines
     bool warnedThisTurn_ = false;
     std::map<int, int> objectiveLines_;  // section -> last variant said
+    int cheer_ = 1;                      // section 3
+    int groan_ = 1;                      // section 1
+    bool remindedPoints_ = false;
+    bool remindedCrates_ = false;
 };
 
 // --- Music -----------------------------------------------------------------

@@ -1,6 +1,6 @@
 // Tests for formats::decompressMgl and decodeMglPicture: the LZ scheme of
 // the game's .mgl pictures (menu pictures on PC; title screens, newspapers
-// and cards on the PlayStation).
+// and cards on the PlayStation), and the colour keys of the PC pictures.
 //
 // Each command below is one the executable's routine knows; getting one
 // wrong shifts every following byte and ruins the whole picture. The
@@ -8,6 +8,7 @@
 // copies the PlayStation disc keeps of some cards.
 
 #include "openhogs/core/BinaryReader.h"
+#include "openhogs/formats/BitmapImage.h"
 #include "openhogs/formats/MglPicture.h"
 
 #include <catch2/catch_test_macros.hpp>
@@ -94,4 +95,25 @@ TEST_CASE("Magenta pixels of menu pictures become transparent", "[formats][mgl]"
     CHECK(image.pixels[3] == 0);    // magenta: transparent
     CHECK(image.pixels[7] == 255);  // grey: opaque
     CHECK(image.pixels[4] == 128);
+}
+
+TEST_CASE("Red pixels of the newspapers become transparent", "[formats][bitmap]") {
+    // The newspaper stories and photos sit on the paper through a red key.
+    // The stories store it as (252, 3, 15), not pure red: missing that form
+    // would print a red box over the newsprint. Dark red ink must stay.
+    std::vector<std::byte> bmp;
+    const auto u16 = [&](std::uint16_t v) { for (int i = 0; i < 2; ++i) bmp.push_back(static_cast<std::byte>((v >> (8 * i)) & 0xFF)); };
+    const auto u32 = [&](std::uint32_t v) { for (int i = 0; i < 4; ++i) bmp.push_back(static_cast<std::byte>((v >> (8 * i)) & 0xFF)); };
+    // A 3 x 1 24-bit BMP: pure red, near red, dark red (rows padded to 12 bytes).
+    bmp.push_back(std::byte{'B'});
+    bmp.push_back(std::byte{'M'});
+    u32(66); u16(0); u16(0); u32(54);
+    u32(40); u32(3); u32(1); u16(1); u16(24); u32(0); u32(12); u32(0); u32(0); u32(0); u32(0);
+    for (const int value : {0, 0, 255, 15, 3, 252, 0, 0, 160, 0, 0, 0}) bmp.push_back(static_cast<std::byte>(value));  // B G R
+
+    const auto image = formats::decodeBitmap(bmp, formats::BitmapTransparency::Red);
+    REQUIRE(image.width == 3);
+    CHECK(image.pixels[3] == 0);     // pure red: transparent
+    CHECK(image.pixels[7] == 0);     // the stories' red: transparent
+    CHECK(image.pixels[11] == 255);  // dark red: opaque
 }

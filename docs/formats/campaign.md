@@ -170,12 +170,66 @@ ps1` (`game::GameVersion`, `Campaign::startHardMode`).
 | `Language/Tims/Briefing/level<N>.bmp` | 640 × 480 | the briefing of mission *N* (0 = Boot Camp) |
 | `Language/Tims/Briefing/level1n<K>.bmp` | 254 × 190 | photo for mission 1's empty frame (at 350, 197): a hog in the player's uniform, *K* = British, American, French, German, Russian, Japanese |
 | `Language/Tims/Briefing/loadbar.bmp` | | loading bar |
-| `Language/Tims/Papers/<Nation>.bmp`, `text<N>.bmp`, `pic0<N>.bmp` | 640 × 480, 314 × 204 | the newspaper after a mission: a nation's front page with a headline and a photo (not shown yet) |
-| `Language/Tims/Debrief/*` | | mission results pages: backgrounds, hog faces, rank badges (not used yet) |
+| `Language/Tims/Papers/<Nation>.bmp`, `text<N>.bmp`, `pic0<N>.bmp` | 640 × 480, 314 × 204, 300 × 299 | the newspaper after a won mission (see *Newspapers*) |
+| `Language/Tims/Debrief/*` | | the debriefing page (see *Debriefing*) |
 | `Language/Tims/PigMap/` | | the campaign map (empty in the Steam release) |
 
 The language packs replace the briefings and newspapers with translated
 ones, so OpenHogs shows them as they are.
+
+## Newspapers
+
+After every won campaign mission except the Boot Camp, the executable
+(`FUN_0045c700`, called as `FUN_0045c3d0(3)`) prints a newspaper for up to
+10 seconds or until a key is pressed. The paper is the nation's
+(`British`, `American`, `French`, `German`, `Russian`, `Japan`; `teamlard`
+for Team Lard), the story `text<N>.bmp` goes at (23, 144) and the photo
+`pic0<N>.bmp` at (309, 111). Red is the see-through colour: (255, 0, 0)
+in the photos, (252, 3, 15) in the stories (the same red once the pictures
+are 4-bit-per-channel textures).
+
+*lost* counts the first five squad slots whose state is not 2
+(`FUN_00450b00`); *b* is the mission number:
+
+| Hogs lost | Photo | Story | Headline |
+|-----------|-------|-------|----------|
+| 0, more than one medal this mission (`0x51F3C6`) | `pic01` | (*b* & 3) + 1 | VICTORY! NATION ECSTATIC |
+| 0 | `pic02` | (*b* & 3) + 5 | ENEMY GIVEN A PROPER SEEING TO |
+| 1–2 | `pic03` | (*b* & 3) + 9 | VICTORY ONCE MORE |
+| 3 | `pic04` | (*b* & 3) + 13 | THEY DON'T LIKE IT UP 'EM |
+| 4–5 | `pic05` | (*b* & 3) + 16 | OUR LADS ROGERED |
+
+Unless all five were lost, the levels that end an island and the final
+level (levels 2, 7, 16, 19, 23 and 24: RUMBLE, GUNS, BAY, EMPLACE, FOOT,
+FINAL) print stories 21 to 26 instead (21 is HOGSHEAD FALLS!).
+
+## Debriefing
+
+The MISSION RESULTS page (`FUN_004845e0`) is drawn on `pigbkpc1.bmp` after
+a victory (keys SPACE CONTINUE, ESCAPE RETRY) or `pigbkpc2.bmp` after a
+defeat (SPACE RETRY, ESCAPE EDIT SQUAD). Text positions are 640 × 480
+pixels, centred on x:
+
+- the first five hogs of the squad in rows 73 pixels apart: a face
+  (`Facepc<n>`, bandaged `facepcw<n>` for a hog that fell, `r_i_p` for one
+  lost for good) over the nation's uniform (`unifeng`, `unifusa`,
+  `uniffren`, `unifgerm`, `unifruss`, `unifjap`, `uniflard`) in the frame,
+  the name at (215, 90 + 73 *row*) and the rank badges. Badges (table
+  `0x4D35C8`, two per rank, ranks numbered as gtext 63 + *n*): the career
+  (`pcHeavy`, `pcSniper` for espionage, `pcEngine`, `pcMedic`, `pcCmmndo`,
+  `pcLegend` for the hero and legend) and `pcPip1` / `pcPip2` for the
+  second and third rank of a career. `pcGrenad` and `pcParatr` are loaded
+  but not in the table. Faces, uniforms and the gravestone are magenta-keyed,
+  badges black (palette entry 0);
+- at (320, 5) a title, at (456, 84) MISSION RESULTS (gtext 187); after a
+  defeat MISSION FAILED! at (456, 226); after a victory LEVEL COMPLETE at
+  (456, 140), SURVIVAL BONUS at (456, 225) and NONE at (456, 260) without
+  the medal, SPECIAL BONUS at (456, 305) when the mission offers special
+  medals (table `0x4D3560`);
+- the medals are the promotion point model (`Chars/PROPOINT.MAD`,
+  `propoint.mtd`) turning 25/4096 of a turn every 5 ms at (1950, *y*, 7000)
+  with *y* = 700 (level complete), -500 (survival) and -1700 (special
+  medals, 750 apart, the ones not picked up at 100/255 opacity).
 
 ## Texts
 

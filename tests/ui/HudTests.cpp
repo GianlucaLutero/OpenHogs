@@ -50,6 +50,20 @@ TEST_CASE("Interface texts come from the text tables, English when missing", "[u
     CHECK(english.className("unknown") == "UNKNOWN");
 }
 
+TEST_CASE("Levels are listed by their names in the game text, not by their files", "[ui][strings]") {
+    // The original calls level n gtext 11 + n (ROAD is ROUTINE PATROL,
+    // LAKE is THE LAKE): players choose arenas by these names, and a
+    // language pack translates them. Maps that are not levels keep their
+    // file name.
+    std::vector<std::string> game(200);
+    game[11] = "ROUTINE PATROL";
+    game[11 + 51] = "IL LAGO";
+    const auto strings = loadUiStrings({}, game);
+    CHECK(strings.levelName("ROAD") == "ROUTINE PATROL");
+    CHECK(strings.levelName("lake") == "IL LAGO");
+    CHECK(strings.levelName("GENSNOW") == "GENSNOW");
+}
+
 TEST_CASE("The HUD shows the active hog's team, class, health and weapon", "[ui][hud]") {
     // The panel must describe the hog being played, not another one.
     auto world = makeWorld();

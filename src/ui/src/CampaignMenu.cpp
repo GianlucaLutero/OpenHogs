@@ -249,6 +249,28 @@ CampaignMenuResult CampaignMenu::handleResults(const MenuResponse& response, gam
         return result;
     }
     const int chosen = response.type == Type::Back ? (resultsCompleted_ ? kContinue : kBack) : response.itemId;
+    auto chosenResult = chooseResult(chosen, campaign);
+    if (chosenResult.sound == MenuSound::None) chosenResult.sound = result.sound;
+    return chosenResult;
+}
+
+CampaignMenuResult CampaignMenu::answerDebrief(MenuInput input, game::Campaign& campaign) {
+    if (screen_ != CampaignScreen::Results) return {};
+    if (input == MenuInput::Confirm) {
+        auto result = chooseResult(resultsCompleted_ ? kContinue : kRetry, campaign);
+        result.sound = MenuSound::Select;
+        return result;
+    }
+    if (input == MenuInput::Back) {
+        auto result = chooseResult(resultsCompleted_ ? kContinue : kEditSquad, campaign);
+        result.sound = MenuSound::Back;
+        return result;
+    }
+    return {};
+}
+
+CampaignMenuResult CampaignMenu::chooseResult(int chosen, game::Campaign& campaign) {
+    CampaignMenuResult result;
     switch (chosen) {
     case kContinue:
         if (campaignWon_) {

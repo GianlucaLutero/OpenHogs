@@ -85,7 +85,8 @@ animations.
 | refinement: `controls` | ✅ done | Keys changed on the CONTROLS screen as in the original (the row blinks until a key is pressed) and saved in `[Controls]`; the camera stays behind the hog; through the rifle sight the mouse turns the hog and aims; volumes changed in VOLUME CONTROL are saved |
 | refinement: `match-rules` | ✅ done | The PlayStation's label over the hog in play (name or rank, heart and health) instead of health bars; DEATHMATCH LIMIT and SELECT PIG in FIELD CONDITIONS; one nation per team; the PlayStation rules by default; the executable's slip in the battle awards; swimming and the jetpack as the Hogs of War Wiki describes them (drowned hogs explode; the jetpack is dropped with fire and explodes where it lands) |
 | refinement: `original-hud-2` | ✅ done | The original's weapon menu (brass panel with four tabs, icons, uses left, selection frame); the angle gauge's limit mark for the mortar and the guided missile; TNT and mines as the wiki describes them, used by the computer too. The radar in the bottom-left corner (the map tilted and turned with the camera, hogs and crates marked) and the text box that brings crate messages, Boot Camp instructions and the teams' strength down from the top |
-| refinement: `effects` | 🔍 in review (part 2) | Deaths as the original (17 dying animations, the hog blows up and leaves its boots); crates come down by parachute; crates, explosive drums and animals can be destroyed, drums blow up two seconds after catching fire; scenery holds out longer below two thirds; a hog on a destroyed object takes the rest of the blow. Part 2: the original's effect pictures for fire, smoke, earth, foam, scorch marks and hog shadows |
+| refinement: `effects` | ✅ done | Deaths as the original (17 dying animations, the hog blows up and leaves its boots); crates come down by parachute; crates, explosive drums and animals can be destroyed, drums blow up two seconds after catching fire; scenery holds out longer below two thirds; a hog on a destroyed object takes the rest of the blow. Part 2: the original's effect pictures for fire, smoke, earth, foam, scorch marks and hog shadows |
+| refinement: `screens` | 🔍 in review (part 1) | Part 1: level names from the game text; the sergeant's extra comments and objective reminders; the newspaper after every won campaign mission and the debriefing page with the squad's faces, badges and medals. Next: saving and team pages, renaming hogs (part 2); menu animations and the PROMOTE pedestal (part 3) |
 
 ## Requirements
 
@@ -267,8 +268,11 @@ promotion point picked up, five more after missions 5, 10, 15, 20 and 25; a prom
 three hogs in a mission costs the first to die for good (four cost two),
 losing all of them fails the mission. **START MISSION** shows the game's
 briefing (Enter to go, Esc to go back), then the battle: defeat the enemy
-to complete it. The results page offers **RETRY** after a defeat. The
-campaign is saved automatically in `saves/campaign.ini`.
+to complete it. After a victory the nation's newspaper reports it (any
+key puts it down); the debriefing page shows the squad's faces and the
+mission's medals: **Space** continues, or retries after a defeat, when
+**Esc** goes back to the squad. The campaign is saved automatically in
+`saves/campaign.ini`.
 
 Teams played by people share the keyboard (hot seat). During a computer
 team's turn ("THE ENEMY RETALIATES...") the hog keys do nothing; watch it

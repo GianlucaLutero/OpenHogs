@@ -79,7 +79,34 @@ void MatchAudio::turnEnded() {
     if (singlePlayer && !isPerson(turnTeam_)) return;
     if (const auto line = sergeant_.afterTurn(outcome_, singlePlayer, world_.nationOf(turnTeam_))) {
         sounds_.say(*line);
+        return;
     }
+    if (singlePlayer) {
+        if (const auto line = sergeant_.afterTurnExtra(outcome_, battleState(), random_)) sounds_.say(*line);
+    }
+}
+
+game::BattleState MatchAudio::battleState() const {
+    // The person's team against the computer's (FUN_00497f80 looks at the
+    // first computer team).
+    game::BattleState battle;
+    int enemyTeam = -1;
+    for (const auto& hog : world_.hogs()) {
+        if (!isPerson(hog.team)) {
+            enemyTeam = hog.team;
+            break;
+        }
+    }
+    for (const auto& hog : world_.hogs()) {
+        if (hog.team == enemyTeam) (hog.alive ? battle.enemyAlive : battle.enemyDead)++;
+        if (hog.team == turnTeam_ && !hog.alive) ++battle.ownDead;
+    }
+    for (const auto& objective : world_.objectives()) {
+        if (objective.done) continue;
+        if (objective.type == 2 || objective.type == 8) battle.pointsLeft = true;
+        if (objective.type == 1 || objective.type == 7 || objective.type == 13) battle.cratesLeft = true;
+    }
+    return battle;
 }
 
 void MatchAudio::handle(const game::GameEvent& event) {
