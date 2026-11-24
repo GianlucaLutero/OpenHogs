@@ -100,7 +100,7 @@ void startFall(Hog& hog, const glm::vec3& horizontalVelocity) {
     hog.motion.velocity = horizontalVelocity;
     hog.motion.highestPoint = hog.position.y;
     hog.motion.jumped = false;
-    hog.animation.play(kFallAnimation, Repeat::Loop);
+    hog.animation.play(hog.parachute ? kParachuteAnimation : kFallAnimation, Repeat::Loop);
 }
 
 void moveInAir(std::vector<Hog>& hogs, std::size_t self, double seconds, const MapCollision& map,

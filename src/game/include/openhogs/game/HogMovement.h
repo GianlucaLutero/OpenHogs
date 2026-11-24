@@ -36,6 +36,7 @@ inline constexpr std::size_t kJumpStartAnimation = 8;     // "Jumping - Start"
 inline constexpr std::size_t kJumpMiddleAnimation = 9;    // "Jumping - Middle"
 inline constexpr std::size_t kJumpEndAnimation = 10;      // "Jumping - End"
 inline constexpr std::size_t kFallAnimation = 38;         // "Flying through air/falling"
+inline constexpr std::size_t kParachuteAnimation = 58;    // "Parachuting"
 // Dying on land: the executable picks one of 17 animations at random
 // (FUN_0046cb50: rand % 17 + 57); some end with the hog still standing,
 // and every one ends with the hog blowing up (World).

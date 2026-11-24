@@ -88,7 +88,7 @@ animations.
 | refinement: `effects` | ✅ done | Deaths as the original (17 dying animations, the hog blows up and leaves its boots); crates come down by parachute; crates, explosive drums and animals can be destroyed, drums blow up two seconds after catching fire; scenery holds out longer below two thirds; a hog on a destroyed object takes the rest of the blow. Part 2: the original's effect pictures for fire, smoke, earth, foam, scorch marks and hog shadows |
 | refinement: `screens` | ✅ done | Part 1 (done): level names from the game text; the sergeant's extra comments and objective reminders; the newspaper after every won campaign mission and the debriefing page with the squad's faces, badges and medals. Part 2 (done): the original's eight save slots on its loading and saving board (LOAD GAME, SAVE TEAM), naming the team and renaming hogs on the letter grid, the sergeant's hint to promote. Part 3 (done): the list menu's leaving animation, the machines' steam and sounds (dial, cog), the hog in 3D on CAREER PATH's pedestal and the debriefing's medals in 3D |
 | video analysis: `video-index` | ✅ done | Phase 5 starts: an index of a full playthrough of the original (the Italian PlayStation release, 20 videos), mission by mission with its briefing, title card, end, newspaper and films, and two browser scripts to skim YouTube videos and read their frames (`tools/video`); see `docs/video/index.md` |
-| video analysis: `video-campaign` | 🔍 in review (part 1) | The campaign map before every mission, as the original: the territories in the colours of the nations holding them, the island growing out of its territory, flags on its missions and arrows on the next; each mission is fought against the nation holding its territory, shared out at random when a campaign starts (Team Lard holds the last), and won territories turn to the player's colour |
+| video analysis: `video-campaign` | 🔍 in review (part 2) | Part 1 (done): the campaign map before every mission, as the original: the territories in the colours of the nations holding them, the island growing out of its territory, flags on its missions and arrows on the next; each mission is fought against the nation holding its territory, shared out at random when a campaign starts (Team Lard holds the last), and won territories turn to the player's colour. Part 2: every campaign mission but the Boot Camp opens as the original, the squads coming down by parachute under the mission's title, the camera looking up at the first hog, the first turn once all have landed (Enter skips it) |
 
 ## Requirements
 
@@ -312,6 +312,7 @@ build\bin\Release\openhogs.exe --map ESTU
 |--------|--------|
 | `--map <name>` | skip the menus and play this map; `--list-maps` prints the maps |
 | `--hog <n>` | hog to start on (1 = the first hog of the map) |
+| `--arrival <title>` | with `--map`: open the match as a campaign mission does, the squads coming down by parachute under `<title>` (Enter skips) |
 | `--computer others` / `--computer all` | with `--map`: the computer plays every team but the first, or every team (to watch a match) |
 | `--no-sound` | play without sound |
 | `--rules pc` / `--rules ps1` | the PC's or the PlayStation's rules for this run (instead of `[Game] Version`) |

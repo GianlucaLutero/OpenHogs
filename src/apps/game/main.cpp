@@ -21,6 +21,8 @@
 //   --seconds <s>        with --screenshot: let the match (or the menu) run this long first
 //   --auto-walk          with --screenshot: the active hog runs forward meanwhile
 //   --sight              with --screenshot: look through the rifle sight
+//   --arrival <title>    with --map: open the match as a campaign mission does,
+//                        the squads coming down by parachute under <title>
 //   --weapon-menu        with --screenshot: open the weapon menu
 //   --rules <pc|ps1>     the PC's or the PlayStation's rules (else [Game] Version)
 //   --weapon <n>         with --screenshot: the active hog selects its n-th weapon (1 = first)
@@ -72,6 +74,7 @@ struct Options {
     bool sound = true;
     bool autoWalk = false;
     bool sight = false;
+    std::string arrivalTitle;
     bool weaponMenu = false;
     std::optional<game::GameVersion> version;  // --rules
     std::optional<std::size_t> weaponSlot;  // 1-based, as typed
@@ -100,6 +103,8 @@ void printUsage() {
                  "  --seconds <s>        with --screenshot: let the match (or the menu) run this long first\n"
                  "  --auto-walk          with --screenshot: the active hog runs forward meanwhile\n"
                  "  --sight              with --screenshot: look through the rifle sight (with a gun)\n"
+                 "  --arrival <title>    with --map: open the match as a campaign mission does,\n"
+                 "                       the squads coming down by parachute under <title>\n"
                  "  --weapon-menu        with --screenshot: open the weapon menu\n"
                  "  --rules <pc|ps1>     the PC's or the PlayStation's rules (default: [Game] Version, else ps1)\n"
                  "  --weapon <n>         with --screenshot: the active hog selects its n-th weapon\n"
@@ -190,6 +195,8 @@ std::optional<Options> parseArguments(const std::vector<std::string>& args) {
                 options.gameFolder = value;
             } else if (arg == "--map") {
                 options.mapName = value;
+            } else if (arg == "--arrival") {
+                options.arrivalTitle = value;
             } else if (arg == "--hog") {
                 options.hog = static_cast<std::size_t>(std::stoul(value));
                 if (*options.hog == 0) return std::nullopt;
@@ -280,6 +287,7 @@ int runGame(Options options) {
             }
             gameOptions.computerTeams = teams;
         }
+        gameOptions.missionTitle = options.arrivalTitle;
         if (screenshotOnly) {
             gameOptions.autoWalk = options.autoWalk;
             gameOptions.autoSight = options.sight;

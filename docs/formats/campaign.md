@@ -127,6 +127,14 @@ at VA 0x4D4A00 (250 × 322, 250 × 319, 250 × 250, 294 × 291, 150 × 326,
    a step a tick. An island holds five missions, Arstria four (21–24) and
    the Isle of Swill one (25).
 
+**The opening of the mission.** A campaign match (but the Boot Camp's)
+starts in state 0 of the game object (`+0x510`, set in its constructor
+`FUN_0048efc0` when `DAT_00520744` is 1 or 2): the camera goes to mode 7
+and the message routine `FUN_0045b8b0` writes gtext 158 (MISSION >2N :
+>S, the mission's number and level name). The footage shows the squads
+parachuting in under that title (`docs/video/campaign.md`); OpenHogs
+reproduces it with `World::beginArrival` (decision 171).
+
 In the PlayStation version filmed in `docs/video/` the same steps show
 (an inset of the island with its flags, one arrow); mission 1's enemy
 wears the colour of the flag the arrow points at, which confirms that

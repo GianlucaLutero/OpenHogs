@@ -13,6 +13,7 @@
 #include "openhogs/formats/PackageArchive.h"
 #include "openhogs/formats/TimImage.h"
 #include "openhogs/scene/CharacterLibrary.h"
+#include "openhogs/ui/TextLayout.h"
 
 #include <algorithm>
 #include <array>
@@ -519,6 +520,12 @@ GameOptions CampaignSession::missionOptions() {
     GameOptions options;
     options.mapName = std::string(mission.map);
     options.turnSeconds = mission.turnSeconds;
+    if (mission.number != game::kBootCampMission) {
+        // The squads parachute in under the mission's title (gtext 158), as
+        // the original opens every campaign mission but the Boot Camp.
+        const auto& strings = interface_.strings();
+        options.missionTitle = ui::fillPlaceholders(strings.missionTitle, {strings.missionName(mission)}, {mission.number});
+    }
 
     // The map's teams, the player's first: the player fights for the
     // campaign's nation, the others for this mission's enemies.

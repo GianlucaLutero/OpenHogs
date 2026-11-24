@@ -68,7 +68,17 @@ struct SightView {
     glm::vec3 direction{1.0f, 0.0f, 0.0f};  // unit vector
 };
 
-enum class MatchPhase { Playing, Resolving, Over };
+// Arriving: a campaign mission's opening, the squads coming down by
+// parachute before the first turn (beginArrival). Playing: a hog's turn.
+// Resolving: a shot or a fall settling. Over: someone won.
+enum class MatchPhase { Arriving, Playing, Resolving, Over };
+
+// The opening of a campaign mission, as the original plays it (measured on
+// the footage, docs/video/campaign.md): every hog starts high up under a
+// parachute and comes down at the parachute's speed (about 6.5 seconds);
+// the first turn starts some 8 seconds after the last has landed.
+inline constexpr float kArrivalDropHeight = 1950.0f;
+inline constexpr float kArrivalHoldSeconds = 8.0f;
 
 // Short-lived things to draw.
 struct ExplosionEffect {
@@ -127,6 +137,15 @@ public:
     std::optional<std::size_t> activeHog() const;
 
     MatchPhase phase() const { return phase_; }
+
+    // The opening of a campaign mission: every hog is lifted `dropHeight`
+    // and comes down by parachute; turns wait until all have landed and
+    // kArrivalHoldSeconds more have passed, then the first turn starts
+    // (its TurnStarted event is reported again). skipArrival() lands them
+    // all and starts the turn at once.
+    void beginArrival(float dropHeight = kArrivalDropHeight);
+    void skipArrival();
+    bool arriving() const { return phase_ == MatchPhase::Arriving; }
 
     // When the match is over: the winning team, or empty for a draw.
     std::optional<int> winner() const { return winner_; }
@@ -283,6 +302,8 @@ private:
     std::optional<Burst> burst_;
 
     float settleSecondsLeft_ = 0.0f;
+    float arrivalHoldLeft_ = 0.0f;  // after the last hog has landed
+    void updateArrival(double seconds, std::vector<GameEvent>& events);
     bool suddenDeathDone_ = false;
     std::vector<GameEvent> pendingEvents_;  // from endTurn(), reported by the next update()
     bool fireWasHeld_ = false;

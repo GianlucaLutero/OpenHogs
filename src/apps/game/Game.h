@@ -95,6 +95,10 @@ struct GameOptions {
     bool selectPig = false;    // FIELD CONDITIONS: time to choose the hog at each turn
     std::function<void(std::vector<game::Hog>&)> prepareHogs;
     std::map<int, int> teamNations;
+    // A campaign mission's opening (World::beginArrival): the squads come
+    // down by parachute under this title ("MISSION 03 : TRENCH WARFARE")
+    // before the first turn. Empty: the match starts at once.
+    std::string missionTitle;
 
     // The player's keys (the CONTROLS screen, [Controls]).
     ui::KeyBindings keyBindings = ui::KeyBindings::defaults();

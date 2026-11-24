@@ -30,7 +30,7 @@ OpenHogs fights each mission against its holder (decision 47 settled).
 The player of the footage is Japanese (yellow): no territory is yellow
 at the start and they turn yellow as the missions are won.
 
-## The start of a mission (part 2 of the block, to do)
+## The start of a mission (part 2 of the block)
 
 Measured on part 2 (mission 1), frame by frame:
 
@@ -51,8 +51,20 @@ mode 7, and the message routine `FUN_0045b8b0` writes gtext 158
 (MISSION >2N : >S) with the level's name in that state. In mission 15 an
 airship brings the squad instead of the parachutes (part 12 0:06).
 
-OpenHogs starts a campaign match straight with GET READY: the opening
-is the next part of this block.
+Part 3 (mission 2, 0:38–0:52) agrees: the title card at once, the
+parachute descent to about 0:45.5, then the other hogs' labels appear
+round the landed hog.
+
+OpenHogs now opens every campaign mission but the Boot Camp this way
+(`World::beginArrival`, decision 171): the squads come down under
+`WE_PARA` with the parachuting animation, the camera follows the
+player's first hog from behind and below, and GET READY replaces the
+title 8 seconds after the last landing; Enter skips the opening. Not
+reproduced: mission 15's airship.
+
+Seen on the way, for block `video-ui`: once landed, several hogs show
+their name and health labels at the same time (part 3 0:47–0:52, part 12
+0:50), where OpenHogs labels only the hog in play (decision 36).
 
 ## Still to compare (part 3 of the block)
 
