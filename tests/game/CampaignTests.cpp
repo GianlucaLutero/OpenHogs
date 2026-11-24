@@ -227,6 +227,64 @@ TEST_CASE("A campaign saved and loaded is the same campaign", "[game][campaign]"
     }
 }
 
+TEST_CASE("The campaign map shares each island among the five other nations", "[game][campaign]") {
+    // FUN_00482940: every group of five territories goes to the five
+    // nations the player is not fighting for, in a random order, and the
+    // last territory is Team Lard's. The holder is the mission's enemy, so
+    // a wrong share would make the player fight his own nation.
+    for (const std::uint32_t seed : {1u, 2u, 77u}) {
+        const Campaign campaign(4, kNames, seed);  // Japanese
+        for (int first = 1; first <= 21; first += 5) {
+            std::set<int> holders;
+            for (int mission = first; mission < first + 5 && mission < kMissionCount; ++mission) {
+                CHECK(campaign.territoryOwner(mission) != 4);
+                CHECK(campaign.territoryOwner(mission) < kPlayableNations);
+                holders.insert(campaign.territoryOwner(mission));
+            }
+            CHECK(holders.size() == static_cast<std::size_t>(first == 21 ? 4 : 5));
+        }
+        CHECK(campaign.territoryOwner(kMissionCount) == kTeamLardNation);
+    }
+    // The order is drawn, not fixed.
+    bool differ = false;
+    const Campaign one(0, kNames, 1), other(0, kNames, 2);
+    for (int mission = 1; mission <= kMissionCount; ++mission) {
+        differ = differ || one.territoryOwner(mission) != other.territoryOwner(mission);
+    }
+    CHECK(differ);
+}
+
+TEST_CASE("A mission is fought against its territory's holder, which then falls to the player", "[game][campaign]") {
+    // The original video: mission 1's enemy wears the colour of the flag
+    // the map's arrow points at. Winning paints the territory in the
+    // player's colour (FUN_004829d0), and the map is saved.
+    auto campaign = britishCampaign();
+    const int holder = campaign.territoryOwner(1);
+    CHECK(campaign.enemyNation(1, 0) == holder);
+    CHECK(campaign.enemyNation(1, 1) != holder);
+    CHECK(campaign.enemyNation(1, 1) != 0);
+    campaign.recordMission(won(), 3);
+    CHECK(campaign.territoryOwner(1) == 0);
+
+    const auto loaded = loadCampaign(IniFile::parse(campaign.save()));
+    for (int mission = 1; mission <= kMissionCount; ++mission) {
+        CHECK(loaded.territoryOwner(mission) == campaign.territoryOwner(mission));
+    }
+}
+
+TEST_CASE("A save from before the campaign map gets a map with its missions won", "[game][campaign]") {
+    // Older saves have no Territories line: the missions already done must
+    // show as the player's, the others held by enemies.
+    const auto loaded = loadCampaign(IniFile::parse(
+        "[Campaign]\nNation = 1\nNextMission = 4\nPoints = 3\nNames = A, B, C, D, E, F, G, H\n"
+        "[Hog1]\nName = A\nRank = grunt\n[Hog2]\nName = B\nRank = grunt\n[Hog3]\nName = C\nRank = grunt\n"
+        "[Hog4]\nName = D\nRank = grunt\n[Hog5]\nName = E\nRank = grunt\n[Hog6]\nName = F\nRank = grunt\n"
+        "[Hog7]\nName = G\nRank = grunt\n[Hog8]\nName = H\nRank = grunt\n"));
+    for (int mission = 1; mission <= 3; ++mission) CHECK(loaded.territoryOwner(mission) == 1);
+    for (int mission = 4; mission < kMissionCount; ++mission) CHECK(loaded.territoryOwner(mission) != 1);
+    CHECK(loaded.territoryOwner(kMissionCount) == kTeamLardNation);
+}
+
 TEST_CASE("A hog cannot be renamed to nothing", "[game][campaign]") {
     // RENAME with nothing typed must leave the hog its name: a nameless hog
     // would show blank on every page and in the match.

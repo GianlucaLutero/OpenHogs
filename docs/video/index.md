@@ -5,7 +5,7 @@ game. This page is the map of that footage: which video shows which
 mission, and where the recurring moments (briefing, title card, end of
 the mission, newspaper, films) are. The later blocks (`video-campaign`,
 `video-ui`, `video-physics`, `video-weapons`) start from here and add
-their own findings in pages next to this one.
+their own findings in pages next to this one: [campaign.md](campaign.md).
 
 Only notes and numbers are kept in the repository: no frames, no
 recordings.

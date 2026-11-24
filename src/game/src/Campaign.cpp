@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <array>
+#include <random>
 #include <sstream>
 #include <stdexcept>
 
@@ -101,13 +102,60 @@ int specialMedals(int missionNumber) {
     return kSpecialMedals[static_cast<std::size_t>(missionNumber)];
 }
 
-Campaign::Campaign(int nation, std::vector<std::string> names) : nation_(nation), names_(std::move(names)) {
+Campaign::Campaign(int nation, std::vector<std::string> names, std::uint32_t seed)
+    : nation_(nation), names_(std::move(names)) {
     if (nation < 0 || nation >= kPlayableNations) {
         throw std::invalid_argument("A campaign is fought for one of the six nations");
     }
     for (std::size_t i = 0; i < kSquadSize; ++i) {
         squad_.push_back({i < names_.size() ? names_[i] : newRecruitName(), RankId::Grunt});
     }
+    shareOutTerritories(seed);
+}
+
+void Campaign::shareOutTerritories(std::uint32_t seed) {
+    // FUN_00482940 draws a nation for each territory, five at a time, never
+    // the player's and never one already drawn that many times: so each
+    // group of five goes to the five other nations, in a random order. The
+    // last territory is then given to Team Lard.
+    std::mt19937 random(seed != 0 ? seed : std::random_device{}());
+    std::vector<int> others;
+    for (int nation = 0; nation < kPlayableNations; ++nation) {
+        if (nation != nation_) others.push_back(nation);
+    }
+    for (std::size_t first = 0; first < territories_.size(); first += others.size()) {
+        // A plain Fisher-Yates shuffle, so a seed gives the same map everywhere.
+        for (std::size_t i = others.size() - 1; i > 0; --i) {
+            std::swap(others[i], others[random() % (i + 1)]);
+        }
+        for (std::size_t i = 0; i < others.size() && first + i < territories_.size(); ++i) {
+            territories_[first + i] = others[i];
+        }
+    }
+    territories_.back() = kTeamLardNation;
+}
+
+void Campaign::loadTerritories(const std::vector<std::string>& owners) {
+    bool valid = owners.size() == territories_.size();
+    for (std::size_t i = 0; valid && i < owners.size(); ++i) {
+        try {
+            const int owner = std::stoi(owners[i]);
+            valid = owner >= 0 && owner <= kTeamLardNation;
+            territories_[i] = owner;
+        } catch (const std::exception&) {
+            valid = false;
+        }
+    }
+    if (valid) return;
+    shareOutTerritories(static_cast<std::uint32_t>(nation_ + 1));
+    for (int mission = 1; mission < nextMission_ && mission <= kMissionCount; ++mission) {
+        territories_[static_cast<std::size_t>(mission - 1)] = nation_;
+    }
+}
+
+int Campaign::territoryOwner(int missionNumber) const {
+    if (missionNumber < 1 || missionNumber > kMissionCount) return nation_;
+    return territories_[static_cast<std::size_t>(missionNumber - 1)];
 }
 
 bool Campaign::rename(std::size_t member, std::string name) {
@@ -188,27 +236,36 @@ MissionOutcome Campaign::recordMission(const MissionReport& report, std::size_t 
     outcome.pointsEarned = kMissionPoints + (outcome.survivalBonus ? kSurvivalPoints : 0) +
                            (outcome.islandConquered ? kIslandPoints : 0) + outcome.specialMedalsWon;
     points_ += outcome.pointsEarned;
+    if (nextMission_ >= 1 && nextMission_ <= kMissionCount) {
+        // The territory is the player's now (FUN_004829d0).
+        territories_[static_cast<std::size_t>(nextMission_ - 1)] = nation_;
+    }
     ++nextMission_;
     return outcome;
 }
 
 int Campaign::enemyNation(int missionNumber, std::size_t enemy) const {
-    if (missionNumber == kMissionCount && enemy == 0) {
-        return kTeamLardNation;
+    int holder = territoryOwner(missionNumber);
+    if (holder == nation_) {
+        // Already won (a hard-mode replay shares the map out again first,
+        // so this only happens to a mission played twice): the old rule.
+        holder = (missionNumber == kMissionCount) ? kTeamLardNation : -1;
     }
-    // The other five nations, in characterTeams order.
+    if (enemy == 0 && holder >= 0) return holder;
+    // The other nations, in characterTeams order, after the holder.
     std::vector<int> others;
     for (int nation = 0; nation < kPlayableNations; ++nation) {
-        if (nation != nation_) others.push_back(nation);
+        if (nation != nation_ && nation != holder) others.push_back(nation);
     }
-    const auto first = static_cast<std::size_t>((missionNumber - 1) % kOpponentsPerIsland);
-    return others[(first + enemy) % others.size()];
+    const std::size_t index = holder >= 0 ? enemy - 1 : enemy + static_cast<std::size_t>((missionNumber - 1) % kOpponentsPerIsland);
+    return others[index % others.size()];
 }
 
 void Campaign::startHardMode() {
     if (!finished() || hardMode_) return;
     hardMode_ = true;
     nextMission_ = 1;  // the Boot Camp is not played again
+    shareOutTerritories(0);  // the enemies hold the map again
 }
 
 std::string Campaign::save() const {
@@ -227,6 +284,11 @@ std::string Campaign::save() const {
     out << "Fallen = ";
     for (std::size_t i = 0; i < fallen_.size(); ++i) {
         out << (i > 0 ? ", " : "") << fallen_[i];
+    }
+    out << "\n";
+    out << "Territories = ";
+    for (std::size_t i = 0; i < territories_.size(); ++i) {
+        out << (i > 0 ? ", " : "") << territories_[i];
     }
     out << "\n";
     for (std::size_t i = 0; i < squad_.size(); ++i) {
@@ -264,6 +326,7 @@ Campaign loadCampaign(const core::IniFile& ini) {
         }
         campaign.squad_.push_back({ini.getString(section, "Name", ""), *rank});
     }
+    campaign.loadTerritories(ini.getList(kSection, "Territories"));
     return campaign;
 }
 

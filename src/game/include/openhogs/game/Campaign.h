@@ -31,7 +31,9 @@
 #include "openhogs/game/Hog.h"
 #include "openhogs/game/Ranks.h"
 
+#include <array>
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <span>
 #include <string>
@@ -115,8 +117,9 @@ class Campaign {
 public:
     // A new campaign for `nation` (0 to 5, in scene::characterTeams order).
     // `names` are the nation's hog names (from the text table): the first
-    // eight name the squad, the rest new recruits.
-    Campaign(int nation, std::vector<std::string> names);
+    // eight name the squad, the rest new recruits. `seed` shares out the
+    // territories among the enemy nations (0: a random seed).
+    Campaign(int nation, std::vector<std::string> names, std::uint32_t seed = 0);
 
     int nation() const { return nation_; }
 
@@ -159,9 +162,17 @@ public:
     // Applies the result of the next mission with `deployed` hogs.
     MissionOutcome recordMission(const MissionReport& report, std::size_t deployed);
 
+    // Who holds the territory of mission `missionNumber` (1 to 25) on the
+    // campaign map: an enemy nation until the mission is won, then the
+    // player's. A new campaign shares the territories out as the
+    // executable does (FUN_00482940): each island's five go to the five
+    // other nations in a random order, and the last one is Team Lard's.
+    int territoryOwner(int missionNumber) const;
+
     // The nation of the `enemy`-th enemy team (0 = the first) in mission
-    // `missionNumber`: in each island the player meets every other nation
-    // once; the last mission is against Team Lard.
+    // `missionNumber`: the first is the nation holding the mission's
+    // territory (as the campaign map shows, and the video of the original
+    // confirms), any others the remaining nations in order.
     int enemyNation(int missionNumber, std::size_t enemy) const;
 
     // The campaign as text (an INI file), and back.
@@ -170,6 +181,10 @@ public:
 private:
     Campaign() = default;
     std::string newRecruitName() const;
+    void shareOutTerritories(std::uint32_t seed);
+    // The territories of a save (Territories = ...); a save from before
+    // the campaign map gets a map of its own, with the missions done won.
+    void loadTerritories(const std::vector<std::string>& owners);
     friend Campaign loadCampaign(const core::IniFile& ini);
 
     int nation_ = 0;
@@ -180,6 +195,8 @@ private:
     std::vector<SquadMember> squad_;
     std::vector<std::string> names_;
     std::vector<std::string> fallen_;  // hogs lost for good: their names are not reused
+    // Who holds each mission's territory (scene::characterTeams order).
+    std::array<int, kMissionCount> territories_{};
 };
 
 // Reads a campaign written by Campaign::save(). Throws core::FormatError

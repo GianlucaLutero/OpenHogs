@@ -5,6 +5,12 @@ the `project()` call in `CMakeLists.txt`.
 
 ## Unreleased — refinement
 
+- **Campaign map** before every mission but the Boot Camp, as the original
+  (`Language/Tims/PigMap/`): the territories in their holders' colours,
+  the island zooming out of its territory, flags and the arrows on the
+  next mission. The enemy of a mission is the nation holding its
+  territory: a new campaign shares them out at random (Team Lard holds the
+  last), won ones turn to the player's colour; saves keep the map.
 - **Video analysis** (phase 5): `docs/video/index.md` maps a full
   playthrough of the original (the Italian PlayStation release) mission by
   mission; `tools/video` has two browser scripts to skim a YouTube video
