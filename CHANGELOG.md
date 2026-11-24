@@ -5,6 +5,10 @@ the `project()` call in `CMakeLists.txt`.
 
 ## Unreleased — refinement
 
+- **Video analysis** (phase 5): `docs/video/index.md` maps a full
+  playthrough of the original (the Italian PlayStation release) mission by
+  mission; `tools/video` has two browser scripts to skim a YouTube video
+  through its preview pictures and to read chosen frames.
 - **Controls**: the keys of a match can be changed on the CONTROLS screen,
   as in the original (the row blinks until a key is pressed), and are
   saved in `[Controls]` of `config/openhogs.ini`; `Esc` always pauses.
