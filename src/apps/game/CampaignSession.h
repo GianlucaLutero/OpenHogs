@@ -22,6 +22,7 @@
 
 #include "Game.h"
 #include "Interface.h"
+#include "MenuModels.h"
 #include "SoundPlayer.h"
 
 #include "openhogs/core/VirtualFileSystem.h"
@@ -59,6 +60,8 @@ public:
     // A key typed while a name is being written (NameEntry): letters and
     // Backspace. Returns false when no name is being written.
     bool typingName() const { return menu_->typingName(); }
+    // The campaign being played (none on the loading board).
+    const game::Campaign* campaign() const { return campaign_ ? &*campaign_ : nullptr; }
     void type(char letter, SoundPlayer& sounds);
     void erase(SoundPlayer& sounds);
 
@@ -76,6 +79,8 @@ public:
     // Draws the current page over whatever is behind (between
     // renderer().begin() and end()).
     void draw();
+    // The 3D models over the page just drawn: the debriefing's medals.
+    void drawModels(MenuModels& models, const MenuModels::Screen& screen);
     // Counts down the newspaper's time on screen.
     void update(double seconds);
     // A full-screen picture (the briefing or the newspaper) hides the menus.
@@ -99,7 +104,7 @@ private:
     void openDebrief(const std::vector<game::SquadMember>& squad, const game::MissionReport& report,
                      const game::MissionOutcome& outcome, std::size_t deployed);
     void drawDebrief();
-    void drawMedal(float x, float y, bool won);
+    void addMedal(float x, float y, bool won);
     // A picture of Language/Tims/Debrief/, loaded once (nullptr if missing).
     const render::UiImage* debriefPicture(const std::string& file, formats::BitmapTransparency transparency);
     void openNewspaper(const game::MissionReport& report, const game::MissionOutcome& outcome, int missionNumber);
@@ -142,11 +147,13 @@ private:
     };
     std::optional<DebriefShown> debrief_;
     std::map<std::string, std::unique_ptr<render::UiImage>> debriefPictures_;
-    // The medal of the debriefing page: the promotion point's ribbon and
-    // medal textures (Chars/propoint.mtd), null if missing.
-    std::unique_ptr<render::UiImage> medalRibbon_;
-    std::unique_ptr<render::UiImage> medalFace_;
-    bool medalLoaded_ = false;
+    // The debriefing page's medals, gathered while drawing the page and
+    // drawn in 3D after it (drawModels).
+    struct MedalShown {
+        glm::vec3 position;  // the executable's scene: x right, y up, depth
+        float opacity;
+    };
+    std::vector<MedalShown> medals_;
 
     // The mission being played.
     struct PlayedMission {

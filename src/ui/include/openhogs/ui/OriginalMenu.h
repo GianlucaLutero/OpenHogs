@@ -27,6 +27,8 @@
 
 #pragma once
 
+#include "openhogs/ui/SteamPuffs.h"
+
 #include <array>
 #include <cstddef>
 #include <string>
@@ -39,6 +41,21 @@ namespace openhogs::ui {
 // caller; `gain` pulls (tenths), `damping` slows, `maxSpeed` caps the
 // velocity. Whole numbers, as the original, so the motion is the same.
 int frontEndSpring(int value, int target, int& velocity, int gain, int damping, int maxSpeed);
+
+// The front end's other motion (FUN_0041fe20): speeds up by `acceleration`
+// a tick towards `target`, up to `maxSpeed` (5 while still moving away),
+// moving twice the speed, and stops dead on arriving. Used when a panel
+// leaves.
+int frontEndAccelerate(int value, int target, int& velocity, int acceleration, int maxSpeed);
+
+// The sounds the original's menu machines make by themselves (the
+// executable's FESounds bank, by FUN_00420060).
+enum class MachineSound {
+    Dial,    // the dial arrives at the chosen entry: Indu006 at half volume
+    Cog,     // the panel rattles while it moves: cog at a fifth
+    Landed,  // the panel arrives: click5
+    Steam,   // a burst of steam: SPARKS02 at 30 percent
+};
 
 // The rate at which the original's front end animates.
 inline constexpr double kFrontEndTicksPerSecond = 25.0;
@@ -80,6 +97,13 @@ public:
     // The player moved to another entry: the dial turns, its lamp blinks.
     void select(std::size_t entry);
 
+    // Another screen replaces this one: the plates turn away, the panel
+    // speeds back up out of the screen and the racks slide out
+    // (FUN_00425440, case 1). left() is true when it is all gone.
+    void leave();
+    bool leaving() const { return leaving_; }
+    bool left() const;
+
     // Raises the panel out of the way of a screen drawn below it (VOLUME
     // CONTROL keeps OPTIONS on screen, 180 units higher), or lowers it back.
     void raise(bool raised);
@@ -108,6 +132,11 @@ public:
     int lampFrame(std::size_t entry) const { return lamps_.at(entry).frame; }
     bool settled() const;
 
+    // The sounds of the ticks since the last call.
+    std::vector<MachineSound> takeSounds();
+    // The steam blown while the panel drops fast.
+    const SteamPuffs& steam() const { return steam_; }
+
 private:
     // A lamp: either fading to a frame or playing the blink sequence.
     struct Lamp {
@@ -131,6 +160,11 @@ private:
     int plateFrame_ = 6;    // 2..6, shown as picture frame % 6
     std::array<Lamp, kOriginalMenuEntries> lamps_{};
     double pending_ = 0.0;  // seconds not yet turned into ticks
+    bool leaving_ = false;
+    bool landed_ = true;    // the panel has arrived (its click played)
+    int rattleTicks_ = 0;   // DAT_00512A1C: ticks since the cog sound
+    SteamPuffs steam_;
+    std::vector<MachineSound> sounds_;
 };
 
 } // namespace openhogs::ui

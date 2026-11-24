@@ -61,6 +61,11 @@ the `project()` call in `CMakeLists.txt`.
   NAUGHTY PIGS cheat works.
 - **Sergeant** on the squad page: early in the campaign, with points to
   spend, he says to promote a hog.
+- **Menu machines** as the original: the list menu goes back up before
+  another screen, the pipes blow steam while the panels move, the dial
+  clicks into place and the cogs rattle.
+- **3D models in the menus**: the hog on CAREER PATH's pedestal, in the
+  body of the career being chosen, and the debriefing's turning medals.
 
 ## 0.1.0 — first prototype release
 

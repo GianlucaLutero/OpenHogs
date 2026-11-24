@@ -69,30 +69,15 @@ constexpr float kLevelCompleteY = 140.0f;
 constexpr float kSurvivalY = 225.0f;
 constexpr float kNoneY = 260.0f;
 constexpr float kSpecialY = 305.0f;
-// The medals are 3D models in the executable, placed at y = 700, -500 and
-// -1700 (in a row 750 apart) at depth 7000; on the page they land about
-// here (the medal's centre).
-constexpr float kLevelMedalY = 190.0f;
-constexpr float kSurvivalMedalY = 273.0f;
-constexpr float kSpecialMedalY = 355.0f;
-constexpr float kSpecialMedalStep = 50.0f;
-constexpr float kMedalScale = 0.6f;
-// The executable turns them 25/4096 of a turn every 5 ms.
+// The medals: the promotion point model, where the executable places it
+// (FUN_004845e0): x 1950 (0x79E), y 700 (level complete), -500 (survival)
+// and -1700 (the special medals, 750 apart), depth 7000; turned 25/4096
+// of a turn every 5 ms.
+constexpr float kMedalX = 1950.0f, kMedalDepth = 7000.0f;
+constexpr float kLevelMedalY = 700.0f, kSurvivalMedalY = -500.0f, kSpecialMedalY = -1700.0f;
+constexpr float kSpecialMedalStep = 750.0f;
 constexpr double kMedalTurnsPerSecond = 25.0 / 4096.0 * 200.0;
 constexpr float kMedalNotWonOpacity = 100.0f / 255.0f;
-
-std::unique_ptr<render::UiImage> loadTimFromArchive(const core::VirtualFileSystem& vfs, const std::string& archive,
-                                                    std::string_view name) {
-    try {
-        const auto package = formats::PackageArchive::parse(vfs.readFile(archive));
-        const auto* entry = package.find(name);
-        if (!entry) return nullptr;
-        return std::make_unique<render::UiImage>(formats::decodeTim(package.entryData(*entry)));
-    } catch (const std::exception& error) {
-        std::cerr << "Warning: " << archive << ": " << error.what() << "\n";
-        return nullptr;
-    }
-}
 
 } // namespace
 
@@ -495,26 +480,14 @@ void CampaignSession::draw() {
     interface_.drawMenu(menu_->menu(), 10, menu_->lines());
 }
 
-void CampaignSession::drawMedal(float x, float y, bool won) {
-    if (!medalLoaded_) {
-        medalLoaded_ = true;
-        medalRibbon_ = loadTimFromArchive(vfs_, "Chars/propoint.mtd", "pp001.tim");
-        medalFace_ = loadTimFromArchive(vfs_, "Chars/propoint.mtd", "pp002.tim");
-    }
-    if (!medalRibbon_ || !medalFace_) return;
-    // The model turns about its upright axis: drawn flat, it narrows and
-    // widens again (decision 161).
-    const double turns = debrief_ ? debrief_->seconds * kMedalTurnsPerSecond : 0.0;
-    const float narrowing = static_cast<float>(std::abs(std::cos(turns * 2.0 * 3.14159265358979)));
-    const glm::vec4 tint(1.0f, 1.0f, 1.0f, won ? 1.0f : kMedalNotWonOpacity);
-    auto& ui = interface_.renderer();
-    const float ribbonWidth = medalRibbon_->width() * kMedalScale * narrowing;
-    const float ribbonHeight = medalRibbon_->height() * kMedalScale;
-    const float faceWidth = medalFace_->width() * kMedalScale * narrowing;
-    const float faceHeight = medalFace_->height() * kMedalScale;
-    const float top = y - (ribbonHeight + faceHeight) / 2.0f;
-    ui.drawImage(*medalRibbon_, x - ribbonWidth / 2.0f, top, ribbonWidth, ribbonHeight, tint);
-    ui.drawImage(*medalFace_, x - faceWidth / 2.0f, top + ribbonHeight, faceWidth, faceHeight, tint);
+void CampaignSession::addMedal(float x, float y, bool won) {
+    medals_.push_back({glm::vec3(x, y, kMedalDepth), won ? 1.0f : kMedalNotWonOpacity});
+}
+
+void CampaignSession::drawModels(MenuModels& models, const MenuModels::Screen& screen) {
+    if (!showingDebrief() || newspaper_ || !debrief_) return;
+    const int turn = static_cast<int>(std::fmod(debrief_->seconds * kMedalTurnsPerSecond, 1.0) * 4096.0);
+    for (const auto& medal : medals_) models.drawMedal(screen, medal.position, turn, medal.opacity);
 }
 
 void CampaignSession::drawDebrief() {
@@ -522,6 +495,7 @@ void CampaignSession::drawDebrief() {
     const auto& strings = interface_.strings();
     const auto& shown = *debrief_;
     using formats::BitmapTransparency;
+    medals_.clear();  // drawn in 3D afterwards (drawModels)
 
     // The background: pigbkpc1 after a victory, pigbkpc2 (other keys) after a defeat.
     if (const auto* background = debriefPicture(shown.completed ? "Pigbkpc1.bmp" : "Pigbkpc2.bmp", BitmapTransparency::None)) {
@@ -579,20 +553,19 @@ void CampaignSession::drawDebrief() {
         return;
     }
     ui.drawText(font, strings.levelComplete, panel, kLevelCompleteY, centred);
-    drawMedal(panel, kLevelMedalY, true);
+    addMedal(kMedalX, kLevelMedalY, true);
     ui.drawText(font, strings.survivalBonus, panel, kSurvivalY, centred);
     if (shown.survivalBonus) {
-        drawMedal(panel, kSurvivalMedalY, true);
+        addMedal(kMedalX, kSurvivalMedalY, true);
     } else {
         ui.drawText(font, strings.none, panel, kNoneY, centred);
     }
     if (shown.specialMedalsOffered > 0) {
         ui.drawText(font, strings.specialBonus, panel, kSpecialY, centred);
         // In a row, the medals not picked up faded.
-        const float first = -kSpecialMedalStep * static_cast<float>(shown.specialMedalsOffered - 1) / 2.0f;
+        const float first = kMedalX - kSpecialMedalStep * static_cast<float>(shown.specialMedalsOffered - 1) / 2.0f;
         for (int k = 0; k < shown.specialMedalsOffered; ++k) {
-            drawMedal(panel + first + kSpecialMedalStep * static_cast<float>(k), kSpecialMedalY,
-                      k < shown.specialMedalsWon);
+            addMedal(first + kSpecialMedalStep * static_cast<float>(k), kSpecialMedalY, k < shown.specialMedalsWon);
         }
     }
 }

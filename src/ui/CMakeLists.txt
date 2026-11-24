@@ -26,6 +26,7 @@
 #   OriginalCareer - the original career and promotion board
 #   OriginalSaveBoard - the original loading and saving board (LOAD, SAVE ARMY)
 #   NameEntry     - typing a name on the letter grid (PLEASE NAME YOUR TEAM / PIG)
+#   SteamPuffs    - the steam the menu machines blow out
 #   CampaignMenu  - the campaign pages: squad, promotions, mission results
 
 add_library(openhogs_ui STATIC
@@ -50,6 +51,7 @@ add_library(openhogs_ui STATIC
     src/OriginalCareer.cpp
     src/OriginalSaveBoard.cpp
     src/NameEntry.cpp
+    src/SteamPuffs.cpp
     src/OriginalMenu.cpp
     src/MessageBanner.cpp
     src/PauseMenu.cpp

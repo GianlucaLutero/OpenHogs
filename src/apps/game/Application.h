@@ -24,6 +24,7 @@
 #include "Interface.h"
 #include "FrontEndPictures.h"
 #include "MenuBackground.h"
+#include "MenuModels.h"
 #include "OriginalMenuView.h"
 #include "SoundPlayer.h"
 
@@ -94,6 +95,7 @@ public:
 private:
     void handleEvent(const SDL_Event& event, bool& running);
     bool typeIntoName(SDL_Keycode key);
+    void playMachineSounds();
     bool handleMenuInput(ui::MenuInput input);  // false: quit
     void startCampaignMission();
     bool handleFrontEndResult(const ui::FrontEndResult& result);
@@ -124,6 +126,7 @@ private:
     std::unique_ptr<FrontEndPictures> pictures_;  // FEbmps/FEBMP.MAD
     std::unique_ptr<MenuBackground> background_;
     std::unique_ptr<OriginalMenuView> originalMenu_;  // the short menus, as the original
+    std::unique_ptr<MenuModels> menuModels_;          // the 3D models over the menus
     std::unique_ptr<ui::FrontEnd> frontEnd_;
     std::unique_ptr<CampaignSession> campaign_;
     ui::Menu swapView_;  // SWAP POSITION drawn as the squad page

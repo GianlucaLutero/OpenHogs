@@ -52,9 +52,12 @@ public:
     void draw(const Camera& camera, int width, int height, const scene::Mesh& posedMesh, float feetDepth) const;
 
     // Draws one hog into the frame as it is (no clearing, no grid), placed
-    // by `modelToWorld`. Used after the map has been drawn.
+    // by `modelToWorld`. Used after the map has been drawn. `tint`
+    // multiplies the colours; an alpha below 1 blends it over what is there
+    // (the menus' faded medals).
     void drawHog(const Camera& camera, int width, int height, const scene::Mesh& posedMesh,
-                 const CharacterTextureSet& textures, const glm::mat4& modelToWorld) const;
+                 const CharacterTextureSet& textures, const glm::mat4& modelToWorld,
+                 const glm::vec4& tint = glm::vec4(1.0f)) const;
 
 private:
     std::unique_ptr<GlShaderProgram> shader_;
