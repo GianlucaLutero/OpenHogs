@@ -3,7 +3,7 @@
 // A campaign being played: the game::Campaign, its pages between missions
 // (ui::CampaignMenu), the mission briefing, and the link to the matches:
 //
-//     squad page ── START MISSION ──> briefing ── Enter ──> mission (a Game)
+//     squad page ── START MISSION ──> map ──> briefing ── Enter ──> mission (a Game)
 //         ▲                                                   │
 //         └──────────── mission results <─────────────────────┘
 //
@@ -13,6 +13,10 @@
 // every change (promotion, swap, mission), so quitting never loses
 // progress; SAVE TEAM copies it to another slot, which becomes its own.
 // A saves/campaign.ini from before the slots becomes slot 1.
+//
+// The campaign map (ui/CampaignMap.h) comes before every briefing but the
+// Boot Camp's: the territories in their holders' colours, the island and
+// its flags, from Language/Tims/PigMap/.
 //
 // Briefings are the game's pictures Language/Tims/Briefing/level<N>.bmp
 // (translated by the language packs); mission 1 also shows a photo of a
@@ -30,8 +34,10 @@
 #include "openhogs/game/Debrief.h"
 #include "openhogs/formats/BitmapImage.h"
 #include "openhogs/render/UiRenderer.h"
+#include "openhogs/ui/CampaignMap.h"
 #include "openhogs/ui/CampaignMenu.h"
 
+#include <array>
 #include <filesystem>
 #include <map>
 #include "openhogs/game/GameVersion.h"
@@ -84,7 +90,9 @@ public:
     // Counts down the newspaper's time on screen.
     void update(double seconds);
     // A full-screen picture (the briefing or the newspaper) hides the menus.
-    bool showingPicture() const { return briefing_ != nullptr || newspaper_.has_value() || showingDebrief(); }
+    bool showingPicture() const {
+        return briefing_ != nullptr || newspaper_.has_value() || showingDebrief() || campaignMap_.has_value();
+    }
     // The campaign's pages (for the original screens), if a campaign is open.
     const ui::CampaignMenu* menu() const { return menu_.get(); }
     // How many hogs the squad has.
@@ -99,7 +107,10 @@ private:
     void saveToSlot(std::size_t slot);
     std::optional<std::size_t> firstFreeSlot() const;
     void teamNamed();
+    // The next mission's briefing, with the campaign map before it.
     void openBriefing();
+    void drawCampaignMap();
+    bool loadCampaignMapPictures();
     bool showingDebrief() const;
     void openDebrief(const std::vector<game::SquadMember>& squad, const game::MissionReport& report,
                      const game::MissionOutcome& outcome, std::size_t deployed);
@@ -120,6 +131,17 @@ private:
     void givePromotionHint(SoundPlayer& sounds);
     std::unique_ptr<ui::CampaignMenu> menu_;
     std::map<std::string, std::size_t> slotsByMap_;  // places for the player's team, per map
+
+    // The campaign map before the briefing, and its pictures (loaded once).
+    std::optional<ui::CampaignMapAnimation> campaignMap_;
+    struct CampaignMapPictures {
+        std::unique_ptr<render::UiImage> map;                      // BigMap.bmp
+        std::vector<render::UiImage> pieces;                       // PMAPTIMS.MAD: territories, arrows, flag
+        std::vector<render::UiImage> names;                        // LANGTIMS.MAD: the islands' names
+        std::array<std::unique_ptr<render::UiImage>, ui::kMapIslands> islands;  // hogphy.mad ...
+    };
+    std::optional<CampaignMapPictures> mapPictures_;
+    bool mapPicturesMissing_ = false;
 
     // The briefing being shown.
     std::unique_ptr<render::UiImage> briefing_;

@@ -28,9 +28,11 @@
 #   NameEntry     - typing a name on the letter grid (PLEASE NAME YOUR TEAM / PIG)
 #   SteamPuffs    - the steam the menu machines blow out
 #   CampaignMenu  - the campaign pages: squad, promotions, mission results
+#   CampaignMap   - the campaign map before a mission: territories, the island, flags
 
 add_library(openhogs_ui STATIC
     src/BattleResultsPage.cpp
+    src/CampaignMap.cpp
     src/CampaignMenu.cpp
     src/FloatingNumbers.cpp
     src/FrontEnd.cpp

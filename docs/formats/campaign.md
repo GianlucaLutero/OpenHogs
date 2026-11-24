@@ -62,7 +62,75 @@ Other tables near these (ten 5s, a list 0 1 4 5 8 9 11 10 14 16, a curve
 From the manual and the achievement list: Hogshead 1–5, Saustralia
 6–10, Trotsville 11–15, Bellyopolis 16–20, Arstria 21–24, Isle of Swill
 25. Which enemy nation each mission is fought against is not stored in
-these tables (OpenHogs' choice: `docs/open-decisions.md`).
+these tables: it is the nation holding the mission's territory on the
+campaign map (below).
+
+## The campaign map
+
+Before every campaign mission but the Boot Camp (level 10) the
+executable shows the map of Saustralasia (`FUN_00482c30`, called just
+before the briefing, `FUN_004821c0`). Its pictures are in
+`Language/Tims/PigMap/`:
+
+| File | What |
+|------|------|
+| `BigMap.bmp` | the map, 640 × 480 |
+| `PMAPTIMS.MAD` | entries 0–24: the territories of missions 1–25 (`hog2`, `hog4`, `hog3`, `hog5`, `hog1`, `sau4` …, `ios`); 25–28 the arrows `ar1`–`ar4`; 29 `flag` (drawn 40 × 32); 30 `fpole` (8 × 62) |
+| `LANGTIMS.MAD` | the six islands' names |
+| `hogphy.mad` … `iosphy.mad` | one picture each: the islands Hogshead, Saustralia, Trotsville, Bellyopolis, Arstria, the Isle of Swill |
+
+**Who holds what.** The team structure has a byte per territory at
++0x55 (`DAT_0051f17d` for the player's team). A new campaign
+(`FUN_00482660` → `FUN_00482940`) draws a nation for each territory, five
+at a time, never the player's and never one already drawn as often as
+the group number: so each group of five goes to the five other nations
+in a random order; territory 24 (mission 25) is then given to Team Lard
+(6). Winning a mission gives its territory to the player
+(`FUN_004829d0(team, mission − 1, nation)`, after the results page).
+The nation bytes are the team structure's own order, mapped to the
+models' order (British, American, French, German, Russian, Japanese,
+Team Lard) by `FUN_004508e0` (0, 2, 1, 4, 5, 3, 6).
+
+**Colours** (VA 0x4D34E0, 16 bytes each, in the models' order): British
+(39, 170, 105), American (143, 172, 212), French (110, 125, 195), German
+(130, 130, 130), Russian (214, 123, 133), Japanese (205, 187, 98), Team
+Lard (158, 46, 158), nobody (109, 56, 32). The islands' names are tinted
+(250, 240, 235).
+
+**Positions** (in the 640 × 480 picture). An array of 0x88-byte records
+at VA 0x4D3658 — a 128-byte name followed by x and y — gives the
+territories' top-left corners (records 0–24), the islands' names (25–30)
+and where each island's picture ends up (31–36); the pictures' sizes are
+at VA 0x4D4A00 (250 × 322, 250 × 319, 250 × 250, 294 × 291, 150 × 326,
+150 × 150) and each mission's place on its island's picture at VA
+0x4D4AC0. All the numbers are in `src/ui/include/openhogs/ui/CampaignMap.h`.
+
+**Steps.**
+
+1. `FUN_00483980` builds the map: `BigMap.bmp`, every territory tinted
+   with its holder's colour, the names. `FUN_00482cd0` shows it for
+   two seconds (a key cuts it short), the next mission's territory
+   white whenever bit 4 of the millisecond clock is set (a 16 ms
+   flicker).
+2. `FUN_00483010`, 32 ticks of 50 ms: the territory's rectangle grows
+   into the island picture's along the curve at VA 0x4D4A40 (0, 1, 2, 3,
+   5, 7 … 97, 100, held at 100), drawn three times: a black shadow at
+   0.75 of the way with alpha 64 × progress, the territory in its
+   holder's colour fading out, the island picture fading in.
+3. `FUN_004833b0`, until ten seconds have passed or a key is pressed:
+   the island picture in place; a flag (tinted with the holder's colour)
+   and its pole on each of the island's missions, one every three ticks,
+   at the mission's place − (8, 62); once all are up, the four arrows
+   in the player's colour round the next mission — `ar2` at (−64 + b,
+   −45), `ar3` at (−18, −91 + b), `ar1` at (16 − b, −45), `ar4` at (−18,
+   −11 − b) — where b follows 0, 1, 2, 4, 7, 12 (VA 0x4D4B88) up and down,
+   a step a tick. An island holds five missions, Arstria four (21–24) and
+   the Isle of Swill one (25).
+
+In the PlayStation version filmed in `docs/video/` the same steps show
+(an inset of the island with its flags, one arrow); mission 1's enemy
+wears the colour of the flag the arrow points at, which confirms that
+the territory's holder is the mission's enemy.
 
 ## Boot Camp
 
@@ -169,10 +237,10 @@ ps1` (`game::GameVersion`, `Campaign::startHardMode`).
 |------|------|-----|
 | `Language/Tims/Briefing/level<N>.bmp` | 640 × 480 | the briefing of mission *N* (0 = Boot Camp) |
 | `Language/Tims/Briefing/level1n<K>.bmp` | 254 × 190 | photo for mission 1's empty frame (at 350, 197): a hog in the player's uniform, *K* = British, American, French, German, Russian, Japanese |
-| `Language/Tims/Briefing/loadbar.bmp` | | loading bar |
+| `Language/Tims/Briefing/loadbar.bmp` | | the loading bar under the briefing (not drawn by OpenHogs, which loads the map after the briefing) |
 | `Language/Tims/Papers/<Nation>.bmp`, `text<N>.bmp`, `pic0<N>.bmp` | 640 × 480, 314 × 204, 300 × 299 | the newspaper after a won mission (see *Newspapers*) |
 | `Language/Tims/Debrief/*` | | the debriefing page (see *Debriefing*) |
-| `Language/Tims/PigMap/` | | the campaign map (empty in the Steam release) |
+| `Language/Tims/PigMap/` | | the campaign map (see *The campaign map*) |
 
 The language packs replace the briefings and newspapers with translated
 ones, so OpenHogs shows them as they are.

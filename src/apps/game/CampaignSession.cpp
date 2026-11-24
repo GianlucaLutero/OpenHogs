@@ -235,6 +235,125 @@ void CampaignSession::openBriefing() {
         briefingPhoto_ = loadPicture(vfs_, "Language/Tims/Briefing/level1n" +
                                                  std::to_string(kPhotoOfNation.at(static_cast<std::size_t>(campaign_->nation()))) + ".bmp");
     }
+    // The executable shows the campaign map before every briefing but the
+    // Boot Camp's (FUN_00482c30, skipped for level 10). Without a briefing
+    // the mission starts at once, so there is no map either.
+    campaignMap_.reset();
+    if (briefing_ && number >= 1 && number <= game::kMissionCount && loadCampaignMapPictures()) {
+        campaignMap_.emplace(number);
+    }
+}
+
+bool CampaignSession::loadCampaignMapPictures() {
+    if (mapPictures_) return true;
+    if (mapPicturesMissing_) return false;
+    const std::string folder = "Language/Tims/PigMap/";
+    const auto archivePictures = [&](const std::string& file) {
+        std::vector<render::UiImage> pictures;
+        const auto archive = formats::PackageArchive::parse(vfs_.readFile(folder + file));
+        for (const auto& entry : archive.entries()) pictures.emplace_back(formats::decodeTim(archive.entryData(entry)));
+        return pictures;
+    };
+    try {
+        CampaignMapPictures pictures;
+        pictures.map = std::make_unique<render::UiImage>(formats::decodeBitmap(vfs_.readFile(folder + "BigMap.bmp")));
+        pictures.pieces = archivePictures("PMAPTIMS.MAD");
+        pictures.names = archivePictures("LANGTIMS.MAD");
+        static constexpr std::array<std::string_view, ui::kMapIslands> kIslandFiles{
+            "hogphy.mad", "sauphy.mad", "trophy.mad", "belphy.mad", "arsphy.mad", "iosphy.mad"};
+        for (std::size_t i = 0; i < kIslandFiles.size(); ++i) {
+            auto island = archivePictures(std::string(kIslandFiles[i]));
+            if (!island.empty()) pictures.islands[i] = std::make_unique<render::UiImage>(std::move(island.front()));
+        }
+        if (pictures.pieces.size() <= ui::kFlagPolePicture) throw std::runtime_error("PMAPTIMS.MAD is too short");
+        mapPictures_ = std::move(pictures);
+        return true;
+    } catch (const std::exception& error) {
+        // The partial copies of the game some players have lack the folder:
+        // the briefing simply comes without the map.
+        std::cerr << "Warning: no campaign map (" << error.what() << ")\n";
+        mapPicturesMissing_ = true;
+        return false;
+    }
+}
+
+void CampaignSession::drawCampaignMap() {
+    // The executable's FUN_00482cd0, FUN_00483010 and FUN_004833b0, in the
+    // 640 x 480 picture's pixels, centred like the briefings.
+    auto& ui = interface_.renderer();
+    const auto& map = *campaignMap_;
+    const auto& pictures = *mapPictures_;
+    const float left = (ui.canvasWidth() - kBriefingWidth) / 2.0f;
+    const auto colourOf = [](int nation, float alpha = 1.0f) {
+        const auto& rgb = ui::kNationMapColours[static_cast<std::size_t>(std::clamp(nation, 0, 7))];
+        return glm::vec4(rgb / 255.0f, alpha);
+    };
+    const auto place = [&](const render::UiImage& image, float x, float y, const glm::vec4& tint) {
+        ui.drawImage(image, left + x, y, image.width(), image.height(), tint);
+    };
+
+    // The map: every territory in its holder's colour, the next one
+    // flickering white before the zoom; the islands' names.
+    interface_.drawPicture(*pictures.map);
+    const int mission = map.mission();
+    for (int i = 0; i < ui::kMapTerritories; ++i) {
+        const auto& position = ui::kTerritoryPositions[static_cast<std::size_t>(i)];
+        const bool white = i == mission - 1 && map.territoryFlashing();
+        place(pictures.pieces[static_cast<std::size_t>(i)], static_cast<float>(position.x), static_cast<float>(position.y),
+              white ? glm::vec4(1.0f) : colourOf(campaign_->territoryOwner(i + 1)));
+    }
+    for (std::size_t i = 0; i < pictures.names.size() && i < ui::kIslandNamePositions.size(); ++i) {
+        place(pictures.names[i], static_cast<float>(ui::kIslandNamePositions[i].x),
+              static_cast<float>(ui::kIslandNamePositions[i].y), glm::vec4(ui::kIslandNameColour / 255.0f, 1.0f));
+    }
+    if (map.phase() == ui::CampaignMapPhase::Map) return;
+
+    // The zoom: from the territory's rectangle to the island picture's,
+    // the territory fading out, the picture in, a shadow trailing behind.
+    const auto island = static_cast<std::size_t>(map.island());
+    const auto& territory = pictures.pieces[static_cast<std::size_t>(mission - 1)];
+    const auto& from = ui::kTerritoryPositions[static_cast<std::size_t>(mission - 1)];
+    const glm::vec4 start(static_cast<float>(from.x), static_cast<float>(from.y), territory.width(), territory.height());
+    const glm::vec4 end(static_cast<float>(ui::kIslandPicturePositions[island].x),
+                        static_cast<float>(ui::kIslandPicturePositions[island].y),
+                        static_cast<float>(ui::kIslandPictureSizes[island].x),
+                        static_cast<float>(ui::kIslandPictureSizes[island].y));
+    const float t = map.zoomProgress();
+    const glm::vec4 shadow = start + (end - start) * (t * ui::kZoomShadowLag);
+    const glm::vec4 now = start + (end - start) * t;
+    if (map.phase() == ui::CampaignMapPhase::Zoom) {
+        ui.drawRect(left + shadow.x, shadow.y, shadow.z, shadow.w, glm::vec4(0.0f, 0.0f, 0.0f, t * ui::kZoomShadowAlpha));
+        ui.drawImage(territory, left + now.x, now.y, now.z, now.w,
+                     colourOf(campaign_->territoryOwner(mission), 1.0f - t));
+    }
+    if (pictures.islands[island]) {
+        ui.drawImage(*pictures.islands[island], left + now.x, now.y, now.z, now.w, glm::vec4(1.0f, 1.0f, 1.0f, t));
+    }
+    if (map.phase() != ui::CampaignMapPhase::Island) return;
+
+    // The island: the flags of its missions, then the arrows round the next.
+    const auto range = ui::mapIslandMissions(map.island());
+    const auto pointOf = [&](int number) {
+        const auto& point = ui::kMissionPointsOnIsland[static_cast<std::size_t>(number - 1)];
+        return glm::vec2(end.x + static_cast<float>(point.x), end.y + static_cast<float>(point.y));
+    };
+    for (int i = 0; i < map.flagsShown(); ++i) {
+        const glm::vec2 foot = pointOf(range.first + i);
+        const float x = foot.x - 8.0f;
+        const float y = foot.y - 62.0f;
+        ui.drawImage(pictures.pieces[ui::kFlagPicture], left + x, y, ui::kFlagWidth, ui::kFlagHeight,
+                     colourOf(campaign_->territoryOwner(range.first + i)));
+        ui.drawImage(pictures.pieces[ui::kFlagPolePicture], left + x, y, ui::kFlagPoleWidth, ui::kFlagPoleHeight);
+    }
+    if (map.arrowsShown()) {
+        const glm::vec2 target = pointOf(mission);
+        const auto bounce = static_cast<float>(map.arrowBounce());
+        const glm::vec4 colour = colourOf(campaign_->nation());
+        place(pictures.pieces[ui::kArrowLeftPicture], target.x + bounce - 64.0f, target.y - 45.0f, colour);
+        place(pictures.pieces[ui::kArrowAbovePicture], target.x - 18.0f, target.y + bounce - 91.0f, colour);
+        place(pictures.pieces[ui::kArrowRightPicture], target.x - bounce + 16.0f, target.y - 45.0f, colour);
+        place(pictures.pieces[ui::kArrowBelowPicture], target.x - 18.0f, target.y - bounce - 11.0f, colour);
+    }
 }
 
 void CampaignSession::openNewspaper(const game::MissionReport& report, const game::MissionOutcome& outcome,
@@ -280,6 +399,10 @@ const render::UiImage* CampaignSession::debriefPicture(const std::string& file, 
 }
 
 void CampaignSession::update(double seconds) {
+    if (campaignMap_) {
+        campaignMap_->update(seconds);
+        if (campaignMap_->done()) campaignMap_.reset();  // on to the briefing
+    }
     if (debrief_) debrief_->seconds += seconds;
     if (!newspaper_) return;
     newspaper_->secondsLeft -= seconds;
@@ -311,6 +434,13 @@ CampaignSession::Action CampaignSession::handleMenuInput(ui::MenuInput input, So
         return Action::None;
     }
     if (!campaign_) return Action::Leave;
+
+    if (campaignMap_) {
+        // A key ends the map's wait or the island's (not the zoom).
+        campaignMap_->keyPressed();
+        if (campaignMap_->done()) campaignMap_.reset();
+        return Action::None;
+    }
 
     if (newspaper_) {
         // Any key puts the paper down, as in the original.
@@ -465,6 +595,10 @@ void CampaignSession::draw() {
         };
         lay(newspaper_->story, game::kNewspaperStoryX, game::kNewspaperStoryY);
         lay(newspaper_->picture, game::kNewspaperPictureX, game::kNewspaperPictureY);
+        return;
+    }
+    if (campaignMap_) {
+        drawCampaignMap();
         return;
     }
     if (briefing_) {
