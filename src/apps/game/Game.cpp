@@ -6,10 +6,12 @@
 
 #include "openhogs/formats/PackageArchive.h"
 #include "openhogs/formats/TimImage.h"
+#include "openhogs/game/Levels.h"
 #include "openhogs/game/Weapons.h"
 #include "openhogs/scene/CharacterExpressions.h"
 #include "openhogs/scene/MapScene.h"
 #include "openhogs/scene/ModelMesh.h"
+#include "openhogs/scene/SkyDome.h"
 
 #include <SDL3/SDL.h>
 #include <glm/gtc/matrix_transform.hpp>
@@ -140,11 +142,24 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Inter
       computerTeams_(options.computerTeams.begin(), options.computerTeams.end()), computer_(computerSettings(options.versionRules)),
       keyboard_(options.keyBindings), interface_(userInterface), sounds_(sounds), gamepads_(gamepads),
       audio_(sounds, world_, [this](int team) { return isComputerTeam(team); }, options.versionRules.turnTuneLoops) {
-    const auto scene = scene::loadMapScene(vfs, options.mapName);
+    // The level's look: its textures recoloured, its sky and its fog.
+    const auto level = game::findLevel(options.mapName);
+    const auto scene = scene::loadMapScene(vfs, options.mapName, level ? level->grading : scene::PaletteGrading{});
     for (const auto& warning : scene.warnings) {
         std::cerr << "Warning: " << warning << "\n";
     }
     mapRenderer_ = std::make_unique<render::MapRenderer>(scene);
+    render::Fog fog;
+    if (level) {
+        const auto look = game::skyLook(level->sky);
+        try {
+            mapRenderer_->setSky(scene::loadSkyDome(vfs, look.domePictures));
+        } catch (const std::exception& error) {
+            std::cerr << "Warning: no sky dome (" << error.what() << ")\n";
+        }
+        fog = {glm::vec3(look.fogColour[0], look.fogColour[1], look.fogColour[2]) / 255.0f, look.fogStart, look.fogEnd};
+        mapRenderer_->setFog(fog);
+    }
     for (const auto& object : mapRenderer_->objects()) {
         if (world_.isHidden(object.object)) mapRenderer_->hideObject(object.object);  // until revealed
     }
@@ -159,6 +174,7 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Inter
         }
     }
     hogRenderer_ = std::make_unique<render::CharacterRenderer>();
+    hogRenderer_->setFog(fog);
     effects_ = std::make_unique<render::EffectsRenderer>();
     try {
         effects_->setPictures(loadEffectPictures(vfs));

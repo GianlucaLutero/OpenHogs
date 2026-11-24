@@ -17,6 +17,7 @@
 #include "openhogs/formats/MapObjects.h"
 #include "openhogs/formats/TimImage.h"
 #include "openhogs/scene/Geometry.h"
+#include "openhogs/scene/MapColours.h"
 
 #include <map>
 #include <string>
@@ -59,8 +60,11 @@ glm::mat4 objectTransform(const formats::MapObject& object);
 
 // Loads a map by name ("CAMP", case-insensitive). Throws std::runtime_error
 // if the terrain itself is missing or invalid; smaller problems end up in
-// MapScene::warnings so the map can still be shown.
-MapScene loadMapScene(const core::VirtualFileSystem& vfs, std::string_view mapName);
+// MapScene::warnings so the map can still be shown. `grading` recolours
+// the terrain's and the objects' textures as the level's record says (see
+// MapColours.h); the default only adds the renderer's own brightness.
+MapScene loadMapScene(const core::VirtualFileSystem& vfs, std::string_view mapName,
+                      const PaletteGrading& grading = {});
 
 // Upper-case names of all maps that have a terrain file, sorted.
 std::vector<std::string> listMaps(const core::VirtualFileSystem& vfs);

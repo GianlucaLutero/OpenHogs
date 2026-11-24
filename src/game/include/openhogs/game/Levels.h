@@ -4,7 +4,8 @@
 //
 // warhogs_.exe keeps an array of the level names (map files) at file offset
 // 0xD0790, and a table of 60-byte level properties at 0xD4010 (address
-// 0x4D5210) whose first field is the level's sky. The level's name in the
+// 0x4D5210) whose first field is the level's sky and the next four how its
+// textures are recoloured (see scene/MapColours.h). The level's name in the
 // game text table gtext is entry 11 + level number. See
 // docs/formats/executable.md.
 //
@@ -13,7 +14,11 @@
 
 #pragma once
 
+#include "openhogs/scene/MapColours.h"
+
+#include <array>
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <span>
 #include <string_view>
@@ -41,7 +46,27 @@ struct LevelInfo {
     std::string_view map;      // Maps/<map>.PMG ...
     std::size_t nameEntry = 0; // gtext entry with the level's name
     SkyType sky = SkyType::Sunny;
+    scene::PaletteGrading grading;  // how its textures are recoloured
 };
+
+// What a sky looks like besides its weather: the pictures on the sky dome
+// and the distance fog, which fades the scene into `fogColour` between
+// `fogStart` and `fogEnd` world units from the camera. The distances are
+// the executable's times kFogDistanceScale (see there).
+struct SkyLook {
+    std::string_view domePictures;  // archive of the dome's pictures
+    float fogStart = 0.0f;
+    float fogEnd = 0.0f;
+    std::array<std::uint8_t, 3> fogColour{0, 0, 0};
+};
+
+SkyLook skyLook(SkyType sky);
+
+// The executable's fog distances (afSetFog: 238 to 2125-4524) are in the
+// renderer's own depth units, which are not known. Taken as world units the
+// fog swallows a hog 3000 units away, so they are stretched by this factor
+// for now (decision 172).
+inline constexpr float kFogDistanceScale = 4.0f;
 
 inline constexpr std::size_t kFirstLevelNameEntry = 11;
 

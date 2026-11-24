@@ -107,6 +107,7 @@ void CharacterRenderer::drawHog(const Camera& camera, int width, int height, con
     shader_->setInt("uTexture", 0);
     shader_->setMatrix("uModel", modelToWorld);
     shader_->setVector("uTint", tint);
+    applyFog(*shader_, fog_, camera.position);
     glActiveTexture(GL_TEXTURE0);
 
     for (const auto& part : posedMesh) {
