@@ -48,9 +48,27 @@ The displayed name of level *n* is entry 11 + *n* of `gtext`. Levels
 
 ### Properties: 0xD4010 / VA 0x4D5210
 
-53 records of 15 int32 (60 bytes), one per fixed level. Field 0 is the
-**sky**; the other fields look like colours (values such as `0xB0B0B0`),
-probably fog and light, and are not decoded yet.
+53 records of 15 int32 (60 bytes), one per fixed level, copied to VA
+0x520708 when a level is loaded.
+
+| Field | Content | Used by |
+|-------|---------|---------|
+| 0 | **sky** (table below) | the dome, the fog, the weather, the sound bank |
+| 1 | desaturation of the textures: steps (of 31) towards grey, 5 = all grey | `_d3d.dll` |
+| 2 | brightness added to every channel (signed), besides the renderer's own +3 | `_d3d.dll` |
+| 3 | tint strength, per cent | `_d3d.dll` |
+| 4 | tint colour, bytes red, green, blue (each channel becomes (tint + 8) × grey / 16) | `_d3d.dll` |
+| 5–14 | an ambient colour (5), three light directions (6, 8, 10) and their colours (12, 13, 14): the PlayStation's lighting | not read by the PC executable |
+
+The record is passed to `afLoadTims` when the map's objects' textures
+(`Maps/<map>.MTD`) are loaded and to `afIfaceInit` for the terrain's
+(`afAddToGroundTextures2`, `.PTG`); both recolour the textures' palettes
+with fields 1–4, in that order, on the PlayStation's 5-bit channels. The
+objects' textures only have their first 16 palette colours changed. The
+renderer's +3 brightness and the tint's +8 are globals of `_d3d.dll`
+(0x10022058, 0x1002205C). OpenHogs: `scene::gradeColour`; the eight sets
+of values the levels share are named in `Levels.cpp` (sunny meadows green
+15 %, deserts and sunsets red 10 % and −2, the night blue 60 %...).
 
 | Sky | Dome texture (`Chars/<name>.mad` on `Chars/skydome.mad`) | Weather | Sound bank |
 |-----|------|---------|------------|
@@ -64,6 +82,15 @@ probably fog and light, and are not decoded yet.
 | 9 | toy | – | day |
 | 10 | space | – | day |
 
+- The dome: `FUN_004866b0` loads both halves of `Chars/skydome.mad`
+  (`skydome`, the upper half, and `skydomeu`, the lower; a half-sphere of
+  radius 15778 model units) with the sky's archive of four pictures and
+  stretches them 16 times across and 8 times up.
+- The fog (`FUN_00485550` → `afSetFog`, linear table fog): start 238 and
+  end 4524 (sky 0), 3571 (1), 2749 (2, 3, 4, 10), 4048 (6–9), and start 425
+  and end 2125 (5); colours F8F8F8, FCC074, black, 8FAFCD (5), D0D7E0 (6),
+  E5BF80 (7), FFD09F (8), C0FFFF (9). Two more colours per sky at 0x4D5E80
+  are copied around but their use was not found.
 - The weather is drawn by `FUN_004a9ed0`, called only for skies 0 and 5.
 - `FUN_00485550` loads `audio\sfxnight.srl` for skies 2, 3, 4 and 8 and
   `audio\sfxday.srl` otherwise. In the PC release the two banks are

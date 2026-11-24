@@ -105,7 +105,7 @@ message.
 | 9 | [HeCUBA68G98](https://www.youtube.com/watch?v=HeCUBA68G98) | 22:02 | 0:20 squad; 0:35 loading; 1:05 map; 1:20 briefing; 1:35 title card; end ~20:20; 20:50 debriefing; 21:00 newspaper; 21:40 save |
 | 10 | [fHL1l1RMnOQ](https://www.youtube.com/watch?v=fHL1l1RMnOQ) | 26:22 | 0:20 map; 0:35 briefing; 0:50 title card; MISSIONE COMPIUTA shown at ~22:10 and again at ~25:10; 25:40 debriefing; 26:10 newspaper |
 | 11 | [W8RZIiLO7Ig](https://www.youtube.com/watch?v=W8RZIiLO7Ig) | 27:27 | 0:35 briefing; 1:05 title card; 2:05 REDFLAMEFOX PRONTO...; ~15:00 airship; end ~26:40; 26:50 debriefing; 27:00 newspaper |
-| 13 | [UkE1wrPRgZU](https://www.youtube.com/watch?v=UkE1wrPRgZU) | 17:53 | (played before part 12) 0:05 squad; 0:35 loading; 0:50 save (slot "13"); 1:05 map; 1:20 briefing; 2:00 title card |
+| 13 | [UkE1wrPRgZU](https://www.youtube.com/watch?v=UkE1wrPRgZU) | 17:53 | (played before part 12) 0:05 squad; 0:35 loading; 0:50 save (slot "13"); 1:05 map; 1:20 briefing; 3:10 title card |
 | 12 | [nYswe1poHtU](https://www.youtube.com/watch?v=nYswe1poHtU) | 12:05 | 0:00 briefing; 0:06 title card while an airship brings the hogs (night map); end ~10:25; 10:50 debriefing; 10:55–11:40 film closing the island; 11:40 newspaper |
 | 14 | [DWdjR5QTL1I](https://www.youtube.com/watch?v=DWdjR5QTL1I) | 40:49 | Mission 16: 0:20 map (Lardopolis), 0:35 briefing, 1:05 title card, end ~27:10, 27:50 newspaper, 28:20–29:40 save. Mission 17: 30:00 map, 30:15 briefing, 30:45 title card |
 | 15 | [r3LyfIUdFSI](https://www.youtube.com/watch?v=r3LyfIUdFSI) | 55:50 | Mission 18: 0:05 briefing, 0:20 title card, end ~28:40, ~29:00 newspaper. Mission 19: 30:30 map, 30:45 briefing, 31:00 title card, end ~55:00, 55:20 newspaper |

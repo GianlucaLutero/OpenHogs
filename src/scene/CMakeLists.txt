@@ -17,12 +17,16 @@
 #   Particles      - the effects' particles (fire, smoke, earth, foam, scorch marks)
 #   MapScene       - loads a whole map (terrain, textures, objects) from the
 #                    virtual file system
+#   MapColours     - the level's recolouring of its textures (sunset, night)
+#   SkyDome        - the dome of sky drawn around the map
 
 add_library(openhogs_scene STATIC
     src/CharacterExpressions.cpp
     src/CharacterLibrary.cpp
     src/CharacterPose.cpp
+    src/MapColours.cpp
     src/MapScene.cpp
+    src/SkyDome.cpp
     src/Particles.cpp
     src/ModelMesh.cpp
     src/TerrainMesh.cpp)

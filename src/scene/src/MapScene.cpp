@@ -47,16 +47,18 @@ float angleToRadians(std::int16_t angle) {
 }
 
 formats::RgbaImage decodeOrPlaceholder(std::span<const std::byte> tim, const std::string& what,
-                                       std::vector<std::string>& warnings) {
+                                       std::vector<std::string>& warnings,
+                                       const formats::PaletteFilter& filter = {}) {
     try {
-        return formats::decodeTim(tim);
+        return formats::decodeTim(tim, filter);
     } catch (const std::exception& error) {
         warnings.push_back(what + ": " + error.what());
         return makeMissingTexture();
     }
 }
 
-void loadTerrain(const core::VirtualFileSystem& vfs, const std::string& base, MapScene& scene) {
+void loadTerrain(const core::VirtualFileSystem& vfs, const std::string& base, const PaletteGrading& grading,
+                 MapScene& scene) {
     const auto terrain = formats::MapTerrain::parse(vfs.readFile(base + ".pmg"));
     scene.terrain = buildTerrainMesh(terrain);
 
@@ -78,13 +80,16 @@ void loadTerrain(const core::VirtualFileSystem& vfs, const std::string& base, Ma
     }
     const auto data = vfs.readFile(base + ".ptg");
     const auto images = formats::splitTextureTable(data);
+    // The terrain has its whole palettes graded.
+    const auto filter = [&grading](std::uint16_t colour, std::size_t) { return gradeColour(colour, grading); };
     for (std::size_t i = 0; i < images.size(); ++i) {
         scene.terrainTextures.push_back(
-            decodeOrPlaceholder(images[i], base + ".ptg texture " + std::to_string(i), scene.warnings));
+            decodeOrPlaceholder(images[i], base + ".ptg texture " + std::to_string(i), scene.warnings, filter));
     }
 }
 
-void loadModelTextures(const core::VirtualFileSystem& vfs, const std::string& base, MapScene& scene) {
+void loadModelTextures(const core::VirtualFileSystem& vfs, const std::string& base, const PaletteGrading& grading,
+                       MapScene& scene) {
     if (!vfs.exists(base + ".mtd")) {
         scene.warnings.push_back(base + ".mtd missing: objects drawn without textures");
         return;
@@ -92,9 +97,14 @@ void loadModelTextures(const core::VirtualFileSystem& vfs, const std::string& ba
     // FAC texture indices count the archive entries in order, so every
     // entry is kept, even repeated names.
     const auto archive = formats::PackageArchive::parse(vfs.readFile(base + ".mtd"));
+    // Only the first colours of the objects' palettes are graded (see
+    // MapColours.h): an 8-bit texture keeps the rest of its colours.
+    const auto filter = [&grading](std::uint16_t colour, std::size_t index) {
+        return index < kGradedObjectColours ? gradeColour(colour, grading) : colour;
+    };
     for (const auto& entry : archive.entries()) {
         scene.modelTextures.push_back(
-            decodeOrPlaceholder(archive.entryData(entry), base + ".mtd/" + entry.name, scene.warnings));
+            decodeOrPlaceholder(archive.entryData(entry), base + ".mtd/" + entry.name, scene.warnings, filter));
     }
 }
 
@@ -173,7 +183,7 @@ glm::mat4 objectTransform(const formats::MapObject& object) {
     return transform;
 }
 
-MapScene loadMapScene(const core::VirtualFileSystem& vfs, std::string_view mapName) {
+MapScene loadMapScene(const core::VirtualFileSystem& vfs, std::string_view mapName, const PaletteGrading& grading) {
     MapScene scene;
     scene.name = toUpper(mapName);
     const std::string base = "maps/" + core::toLower(mapName);
@@ -182,8 +192,8 @@ MapScene loadMapScene(const core::VirtualFileSystem& vfs, std::string_view mapNa
         throw std::runtime_error("Map '" + scene.name + "' not found (no " + base + ".pmg)");
     }
 
-    loadTerrain(vfs, base, scene);
-    loadModelTextures(vfs, base, scene);
+    loadTerrain(vfs, base, grading, scene);
+    loadModelTextures(vfs, base, grading, scene);
     loadObjects(vfs, base, scene);
     return scene;
 }

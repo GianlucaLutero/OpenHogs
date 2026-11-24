@@ -5,6 +5,11 @@ the `project()` call in `CMakeLists.txt`.
 
 ## Unreleased — refinement
 
+- **Each level's look** as the PC original: the sky dome with the level's
+  sky (sunny, sunrise, sunset, night, rain clouds, snow clouds...), the
+  distance fog in the sky's colour, and the terrain's and objects'
+  textures recoloured as the level's record says (greener meadows, redder
+  deserts and sunsets, the night map blue and grey).
 - **Mission openings** as the original: every campaign mission but the
   Boot Camp starts with the squads coming down by parachute (`WE_PARA`,
   the parachuting animation) under the mission's title, the camera

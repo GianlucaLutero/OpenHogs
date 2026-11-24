@@ -10,6 +10,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <array>
 #include <set>
 
 using namespace openhogs::game;
@@ -53,4 +54,31 @@ TEST_CASE("Videos follow the original's schedule", "[game][cutscenes]") {
     CHECK(campaignCutscenes(25) == std::vector<std::string>{"Language/Streams/fmv 07.bik"});
     CHECK(campaignCutscenes(26).size() == 2);
     CHECK(campaignCutscenes(7).empty());
+}
+
+// Each level's look comes from its record: the sky picks the dome's
+// pictures and the fog, fields 1-4 the recolouring. Spot checks against the
+// table at 0x4D5210 and FUN_00485550: a shifted row would give a desert map
+// the night's blue.
+TEST_CASE("Levels carry their recolouring and sky look", "[game][levels]") {
+    const auto bay = findLevel("BAY");
+    REQUIRE(bay);
+    CHECK(bay->sky == SkyType::Night1);
+    CHECK(bay->grading.desaturation == 2);
+    CHECK(bay->grading.brightness == 3);
+    CHECK(bay->grading.tintPercent == 60);
+    CHECK(bay->grading.tint == std::array<std::uint8_t, 3>{3, 3, 13});
+
+    const auto devi = findLevel("DEVI");
+    REQUIRE(devi);
+    CHECK(devi->grading.brightness == -2);
+    CHECK(devi->grading.tint == std::array<std::uint8_t, 3>{25, 0, 0});
+
+    const auto night = skyLook(SkyType::Night1);
+    CHECK(night.domePictures == "chars/night1.mad");
+    CHECK(night.fogColour == std::array<std::uint8_t, 3>{0, 0, 0});
+    CHECK(night.fogEnd == 2749 * kFogDistanceScale);
+    const auto rain = skyLook(SkyType::Ominous);
+    CHECK(rain.fogStart == 425 * kFogDistanceScale);
+    CHECK(rain.domePictures == "chars/ominous.mad");
 }

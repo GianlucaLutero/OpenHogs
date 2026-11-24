@@ -14,6 +14,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <span>
 #include <vector>
 
@@ -31,5 +32,15 @@ struct RgbaImage {
 // (black with the "semi-transparent" bit off) is fully transparent; every
 // other colour is opaque.
 RgbaImage decodeTim(std::span<const std::byte> data);
+
+// Changes one 16-bit palette colour (PlayStation format: bits 0-4 red,
+// 5-9 green, 10-14 blue) before the image is decoded; `index` is the
+// colour's place in the palette. The original recolours map textures this
+// way, palette entry by palette entry (see scene::gradeColour).
+using PaletteFilter = std::function<std::uint16_t(std::uint16_t colour, std::size_t index)>;
+
+// Same as decodeTim(data), with every colour of the first palette row
+// passed through `filter`. Direct-colour images are left as they are.
+RgbaImage decodeTim(std::span<const std::byte> data, const PaletteFilter& filter);
 
 } // namespace openhogs::formats

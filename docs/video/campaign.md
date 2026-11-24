@@ -66,9 +66,46 @@ Seen on the way, for block `video-ui`: once landed, several hogs show
 their name and health labels at the same time (part 3 0:47–0:52, part 12
 0:50), where OpenHogs labels only the hog in play (decision 36).
 
-## Still to compare (part 3 of the block)
+## The missions and their maps (part 3 of the block)
 
-For each mission: the enemies (number, ranks, where they stand), the
-crates and objectives, the special medals on the debriefing, the turn
-time, against the maps' data in OpenHogs; and the maps themselves
-(sky, objects, starting places).
+Two frames of every mission, some 15 and 30 seconds after its title card
+(the times are in [index.md](index.md)), with the radar enlarged, beside
+OpenHogs' screenshot of the same map at the same moment.
+
+**What matches.** The radars agree mission by mission: the squads' and
+the enemies' crosses stand where the maps' data puts them, the same
+crates (hearts for health, squares for weapons), and the red outlines of
+the objectives' areas (missions 6, 9, 11, 12 and others). The original
+reads the same `.POG` files as OpenHogs, so the missions are laid out
+alike; the turn times agree with the executable's table (see the index).
+The colours of the crosses differ because they follow the nations: the
+footage's player fights in yellow.
+
+**What did not: each level's look.** The footage's maps are not all lit
+alike: the rainy maps (TRENCH, MEDIX, EMPLACE, FINAL) are dark, the
+sunrise and sunset ones (TWIN, ZULUS, LIBERATE, SNIPER, OASIS, EYRIE)
+orange, BAY is night-blue; OpenHogs drew every map in the same daylight
+under a plain blue background. The executable's level record (0x4D5210)
+explains it, and OpenHogs now follows the PC version
+([executable.md](../formats/executable.md#properties-0xd4010--va-0x4d5210)):
+
+- the textures of the terrain and the objects are recoloured as the
+  record's fields 1–4 say (desaturation, brightness, a tint), as
+  `_d3d.dll` does when it loads them (`scene::gradeColour`);
+- the sky dome (`Chars/skydome.mad`) is drawn with the level's sky
+  pictures (sunny, sunrise, sunset, night1, ominous, coldsky...);
+- the distance fog of the level's sky fades the scene into its colour
+  (decision 172 for its distances).
+
+The footage is the PlayStation version, which lights the scene with the
+record's fields 5–14 (an ambient colour and three lights); the PC
+executable does not read them, so OpenHogs' rainy maps stay lighter than
+the footage's. The weather (rain, snow) is not drawn yet (decision 174).
+
+**Seen on the way.** Mission 14's title card is at 3:10 in part 13, not
+2:00 (index corrected), and its squad starts in a wooden pen. In
+missions 19 and 22 the air strike's aiming view, seen from above, labels
+what lies below (BUNKER, CHIRURGO, ARTIGLIERIA): for block `video-weapons`.
+The debriefings' special medals were not compared: the medals' rules come
+from the executable (decision 162) and the footage shows only the ones
+this run earned.

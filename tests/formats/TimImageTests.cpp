@@ -89,3 +89,23 @@ TEST_CASE("decodeTim rejects files that are not TIM images", "[formats][TimImage
     notTim.raw("RIFF....WAVE");
     CHECK_THROWS_AS(decodeTim(notTim.bytes()), FormatError);
 }
+
+// The original recolours map textures palette entry by palette entry
+// (scene::gradeColour). The filter must see the raw 16-bit colour and its
+// place in the palette, and its result must be what the pixels show:
+// otherwise night and sunset maps keep their daylight colours.
+TEST_CASE("decodeTim passes palette colours through a filter", "[formats][TimImage]") {
+    auto tim = timWithPalette(1, {kRed, kBlue});
+    tim.u32(12 + 2).u16(0).u16(0).u16(1).u16(1);  // 1 word = 2 pixels (8-bit)
+    tim.u8(0).u8(1);
+
+    std::vector<std::size_t> seen;
+    const auto image = decodeTim(tim.bytes(), [&seen](std::uint16_t colour, std::size_t index) {
+        seen.push_back(index);
+        return index == 1 ? kRed : colour;  // the second colour becomes red
+    });
+
+    CHECK(seen == std::vector<std::size_t>{0, 1});
+    CHECK(pixel(image, 0) == std::vector<std::uint8_t>{255, 0, 0, 255});
+    CHECK(pixel(image, 1) == std::vector<std::uint8_t>{255, 0, 0, 255});
+}

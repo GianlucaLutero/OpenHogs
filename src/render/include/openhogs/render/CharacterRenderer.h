@@ -16,6 +16,7 @@
 
 #include "openhogs/formats/TimImage.h"
 #include "openhogs/render/Camera.h"
+#include "openhogs/render/Fog.h"
 #include "openhogs/render/GlObjects.h"
 #include "openhogs/scene/Geometry.h"
 
@@ -59,7 +60,12 @@ public:
                  const CharacterTextureSet& textures, const glm::mat4& modelToWorld,
                  const glm::vec4& tint = glm::vec4(1.0f)) const;
 
+    // Fades the hogs drawn by drawHog into the map's fog (none by default,
+    // as in the menus).
+    void setFog(const Fog& fog) { fog_ = fog; }
+
 private:
+    Fog fog_;
     std::unique_ptr<GlShaderProgram> shader_;
     std::unique_ptr<GlTexture> whiteTexture_;  // for the grid and missing textures
     std::unique_ptr<GlMesh> grid_;

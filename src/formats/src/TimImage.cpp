@@ -33,7 +33,7 @@ Rgba convertColor16(std::uint16_t color) {
 
 // Reads the palette block. Only the first row is used: the other rows are
 // alternative palettes the game picks at runtime (not needed for export).
-std::vector<Rgba> readPalette(core::BinaryReader& reader) {
+std::vector<Rgba> readPalette(core::BinaryReader& reader, const PaletteFilter& filter) {
     const std::size_t blockStart = reader.position();
     const std::uint32_t blockLength = reader.readU32();
     reader.skip(4);  // position in PS1 video memory, irrelevant on PC
@@ -46,7 +46,8 @@ std::vector<Rgba> readPalette(core::BinaryReader& reader) {
     std::vector<Rgba> palette;
     palette.reserve(colorsPerRow);
     for (std::uint16_t i = 0; i < colorsPerRow; ++i) {
-        palette.push_back(convertColor16(reader.readU16()));
+        const std::uint16_t colour = reader.readU16();
+        palette.push_back(convertColor16(filter ? filter(colour, i) : colour));
     }
 
     // Jump over the remaining rows using the declared block length.
@@ -65,6 +66,10 @@ const Rgba& paletteColor(const std::vector<Rgba>& palette, std::size_t index) {
 } // namespace
 
 RgbaImage decodeTim(std::span<const std::byte> data) {
+    return decodeTim(data, PaletteFilter{});
+}
+
+RgbaImage decodeTim(std::span<const std::byte> data, const PaletteFilter& filter) {
     core::BinaryReader reader(data);
 
     if (reader.readU32() != kTimMagic) {
@@ -83,7 +88,7 @@ RgbaImage decodeTim(std::span<const std::byte> data) {
 
     std::vector<Rgba> palette;
     if (flags & kHasPaletteFlag) {
-        palette = readPalette(reader);
+        palette = readPalette(reader, filter);
     }
 
     // Pixel block header. The stored width counts 16-bit words, not pixels.
