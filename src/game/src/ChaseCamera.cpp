@@ -83,4 +83,20 @@ CameraPose ChaseCamera::pose(const TerrainHeightField& terrain) const {
     return result;
 }
 
+CameraPose arrivalCameraPose(const glm::vec3& hogPosition, const glm::vec3& facing, const TerrainHeightField& terrain,
+                             float distance) {
+    glm::vec3 back(-facing.x, 0.0f, -facing.z);
+    if (glm::length(back) < 1e-4f) back = glm::vec3(0.0f, 0.0f, 1.0f);
+    back = glm::normalize(back);
+    CameraPose result;
+    result.position = hogPosition + back * distance - glm::vec3(0.0f, kArrivalCameraDrop, 0.0f);
+    const float lowest = terrain.heightAt(result.position.x, result.position.z) + kGroundClearance;
+    result.position.y = std::max(result.position.y, lowest);
+    const glm::vec3 toHog = hogPosition - result.position;
+    result.yawDegrees = glm::degrees(std::atan2(toHog.x, -toHog.z));
+    const float level = std::sqrt(toHog.x * toHog.x + toHog.z * toHog.z);
+    result.pitchDegrees = glm::degrees(std::atan2(toHog.y, level));
+    return result;
+}
+
 } // namespace openhogs::game

@@ -59,4 +59,15 @@ private:
     float distance_ = 900.0f;     // world units
 };
 
+// The opening's camera: behind the hog and below it, looking up at it
+// against the sky as the footage frames it (about 20 degrees up).
+inline constexpr float kArrivalCameraDistance = 900.0f;
+inline constexpr float kArrivalCameraDrop = 330.0f;
+
+// The camera of a campaign mission's opening (World::beginArrival): as in
+// the original's footage, it follows the hog down from behind and below,
+// looking up at it, never under the ground.
+CameraPose arrivalCameraPose(const glm::vec3& hogPosition, const glm::vec3& facing, const TerrainHeightField& terrain,
+                             float distance = kArrivalCameraDistance);
+
 } // namespace openhogs::game

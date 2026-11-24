@@ -54,6 +54,7 @@ add_executable(openhogs_tests
     game/WeaponTests.cpp
     game/ComputerPlayerTests.cpp
     game/BattleAwardTests.cpp
+    game/ArrivalTests.cpp
     game/CampaignTests.cpp
     game/LevelsTests.cpp
     game/DebriefTests.cpp

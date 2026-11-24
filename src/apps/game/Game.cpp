@@ -59,6 +59,9 @@ constexpr float kHogLabelHeight = 330.0f;
 // HUD layout, in canvas units (the screen is render::kCanvasHeight tall).
 constexpr float kDamageNumberHeight = 450.0f;  // above the feet, by the label
 constexpr float kBannerY = 140.0f;  // the executable writes match messages at y = 140
+// The mission's title over its opening: longer than any opening, it is
+// replaced by GET READY when the first turn starts.
+constexpr double kArrivalTitleSeconds = 60.0;
 constexpr glm::vec4 kPauseShade{0.0f, 0.0f, 0.0f, 0.4f};
 
 // The computer opponent's settings. Its random errors are seeded from the
@@ -90,6 +93,11 @@ constexpr std::size_t kDisguiseObject = 1'000'000;
 // crates, drawn as map objects with numbers of their own.
 constexpr std::size_t kBootsObject = 2'000'000;
 constexpr std::size_t kParachuteObject = 3'000'000;
+// A hog's own parachute, in Chars/WEAPONS.MAD (worn like the jetpack).
+constexpr std::string_view kParachuteModel = "WE_PARA";
+// Hung from the root bone, the canopy opens above the hog with its cords
+// down to it (the back's bone, as the jetpack's, turns it on its side).
+constexpr std::size_t kParachuteBone = 0;
 // Where a falling crate's parachute starts, above the crate's middle.
 constexpr float kParachuteHeight = 96.0f;  // the crate's half height: WE_CHUT2 hangs from its origin
 // Hog shadows: the blob's width on the ground and how dark it is.
@@ -199,7 +207,13 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Inter
         }
     }
 
-    if (const auto message = ui::turnMessage(world_, interface_.strings(), computerIsPlaying())) {
+    if (!options.missionTitle.empty() && world_.turns()) {
+        // The original's opening of a campaign mission: the title stays up
+        // while the squads come down; GET READY follows when they have
+        // landed (World::beginArrival reports the first turn then).
+        world_.beginArrival();
+        showMessage(options.missionTitle, kArrivalTitleSeconds, false);
+    } else if (const auto message = ui::turnMessage(world_, interface_.strings(), computerIsPlaying())) {
         showMessage(*message, kTurnMessageSeconds, true);
     }
     hud_.setRadarMap(ui::radarMapPicture(world_.terrain()));
@@ -344,6 +358,11 @@ GameRequest Game::handleCommand(Command command) {
     }
     if (world_.phase() == game::MatchPhase::Over) {
         return command == Command::EndTurn ? GameRequest::LeaveMatch : GameRequest::None;
+    }
+    if (world_.arriving()) {
+        // The opening: Enter lands everybody and starts the first turn.
+        if (command == Command::EndTurn) world_.skipArrival();
+        return GameRequest::None;
     }
     if (computerIsPlaying()) {
         return GameRequest::None;  // the computer has the hog
@@ -734,6 +753,14 @@ void Game::drawHog(const render::Camera& camera, int width, int height, const ga
 
     hogRenderer_->drawHog(camera, width, height, mesh, *look.textures, game::hogModelToWorld(hog));
 
+    // A hog coming down by parachute carries WE_PARA on its back.
+    if (hog.parachute && hog.alive && weaponTextures_) {
+        if (const auto* canopy = weaponModel(kParachuteModel)) {
+            const auto canopyMesh = scene::buildCarriedModelMesh(*canopy, weaponTextureSizes_, pose, kParachuteBone);
+            hogRenderer_->drawHog(camera, width, height, canopyMesh, *weaponTextures_, game::hogModelToWorld(hog));
+        }
+    }
+
     // The weapon in the hog's hand, drawn as the original's renderer does:
     // one rigid piece following the hand (scene::buildCarriedModelMesh).
     // A grenade, a mine or TNT leaves the hand once it is thrown or put
@@ -843,7 +870,12 @@ render::Camera Game::sceneCamera() const {
         camera.fieldOfViewDegrees = kSightFieldOfViewDegrees;
         return camera;
     }
-    const auto pose = camera_.pose(world_.terrain());
+    auto pose = camera_.pose(world_.terrain());
+    if (const auto active = world_.activeHog(); active && world_.arriving() && world_.hogs()[*active].parachute) {
+        // The opening: looking up from the ground at the hog coming down.
+        const auto& hog = world_.hogs()[*active];
+        pose = game::arrivalCameraPose(hog.position, game::hogFacing(hog), world_.terrain());
+    }
     camera.position = pose.position;
     camera.yawDegrees = pose.yawDegrees;
     camera.pitchDegrees = pose.pitchDegrees;

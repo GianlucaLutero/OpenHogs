@@ -5,6 +5,11 @@ the `project()` call in `CMakeLists.txt`.
 
 ## Unreleased — refinement
 
+- **Mission openings** as the original: every campaign mission but the
+  Boot Camp starts with the squads coming down by parachute (`WE_PARA`,
+  the parachuting animation) under the mission's title, the camera
+  looking up at the first hog; the first turn begins once all have landed
+  (Enter skips). `--arrival <title>` shows it on any map.
 - **Campaign map** before every mission but the Boot Camp, as the original
   (`Language/Tims/PigMap/`): the territories in their holders' colours,
   the island zooming out of its territory, flags and the arrows on the

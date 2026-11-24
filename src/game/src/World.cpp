@@ -7,6 +7,7 @@
 #include "openhogs/formats/MapTerrain.h"
 #include "openhogs/formats/PackageArchive.h"
 #include "openhogs/game/Combat.h"
+#include "openhogs/game/IdleAnimator.h"  // kStandingAnimation
 
 #include <glm/gtc/constants.hpp>
 
@@ -1691,6 +1692,50 @@ void World::turnBegan(std::vector<GameEvent>& events) {
     }
 }
 
+void World::beginArrival(float dropHeight) {
+    if (!turns_ || phase_ != MatchPhase::Playing) return;
+    for (auto& hog : hogs_) {
+        if (!hog.alive || hog.sheltered()) continue;  // a hog the map puts in a vehicle stays in it
+        hog.position.y += dropHeight;
+        hog.parachute = true;
+        // In the air from the start, as HogMovement's falls begin.
+        hog.motion.state = MotionState::Airborne;
+        hog.motion.velocity = glm::vec3(0.0f);
+        hog.motion.highestPoint = hog.position.y;
+        hog.motion.jumped = false;
+        hog.animation.play(kParachuteAnimation, AnimationPlayer::Repeat::Loop);
+    }
+    phase_ = MatchPhase::Arriving;
+    arrivalHoldLeft_ = kArrivalHoldSeconds;
+}
+
+void World::skipArrival() {
+    if (phase_ != MatchPhase::Arriving) return;
+    for (auto& hog : hogs_) {
+        if (!hog.parachute || !hog.alive) continue;
+        hog.position.y = map_.groundHeight(hog.position.x, hog.position.z, hog.position.y);
+        hog.parachute = false;
+        hog.motion = {};
+        hog.animation.play(kStandingAnimation, AnimationPlayer::Repeat::Loop);
+    }
+    arrivalHoldLeft_ = 0.0f;
+}
+
+void World::updateArrival(double seconds, std::vector<GameEvent>& events) {
+    const bool someoneInTheAir =
+        std::any_of(hogs_.begin(), hogs_.end(), [](const Hog& hog) { return hog.alive && hog.parachute; });
+    if (someoneInTheAir) return;
+    arrivalHoldLeft_ -= static_cast<float>(seconds);
+    if (arrivalHoldLeft_ > 0.0f) return;
+    phase_ = MatchPhase::Playing;
+    // The first turn begins now: its GET READY and its voice.
+    GameEvent started;
+    started.type = GameEventType::TurnStarted;
+    started.team = turns_->activeTeam();
+    started.hog = turns_->activeHog();
+    events.push_back(started);
+}
+
 std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
                                      const std::vector<formats::Animation>& animations) {
     timeSeconds_ += seconds;
@@ -1812,6 +1857,10 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
     recordDeeds(active, events);
 
     if (!turns_ || phase_ == MatchPhase::Over) {
+        return events;
+    }
+    if (phase_ == MatchPhase::Arriving) {
+        updateArrival(seconds, events);
         return events;
     }
     if (phase_ == MatchPhase::Playing) {
