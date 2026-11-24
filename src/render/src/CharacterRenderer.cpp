@@ -13,7 +13,6 @@ namespace openhogs::render {
 namespace {
 
 constexpr glm::vec4 kBackgroundColour{0.45f, 0.62f, 0.85f, 1.0f};
-constexpr glm::vec4 kNoTint{1.0f};
 constexpr glm::vec4 kGridColour{0.35f, 0.45f, 0.3f, 1.0f};
 
 // A square grid of thin quads on the ground (world units), so the hog's
@@ -92,16 +91,22 @@ void CharacterRenderer::draw(const Camera& camera, int width, int height, const 
 }
 
 void CharacterRenderer::drawHog(const Camera& camera, int width, int height, const scene::Mesh& posedMesh,
-                                const CharacterTextureSet& textures, const glm::mat4& modelToWorld) const {
+                                const CharacterTextureSet& textures, const glm::mat4& modelToWorld,
+                                const glm::vec4& tint) const {
     glEnable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
+    const bool blended = tint.a < 1.0f;
+    if (blended) {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    }
 
     const float aspect = height > 0 ? static_cast<float>(width) / static_cast<float>(height) : 1.0f;
     shader_->use();
     shader_->setMatrix("uViewProjection", camera.projectionMatrix(aspect) * camera.viewMatrix());
     shader_->setInt("uTexture", 0);
     shader_->setMatrix("uModel", modelToWorld);
-    shader_->setVector("uTint", kNoTint);
+    shader_->setVector("uTint", tint);
     glActiveTexture(GL_TEXTURE0);
 
     for (const auto& part : posedMesh) {
@@ -109,6 +114,7 @@ void CharacterRenderer::drawHog(const Camera& camera, int width, int height, con
         (texture != nullptr ? *texture : *whiteTexture_).bind();
         GlMesh(part.vertices).draw();
     }
+    if (blended) glDisable(GL_BLEND);
 }
 
 } // namespace openhogs::render

@@ -83,6 +83,7 @@ Application::Application(const core::VirtualFileSystem& vfs, ApplicationOptions 
     background_ = std::make_unique<MenuBackground>(*pictures_);
     originalMenu_ = std::make_unique<OriginalMenuView>(*pictures_, interface_->menuFont(), interface_->bigFont());
     originalMenu_->setCredits(interface_->strings().creditRows);
+    menuModels_ = std::make_unique<MenuModels>(vfs_);
 }
 
 Application::~Application() {
@@ -94,6 +95,7 @@ Application::~Application() {
     gamepads_.reset();
     campaign_.reset();
     frontEnd_.reset();
+    menuModels_.reset();
     originalMenu_.reset();
     background_.reset();
     pictures_.reset();
@@ -334,6 +336,19 @@ void Application::handleEvent(const SDL_Event& event, bool& running) {
     }
 }
 
+void Application::playMachineSounds() {
+    // The front end's machines (ui::MachineSound), with the executable's
+    // FESounds and volumes.
+    for (const auto sound : originalMenu_->takeSounds()) {
+        switch (sound) {
+        case ui::MachineSound::Dial: sounds_->play(SoundBankId::FrontEnd, "Indu006", 0.5f); break;
+        case ui::MachineSound::Cog: sounds_->play(SoundBankId::FrontEnd, "cog", 0.2f); break;
+        case ui::MachineSound::Landed: sounds_->play(SoundBankId::FrontEnd, "click5"); break;
+        case ui::MachineSound::Steam: sounds_->play(SoundBankId::FrontEnd, "SPARKS02", 0.3f); break;
+        }
+    }
+}
+
 bool Application::typeIntoName(SDL_Keycode key) {
     // While a name is written the keyboard types: letters, digits and the
     // font's signs go into it, Backspace takes one out; the arrows, Enter
@@ -383,6 +398,7 @@ void Application::update(double seconds) {
         originalMenu_->show(frontEnd_->menu(), originalScreen(), frontEnd_->menuUnder());
         originalMenu_->update(seconds);
     }
+    playMachineSounds();
     // The menus play the long theme in a loop, as the original's front end.
     sounds_->keepMusic(game::kThemeTrack, 1.0f, true);
 }
@@ -486,6 +502,7 @@ void Application::drawMenus(int width, int height) {
             pages->hogIndex());
         originalMenu_->setSaveSlots(&pages->slots(), interface_->strings().missionNumber);
         originalMenu_->setNameEntry(&pages->nameEntry());
+        if (const auto* campaign = campaign_->campaign()) originalMenu_->setNation(campaign->nation());
         const auto screen = *campaignScreen();
         originalMenu_->draw(ui, campaignMenuShown(), screen,
                             screen == OriginalScreen::HogPage ? &pages->squadMenu() : nullptr);
@@ -505,6 +522,21 @@ void Application::drawMenus(int width, int height) {
         interface_->drawMenu(frontEnd_->menu(), kMapListRows);
     }
     ui.end();
+
+    // The 3D models stand over the pictures: CAREER PATH's hog on its
+    // pedestal, the debriefing's medals.
+    MenuModels::Screen screen;
+    screen.originX = (ui.canvasWidth() - ui::kOriginalScreenWidth) / 2.0f;
+    screen.windowWidth = width;
+    screen.windowHeight = height;
+    if (inCampaign_ && !briefing && campaignScreen()) {
+        if (const auto hog = originalMenu_->pedestalHog()) {
+            menuModels_->drawHog(screen, hog->classId, hog->nation, hog->feet, hog->height, hog->yawRadians, hog->seconds);
+        }
+    } else if (inCampaign_) {
+        campaign_->drawModels(*menuModels_, screen);
+    }
+    glViewport(0, 0, width, height);
 }
 
 void Application::draw(int width, int height) {

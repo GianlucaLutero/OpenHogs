@@ -11,6 +11,7 @@
 #   Interface      - fonts, icons, texts and shared drawing of the 2D interface
 #   MatchAudio     - voices, music and background sounds of a match
 #   MenuBackground - the original's picture behind the menus
+#   MenuModels     - the 3D models over the menus (pedestal hog, medals)
 #   OriginalHud    - the original's HUD instruments: angle and power gauges, clock
 #   OriginalMenuView - the short menus as the original's brass list menu
 #   SoundPlayer    - mixer, sound device, sounds by name from the banks
@@ -31,6 +32,7 @@ add_executable(openhogs
     KeyboardControls.cpp
     Interface.cpp
     MatchAudio.cpp
+    MenuModels.cpp
     MenuBackground.cpp
     OriginalHud.cpp
     OriginalMenuView.cpp

@@ -7,6 +7,7 @@
 
 #include "openhogs/ui/OriginalMenu.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <cstdio>
 
@@ -27,6 +28,22 @@ constexpr int kPanelGain = 8, kPanelDamping = 17, kPanelMaxSpeed = 80;
 // Raised for VOLUME CONTROL: 180 units up, with that screen's spring.
 constexpr int kRaisedY = -180;
 constexpr int kRaiseGain = 5, kRaiseDamping = 14, kRaiseMaxSpeed = 20;
+
+// --- Leaving (FUN_00425440, case 1) ----------------------------------------
+constexpr int kPlateLeftFrame = 3;     // the plates turn back to frame 3
+constexpr int kLeaveAcceleration = 15, kLeaveMaxSpeed = 80;
+constexpr int kRackLeftOffset = -50;   // then the racks slide out, 6 pixels a tick
+constexpr int kRackLeaveStep = 3;
+
+// --- Sounds and steam (FUN_00423e70, case 1) -------------------------------
+// The cog rattles every (50 - |speed|) / 10 + 1 ticks while the panel drops
+// faster than 2 (leaving: (60 - |speed|) / 10 + 1, at any speed).
+constexpr int kRattleSlow = 50, kRattleSlowLeaving = 60;
+constexpr int kSteamSpeed = 2;         // the panel drops faster than this: steam
+struct SteamJet {
+    int x, y, dx;
+};
+constexpr std::array<SteamJet, 3> kSteamJets{{{21, 125, 10}, {631, 104, -10}, {631, 158, -10}}};
 
 // --- The lamps -------------------------------------------------------------
 // The selected entry's lamp plays this sequence in a loop (table 0x4C0A78
@@ -90,7 +107,35 @@ int frontEndSpring(int value, int target, int& velocity, int gain, int damping, 
     return value + (target > value ? 1 : -1);
 }
 
+int frontEndAccelerate(int value, int target, int& velocity, int acceleration, int maxSpeed) {
+    // Away from the target (still moving the wrong way) the cap is 5.
+    const int cap = (target - value) * velocity >= 0 ? maxSpeed : 5;
+    velocity += target > value ? acceleration : -acceleration;
+    if (std::abs(velocity) > cap) velocity = velocity < 1 ? -cap : cap;
+    int next = value + velocity * 2;
+    if ((value < target && next > target) || (value >= target && next < target)) next = target;
+    if (next == target) velocity = 0;
+    return next;
+}
+
+void OriginalMenu::leave() {
+    leaving_ = true;
+    panelVelocity_ = 0;
+}
+
+bool OriginalMenu::left() const { return leaving_ && rackOffset_ == kRackLeftOffset; }
+
+std::vector<MachineSound> OriginalMenu::takeSounds() {
+    std::vector<MachineSound> sounds;
+    sounds.swap(sounds_);
+    return sounds;
+}
+
 void OriginalMenu::open(std::size_t selected) {
+    leaving_ = false;
+    landed_ = false;
+    rattleTicks_ = 0;
+    steam_.clear();
     raised_ = false;
     panelY_ = kPanelStartY;
     panelVelocity_ = 0;
@@ -143,6 +188,23 @@ void OriginalMenu::tickLamp(Lamp& lamp) const {
 }
 
 void OriginalMenu::tick() {
+    steam_.tick();
+    if (steam_.takeHiss()) sounds_.push_back(MachineSound::Steam);
+    if (leaving_) {
+        // The plates turn away, the panel goes back up out of the screen,
+        // then the racks slide out.
+        if (plateFrame_ > kPlateLeftFrame) --plateFrame_;
+        if (panelY_ != kPanelStartY + 1) {
+            panelY_ = frontEndAccelerate(panelY_, kPanelStartY + 1, panelVelocity_, kLeaveAcceleration, kLeaveMaxSpeed);
+            if (++rattleTicks_ > std::max(0, (kRattleSlowLeaving - std::abs(panelVelocity_)) / 10)) {
+                rattleTicks_ = 0;
+                sounds_.push_back(MachineSound::Cog);
+            }
+        } else if (rackOffset_ > kRackLeftOffset) {
+            rackOffset_ = std::max(kRackLeftOffset, rackOffset_ - 2 * kRackLeaveStep);
+        }
+        return;
+    }
     // First the racks slide in, then the panel drops; the plates flip once
     // the panel is nearly in place.
     if (rackOffset_ != 0) {
@@ -152,12 +214,27 @@ void OriginalMenu::tick() {
             panelY_ = frontEndSpring(panelY_, kRaisedY, panelVelocity_, kRaiseGain, kRaiseDamping, kRaiseMaxSpeed);
         } else {
             panelY_ = frontEndSpring(panelY_, 0, panelVelocity_, kPanelGain, kPanelDamping, kPanelMaxSpeed);
+            // Falling fast, it rattles and blows steam from the pipes.
+            if (panelVelocity_ > kSteamSpeed) {
+                if (++rattleTicks_ > std::max(0, (kRattleSlow - std::abs(panelVelocity_)) / 10)) {
+                    rattleTicks_ = 0;
+                    sounds_.push_back(MachineSound::Cog);
+                }
+                for (const auto& jet : kSteamJets) steam_.blow(jet.x, jet.y, jet.dx, 0);
+            }
+            if (!landed_ && panelY_ == 0) {
+                landed_ = true;
+                sounds_.push_back(MachineSound::Landed);
+            }
         }
         // (A raised panel is in place too: it flips where it is.)
         if (plateFrame_ < kPlateRestFrame && (raised_ || panelY_ > kPlateFlipStartY)) ++plateFrame_;
     }
-    if (dialFrame_ < dialTarget_) ++dialFrame_;
-    if (dialFrame_ > dialTarget_) --dialFrame_;
+    if (dialFrame_ != dialTarget_) {
+        dialFrame_ += dialFrame_ < dialTarget_ ? 1 : -1;
+        // The dial clicks into place (FUN_0041f110, type 1, element 4).
+        if (dialFrame_ == dialTarget_) sounds_.push_back(MachineSound::Dial);
+    }
     for (Lamp& lamp : lamps_) tickLamp(lamp);
 }
 

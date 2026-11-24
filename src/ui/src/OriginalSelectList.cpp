@@ -9,6 +9,8 @@
 
 #include "openhogs/ui/OriginalDialog.h"
 
+#include <algorithm>
+#include <array>
 #include <cstdio>
 #include <cstdlib>
 #include <string>
@@ -58,12 +60,29 @@ std::string numbered(const char* format, int number) {
     return name;
 }
 
+// While the monitor rises faster than 2 (FUN_00423e70, case 2) its pipe
+// blows steam at these places, and the cog rattles every 8 - |speed| ticks.
+struct SteamJet {
+    int x, y, dx;
+};
+constexpr std::array<SteamJet, 2> kSteamJets{{{600, 110, -5}, {600, 189, -5}}};
+constexpr int kSteamSpeed = -2;
+constexpr int kRattleSlow = 8;
+
 // The executable's conversion of 820-high units to screen pixels.
 int toPixelsY(int units) { return units * 480 / 820; }
 
 } // namespace
 
+std::vector<MachineSound> OriginalSelectList::takeSounds() {
+    std::vector<MachineSound> sounds;
+    sounds.swap(sounds_);
+    return sounds;
+}
+
 void OriginalSelectList::open(std::size_t selected) {
+    steam_.clear();
+    rattleTicks_ = 0;
     listY_ = kListStartY;
     listVelocity_ = 0;
     plateY_ = kPlateStartY;
@@ -84,6 +103,15 @@ void OriginalSelectList::tick() {
     plateY_ = frontEndSpring(plateY_, 0, plateVelocity_, kPlateGain, kPlateDamping, kPlateMaxSpeed);
     boxX_ = frontEndSpring(boxX_, 0, boxVelocity_, kBoxGain, kBoxDamping, kBoxMaxSpeed);
     listY_ = frontEndSpring(listY_, 0, listVelocity_, kListGain, kListDamping, kListMaxSpeed);
+    steam_.tick();
+    if (steam_.takeHiss()) sounds_.push_back(MachineSound::Steam);
+    if (listVelocity_ != 0 && ++rattleTicks_ > std::max(1, kRattleSlow - std::abs(listVelocity_))) {
+        rattleTicks_ = 0;
+        sounds_.push_back(MachineSound::Cog);
+    }
+    if (listVelocity_ < kSteamSpeed) {
+        for (const auto& jet : kSteamJets) steam_.blow(jet.x, jet.y, jet.dx, 0);
+    }
     if (selector_ < selectorTarget_) ++selector_;
     if (selector_ > selectorTarget_) --selector_;
 }

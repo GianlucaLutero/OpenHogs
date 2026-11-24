@@ -109,6 +109,10 @@ public:
     // Moves the animation on by `seconds`.
     void update(double seconds);
 
+    // The machines' own sounds since the last call (the dial, the cog, the
+    // panel arriving, the steam).
+    std::vector<ui::MachineSound> takeSounds();
+
     // Draws `menu` (which must suit `screen`) centred on the canvas,
     // between ui.begin() and ui.end().
     void draw(render::UiRenderer& ui, const ui::Menu& menu, OriginalScreen screen = OriginalScreen::List,
@@ -122,6 +126,8 @@ private:
     void drawPiece(render::UiRenderer& ui, const ui::MenuPiece& piece, float originX);
     void drawPieces(render::UiRenderer& ui, const std::vector<ui::MenuPiece>& pieces, float originX);
     void drawList(render::UiRenderer& ui, const ui::Menu& menu, float originX);
+    void drawSteam(render::UiRenderer& ui, const ui::SteamPuffs& steam, float originX);
+    bool startLeaving(OriginalScreen screen);
     void drawQuestion(render::UiRenderer& ui, const ui::Menu& menu, float originX);
     void drawVolume(render::UiRenderer& ui, const ui::Menu& menu, float originX);
     void drawVolumePanel(render::UiRenderer& ui, float originX);
@@ -135,6 +141,7 @@ private:
     void drawHogPage(render::UiRenderer& ui, const ui::Menu& menu, float originX);
     void drawResults(render::UiRenderer& ui, const ui::Menu& menu, float originX);
     void drawPromotion(render::UiRenderer& ui, const ui::Menu& menu, float originX);
+    void drawCareerPedestal(render::UiRenderer& ui, const ui::Menu& menu, float originX);
     void drawSaveBoard(render::UiRenderer& ui, const ui::Menu& menu, float originX);
     void drawNameEntry(render::UiRenderer& ui, const ui::Menu& menu, float originX);
 
@@ -154,6 +161,20 @@ public:
         missionWord_ = std::move(missionWord);
     }
     void setNameEntry(const ui::NameEntry* entry) { nameEntry_ = entry; }
+    // The campaign's nation, for the hog on CAREER PATH's pedestal.
+    void setNation(int nation) { nation_ = nation; }
+
+    // CAREER PATH's hog on the pedestal: what to draw in 3D over the menu
+    // (MenuModels::drawHog), if the screen shows it now.
+    struct PedestalHog {
+        std::string classId;
+        int nation = 0;
+        glm::vec2 feet{0.0f};  // pixels of the 640 x 480 screen
+        float height = 0.0f;
+        float yawRadians = 0.0f;
+        double seconds = 0.0;
+    };
+    std::optional<PedestalHog> pedestalHog() const { return pedestal_; }
 
 private:
 
@@ -176,10 +197,14 @@ private:
     const std::vector<ui::SaveSlot>* saveSlots_ = nullptr;
     std::string missionWord_;
     const ui::NameEntry* nameEntry_ = nullptr;
+    int nation_ = 0;
+    std::optional<PedestalHog> pedestal_;
+    double pedestalSeconds_ = 0.0;
     std::vector<std::string> squadLines_;
     std::size_t squadHog_ = 0;
     std::vector<std::pair<std::string, std::string>> creditRows_;
     const ui::Menu* shown_ = nullptr;  // the menu drawn last time
+    std::optional<ui::Menu> leavingMenu_;  // the list menu leaving, drawn until it has gone
     OriginalScreen screen_ = OriginalScreen::List;  // ...and how
     std::size_t selected_ = 0;
     bool volumeLeaving_ = false;  // the volume panel drops away under a list

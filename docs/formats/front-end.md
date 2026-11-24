@@ -395,5 +395,53 @@ cursor goes to the first hog and the sergeant says section 21 variant 1
 (SGEN2201). Variant 7 (SGEN2207) goes with an unlocking of Team Lard
 (`FUN_00426ce0`, the team's byte +0x15 = 1), not traced further.
 
-Still to read: the keys `pckey*`, the steam puffs (`FUN_00419fa0`) and the
-leaving animations.
+## Leaving, steam and the machines' sounds
+
+**Leaving.** `FUN_00425440(type, next type)` runs a screen's leaving
+animation and returns true when it is over. The list menu (type 1): to
+another list menu only the plates turn (element 7 to frame 3); to
+anything else the plates turn, the panel speeds back up to its start + 1
+(`FUN_0041fe20`: velocity ± 15 a tick towards the target, capped at 80 —
+5 while still moving away —, the value moving twice the velocity and
+stopping dead on the target), then the racks slide out to −50, 6 pixels a
+tick (`FUN_0041fd00`). The cog rattles every (60 − |velocity|) / 10 + 1
+ticks meanwhile.
+
+**Steam.** While the list menu's panel drops faster than 2 a tick
+(`FUN_00423e70`, case 1), each tick sets off three jets
+(`FUN_00419fa0`, 0x24 bytes, 32 puffs of 12 bytes): at (21, 125) blowing
+right at 10 pixels a tick, at (631, 104) and (631, 158) blowing left. The
+longer list (case 2) blows at (600, 110) and (600, 189), speed −5, while
+its monitor rises faster than 2. A jet blows four puffs a tick for eight
+ticks, each from up to 4 pixels off its place with up to 4 pixels a tick
+more speed (`FUN_0041a0b0`); a puff moves by its speed, wobbles by
+(random & 3) − 2 pixels, sinks one pixel a tick faster each tick and dies
+after age 7 (`FUN_00419ac0`, `FUN_0041a140`). It is drawn by the renderer
+with texture 0x51, (2048 − 128 × age) × 2 / 1024 units across, coloured
+(127 − 5.875 age, 120 − 13.75 age, 50 − 6.25 age) out of 128
+(`FUN_00419b20`, `FUN_0041a1d0`, `FUN_0041a280`). The first jet starts
+sound 24 (SPARKS02) at 30 (`FUN_004194e0`).
+
+**Sounds** (`FUN_00420060(id, volume)`, ids in `FESounds/Fesounds.srl`
+order): the list menu's dial arriving at its target plays 0 (Indu006) at
+50 (`FUN_0041f110`, type 1, element 4); the panel rattles 5 (cog) at 20
+every (50 − |velocity|) / 10 + 1 ticks while dropping faster than 2, and
+plays 1 (click5) at 100 when it lands; the longer list's monitor rattles
+5 at 20 every 8 − |velocity| ticks.
+
+## Type 13: the hog on the pedestal
+
+CAREER PATH draws `standpc` and, over it, the chosen hog's 3D model (the
+type's foreground, `FUN_0041e780` case 13 at 0x41EEA4, also draws the
+careers' icons at (260 + 30*i*, 408) and a picture of slot 45 at
+(bar x + 180, 2 × (bar y + 45)) with its top 40 rows repeated four times
+above it, 38 pixels apart). Its texts are the title in box (335, 580, 300)
+and only the chosen entry in box 61 (335, 638, 300, 30).
+
+The debriefing's medals use the same camera as the front end's models:
+the executable's scene projects with a focal length of 480 pixels at
+640 × 480, so the medals at depth 7000 land under their labels (x 1950 →
+453, y 700 → 192, −500 → 274, −1700 → 357).
+
+Still to read: the keys `pckey*`, the other screens' leaving animations
+(`FUN_00425440` for types 2, 5, 6, 12...).

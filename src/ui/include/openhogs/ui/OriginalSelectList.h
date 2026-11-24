@@ -58,6 +58,11 @@ public:
     int selector() const { return selector_; }
     bool settled() const;
 
+    // The sounds of the ticks since the last call (the cog while the
+    // monitor rises, the steam), and the steam it blows out of its pipe.
+    std::vector<MachineSound> takeSounds();
+    const SteamPuffs& steam() const { return steam_; }
+
 private:
     float listOffsetY() const;   // the monitor's distance from its place, pixels
     float plateOffsetY() const;
@@ -72,6 +77,9 @@ private:
     int selector_ = 0;  // element 0: five steps per entry
     int selectorTarget_ = 0;
     double pending_ = 0.0;
+    int rattleTicks_ = 0;
+    SteamPuffs steam_;
+    std::vector<MachineSound> sounds_;
 };
 
 } // namespace openhogs::ui

@@ -119,6 +119,7 @@ void OriginalMenuView::update(double seconds) {
     }
     if (screen_ == OriginalScreen::Promotion || screen_ == OriginalScreen::NameEntry) {
         career_.advance(seconds);
+        pedestalSeconds_ += seconds;
         return;
     }
     if (screen_ == OriginalScreen::SaveBoard) {
@@ -138,7 +139,40 @@ void OriginalMenuView::update(double seconds) {
     }
 }
 
+std::vector<ui::MachineSound> OriginalMenuView::takeSounds() {
+    auto sounds = animation_.takeSounds();
+    const auto more = selectList_.takeSounds();
+    sounds.insert(sounds.end(), more.begin(), more.end());
+    return sounds;
+}
+
+void OriginalMenuView::drawSteam(render::UiRenderer& ui, const ui::SteamPuffs& steam, float originX) {
+    // The puffs: small soft squares, half see-through.
+    constexpr float kPuffOpacity = 0.5f;
+    for (const auto& puff : steam.puffs()) {
+        ui.drawRect(originX + puff.x - puff.size / 2.0f, puff.y - puff.size / 2.0f, puff.size, puff.size,
+                    {puff.red, puff.green, puff.blue, kPuffOpacity});
+    }
+}
+
+bool OriginalMenuView::startLeaving(OriginalScreen screen) {
+    // The list menu leaves before another kind of screen comes (the
+    // executable's FUN_00425440): its panel goes back up. Another list
+    // menu only flips the plates; VOLUME CONTROL raises it instead.
+    if (leavingMenu_) return true;
+    if (!shown_ || screen_ != OriginalScreen::List || volumeLeaving_) return false;
+    if (screen == OriginalScreen::List || screen == OriginalScreen::Volume) return false;
+    leavingMenu_ = *shown_;
+    animation_.leave();
+    return true;
+}
+
 void OriginalMenuView::show(const ui::Menu& menu, OriginalScreen screen, const ui::Menu* under) {
+    if (startLeaving(screen)) {
+        if (!animation_.left()) return;  // the old list is still going
+        leavingMenu_.reset();
+        shown_ = nullptr;  // the new screen opens from the start
+    }
     const std::size_t selected = menu.selectedIndex();
     const bool changed = shown_ != &menu || screen_ != screen;
     switch (screen) {
@@ -287,9 +321,14 @@ void OriginalMenuView::drawPieces(render::UiRenderer& ui, const std::vector<ui::
 void OriginalMenuView::draw(render::UiRenderer& ui, const ui::Menu& menu, OriginalScreen screen,
                             const ui::Menu* under) {
     show(menu, screen, under);
+    pedestal_.reset();
     // The original screen is 640 pixels wide; wider canvases get the same
     // layout in the middle (the canvas is 480 units high, like the screen).
     const float originX = (ui.canvasWidth() - ui::kOriginalScreenWidth) / 2.0f;
+    if (leavingMenu_) {
+        drawList(ui, *leavingMenu_, originX);
+        return;
+    }
     switch (screen) {
     case OriginalScreen::Question: drawQuestion(ui, menu, originX); break;
     case OriginalScreen::SelectList: drawSelectList(ui, menu, originX); break;
@@ -326,6 +365,7 @@ void OriginalMenuView::draw(render::UiRenderer& ui, const ui::Menu& menu, Origin
 
 void OriginalMenuView::drawSelectList(render::UiRenderer& ui, const ui::Menu& menu, float originX) {
     drawPieces(ui, selectList_.pieces(), originX);
+    drawSteam(ui, selectList_.steam(), originX);
     render::TextStyle style;
     style.scale = kTextScale;
     style.align = render::TextAlign::Centre;
@@ -451,6 +491,10 @@ void OriginalMenuView::drawPromotion(render::UiRenderer& ui, const ui::Menu& men
     style.colour = kTitleColour;
     const auto title = career_.titleLine();
     ui.drawText(font_, menu.title(), originX + title.centreX, title.top, style);
+    if (careers) {
+        drawCareerPedestal(ui, menu, originX);
+        return;
+    }
     if (!career_.showsText()) return;
     std::size_t line = 0;
     style.colour = kLevelColour;
@@ -472,6 +516,20 @@ void OriginalMenuView::drawPromotion(render::UiRenderer& ui, const ui::Menu& men
 
 namespace {
 
+// CAREER PATH (type 13): the executable stands the hog's 3D model on the
+// pedestal `standpc` in the monitor and writes only the chosen career, in
+// text box 61 (x 335, y 638, 300 wide of 1024 x 820), the hog's lines in
+// the title's box (y 580). Where the pedestal goes is not read from the
+// executable: across the monitor's lower half (decision 168).
+constexpr float kPedestalBelowMonitorTop = 85.0f;  // standpc's top, from the monitor's first line
+constexpr float kPedestalFeetDepth = 28.0f;        // the platform's surface, from standpc's top
+constexpr float kPedestalHogHeight = 110.0f;
+constexpr double kPedestalTurnSeconds = 6.0;       // a whole turn
+constexpr float kMonitorRestTop = 150.0f;  // the monitor's first line, board at rest
+constexpr float kCareerChoiceTop = 638.0f * 480.0f / 820.0f;
+constexpr float kCareerLinesTop = 580.0f * 480.0f / 820.0f - 17.0f;  // two lines above the choice
+constexpr float kCareerLineStep = 17.0f;
+
 // The loading and saving board's title, on the plate at the board's top
 // (the executable has no text box for it: OpenHogs' choice).
 constexpr float kSaveTitleCentreX = 238.0f, kSaveTitleTop = 54.0f;
@@ -487,6 +545,41 @@ constexpr float kKeysX = 402.0f;
 constexpr std::array<const char*, 3> kKeyPictures{"chardel", "charspc", "charent"};
 
 } // namespace
+
+void OriginalMenuView::drawCareerPedestal(render::UiRenderer& ui, const ui::Menu& menu, float originX) {
+    const auto monitor = career_.monitorLine(0);
+    const render::UiImage* pedestal = pictures_.picture("standpc");
+    const float top = monitor.top + kPedestalBelowMonitorTop;
+    if (pedestal) ui.drawImage(*pedestal, originX + monitor.centreX - pedestal->width() / 2.0f, top, pedestal->width(),
+                               pedestal->height());
+    // The hog in the body of the career being chosen (its own for BACK).
+    const auto& chosen = menu.selectedItem();
+    const auto rank = chosen.id >= 0 ? static_cast<game::RankId>(chosen.id) : game::RankId::Grunt;
+    PedestalHog hog;
+    hog.classId = std::string(game::rankSpec(rank).classId);
+    hog.nation = nation_;
+    hog.feet = {monitor.centreX, top + kPedestalFeetDepth};
+    hog.height = kPedestalHogHeight;
+    hog.seconds = pedestalSeconds_;
+    hog.yawRadians = static_cast<float>(std::fmod(pedestalSeconds_ / kPedestalTurnSeconds, 1.0) * 6.283185307179586);
+    if (career_.showsText()) pedestal_ = hog;
+    if (!career_.showsText()) return;
+
+    render::TextStyle style;
+    style.scale = kTextScale;
+    style.align = render::TextAlign::Centre;
+    style.shadow = false;
+    const float drop = monitor.top - kMonitorRestTop;  // the texts move with the board
+    style.colour = kLevelColour;
+    for (std::size_t i = 0; i < squadLines_.size() && i < 2; ++i) {
+        ui.drawText(font_, squadLines_[i], originX + monitor.centreX,
+                    kCareerLinesTop + kCareerLineStep * static_cast<float>(i) + drop, style);
+    }
+    style.colour = chosen.enabled ? kSelectedColour : glm::vec4(glm::vec3(kSelectedColour) * kDisabledDimming, 1.0f);
+    std::string text = chosen.label;
+    if (!chosen.detail.empty()) text += "  " + chosen.detail;
+    ui.drawText(font_, text, originX + monitor.centreX, kCareerChoiceTop + drop, style);
+}
 
 void OriginalMenuView::drawSaveBoard(render::UiRenderer& ui, const ui::Menu& menu, float originX) {
     const std::size_t selected = menu.items().empty() ? 0 : menu.selectedIndex();
@@ -731,6 +824,7 @@ void OriginalMenuView::drawQuestion(render::UiRenderer& ui, const ui::Menu& menu
 
 void OriginalMenuView::drawList(render::UiRenderer& ui, const ui::Menu& menu, float originX) {
     drawPieces(ui, animation_.pieces(), originX);
+    drawSteam(ui, animation_.steam(), originX);
     if (!animation_.showsText()) return;
     render::TextStyle style;
     style.scale = kTextScale;

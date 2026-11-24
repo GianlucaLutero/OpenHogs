@@ -601,3 +601,76 @@ TEST_CASE("CAREER PATH shows the four careers' icons, the chosen one blinking", 
     CHECK(shown == 4);
     CHECK(hidden == 3);
 }
+
+TEST_CASE("A leaving list menu goes back up and out before the next screen", "[ui][originalmenu]") {
+    // FUN_00425440: the plates turn away, the panel speeds back up past the
+    // top of the screen, then the racks slide out; only then is it gone.
+    // A next screen that came while it was still visible would overlap it.
+    OriginalMenu menu;
+    menu.open(0);
+    for (int i = 0; i < 300; ++i) menu.tick();
+    REQUIRE(menu.settled());
+    menu.leave();
+    CHECK_FALSE(menu.left());
+    menu.tick();
+    CHECK_FALSE(menu.showsText());  // the plates turn away at once
+    int ticks = 0;
+    while (!menu.left() && ticks < 300) {
+        menu.tick();
+        ++ticks;
+    }
+    CHECK(menu.left());
+    CHECK(menu.panelY() == -649);
+    CHECK(menu.rackOffset() == -50);
+    CHECK(ticks < 60);  // well under three seconds
+}
+
+TEST_CASE("The front end's acceleration stops dead on its target", "[ui][originalmenu]") {
+    // FUN_0041fe20 never overshoots: a leaving panel must end exactly where
+    // the opening one starts.
+    int velocity = 0;
+    int value = 0;
+    for (int i = 0; i < 100 && value != -649; ++i) value = frontEndAccelerate(value, -649, velocity, 15, 80);
+    CHECK(value == -649);
+    CHECK(velocity == 0);
+}
+
+TEST_CASE("The dropping panel rattles, blows steam and clicks into place", "[ui][originalmenu]") {
+    // FUN_00423e70, case 1: while the panel falls fast the cog rattles and
+    // the pipes blow steam (one hiss for the burst); the dial clicks when
+    // it reaches the chosen entry, and the panel when it lands.
+    OriginalMenu menu;
+    menu.open(2);
+    std::vector<MachineSound> sounds;
+    bool steamed = false;
+    for (int i = 0; i < 300; ++i) {
+        menu.tick();
+        if (!menu.steam().empty()) steamed = true;
+        const auto more = menu.takeSounds();
+        sounds.insert(sounds.end(), more.begin(), more.end());
+    }
+    const auto count = [&](MachineSound sound) { return std::count(sounds.begin(), sounds.end(), sound); };
+    CHECK(steamed);
+    CHECK(count(MachineSound::Steam) >= 1);
+    CHECK(count(MachineSound::Cog) >= 2);
+    CHECK(count(MachineSound::Landed) == 1);
+    CHECK(count(MachineSound::Dial) == 1);
+    CHECK(menu.steam().empty());  // the puffs have faded
+}
+
+TEST_CASE("Steam puffs drift, shrink, darken and fade within eight ticks", "[ui][originalmenu]") {
+    // FUN_0041a0b0 / FUN_0041a140: a jet blows for eight ticks, a puff lives
+    // eight; leftover puffs would hang over the menu.
+    SteamPuffs steam;
+    steam.blow(100, 100, 10, 0);
+    steam.tick();
+    REQUIRE(steam.puffs().size() == 4);
+    const auto young = steam.puffs().front();
+    for (int i = 0; i < 4; ++i) steam.tick();
+    const auto older = steam.puffs().front();
+    CHECK(older.x > young.x);  // blown to the right
+    CHECK(older.size < young.size);
+    CHECK(older.green < young.green);
+    for (int i = 0; i < 20; ++i) steam.tick();
+    CHECK(steam.empty());
+}
