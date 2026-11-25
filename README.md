@@ -91,7 +91,8 @@ animations.
 | video analysis: `video-campaign` | ✅ done | Part 1 (done): the campaign map before every mission, as the original: the territories in the colours of the nations holding them, the island growing out of its territory, flags on its missions and arrows on the next; each mission is fought against the nation holding its territory, shared out at random when a campaign starts (Team Lard holds the last), and won territories turn to the player's colour. Part 2 (done): every campaign mission but the Boot Camp opens as the original, the squads coming down by parachute under the mission's title, the camera looking up at the first hog, the first turn once all have landed (Enter skips it). Part 3 (done): every mission compared with the footage (enemies, crates and objectives agree with the maps' data); each level now has the PC original's look: its sky dome, its fog and its textures recoloured as the level's record says (sunsets redder, the night map blue) |
 | video analysis: `video-ui` | ✅ done | Part 1 (done): the labels over the hogs as the PC executable draws them and the footage shows: every hog on the screen, name and rank in turn, heart and health, in its nation's colour and the original's narrow letters, fading in while the camera stands still, moved beside its hog with an arrow when labels would overlap; match messages in the original's tall letters. Part 2 (done): the pause menu on the original's framed panel with the volume bars and the speech switch, the instruments sliding along the executable's curve, the loading bar under the briefing |
 | video analysis: `video-physics` | ✅ done | What the footage and the executable say about movement (docs/video/physics.md): the executable moves hogs by the control's amount and only steps the animations from it; hurt hogs run with the wounded cycles (25 health or less, 10 or less); jump recovery and the rigid-body landing noted; running, turning and jumping could not be measured frame by frame from the footage |
-| video analysis: `video-weapons` | 🔍 in review | What the footage, the manual and the executable say about weapons (docs/video/weapons.md): airstrikes and special ops choose their spot with a crosshair on a view high over the map, the airship (AIRSHIP1) comes in along a way the player turns and drops its bombs along its course; hogs inside buildings and vehicles are labelled with the object's name and health; a hurt hog's label runs its health down |
+| video analysis: `video-weapons` | ✅ done | What the footage, the manual and the executable say about weapons (docs/video/weapons.md): airstrikes and special ops choose their spot with a crosshair on a view high over the map, the airship (AIRSHIP1) comes in along a way the player turns and drops its bombs along its course; hogs inside buildings and vehicles are labelled with the object's name and health; a hurt hog's label runs its health down |
+| `pal-dubbing` | 🔍 in review | The PlayStation's XA speech decoded (`formats::XaAudio`) and mapped line by line onto the PC's speech files; `openhogs-langpack` puts the dubbed voices of a localised PAL disc (SLES-02766 to 02769) in the language pack. Found and checked on the European disc; not yet tried on a localised one |
 
 ## Requirements
 
@@ -419,6 +420,14 @@ headlines from **your own** disc image and
 builds a content pack in the PC layout. The disc and the PC installation
 are only read.
 
+The localised PAL releases (SLES-02766 French, 02767 German, 02768
+Spanish, 02769 Italian) are **dubbed**: from such a disc the builder also takes every spoken line and
+writes it under the PC's own file name, so the hogs, the sergeant and the
+Boot Camp's instructor speak the dub. Speech needs the raw `.bin` image (an
+`.iso` cannot hold the PlayStation's XA audio). `--speech yes` takes the
+voices from any disc (the European one has the PC's English voices),
+`--speech no` none.
+
 1. **Make an image of your disc** with any CD dumping tool. Only the first
    track (the data track, the largest `.bin` file) is needed; a plain
    `.iso` works too. Keep it outside the repository or in a folder named
@@ -439,9 +448,12 @@ are only read.
    ```
    Game text: 258 of 272 strings from the disc, 14 from the overrides, 0 left in English
    Menu text: 751 of 786 strings from the disc, 13 from the overrides, 22 left in English
+   Speech lines: 0
    Briefings: 31
    Title screens, newspapers and headlines: 35
    ```
+
+   (from a dubbed disc, up to `Speech lines: 1823`)
 
    Strings the PlayStation version does not have (e.g. tutorial hints that
    name PC keys instead of pad buttons) come from
@@ -745,6 +757,7 @@ OpenHogs builds on the work of others. Thank you!
 | [Hogs of War (Wikipedia)](https://en.wikipedia.org/wiki/Hogs_of_War) | Wikipedia contributors | CC BY-SA 4.0 (consulted, not copied) | The islands and the medals for conquering a region. |
 | [Ghidra](https://github.com/NationalSecurityAgency/ghidra) | National Security Agency and contributors | Apache-2.0 | Used as a tool to study the original executable (`tools/ghidra`); nothing it produces is part of OpenHogs. |
 | [FFmpeg](https://ffmpeg.org) Bink decoders (`libavcodec/bink.c`, `binkdsp.c`, `binkaudio.c`, `binkdata.h`, `libavformat/bink.c`) | Konstantin Shishkov, Peter Ross, Daniel Verkamp and the FFmpeg developers | LGPL-2.1-or-later | The specification of the Bink video and audio formats: OpenHogs' decoder in `src/video` is written from them, and the codec's constant tables (`src/video/src/BinkTables.cpp`) are copied with their notice. |
+| [Nocash PSX Specifications](https://problemkaputt.de/psx-spx.htm) | Martin Korth | freely available documentation (consulted, not copied) | Reference for the CD-ROM XA ADPCM audio of the PlayStation's speech files (`src/formats/src/XaAudio.cpp`, `docs/formats/psx-speech.md`). |
 | [Catch2](https://github.com/catchorg/Catch2) | Catch2 authors (Martin Hořeňovský, Phil Nash and contributors) | BSL-1.0 | Unit test framework (downloaded at build time). |
 
 *Hogs of War* was developed by Infogrames Sheffield House (formerly Gremlin

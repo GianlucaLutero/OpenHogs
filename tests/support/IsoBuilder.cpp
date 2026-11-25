@@ -64,7 +64,14 @@ std::vector<std::byte> toBytes(const std::string& text) {
     return bytes;
 }
 
-void writeIsoImage(const std::filesystem::path& path, const DiscFiles& files, bool rawSectors) {
+void writeIsoImage(const std::filesystem::path& path, const DiscFiles& plainFiles, bool rawSectors,
+                   const DiscFiles& xaFiles) {
+    constexpr std::size_t kRawSize = 2352;
+    // XA files stand in the tree with 2048 bytes for each of their sectors.
+    DiscFiles files = plainFiles;
+    for (const auto& [filePath, content] : xaFiles) {
+        files[filePath] = std::vector<std::byte>(content.size() / kRawSize * kSectorSize);
+    }
     // Every directory, including the parents of nested ones ("" = root).
     std::set<std::string> directories{""};
     for (const auto& [filePath, content] : files) {
@@ -122,9 +129,20 @@ void writeIsoImage(const std::filesystem::path& path, const DiscFiles& files, bo
         }
     }
 
+    // The XA files' own sectors, by sector number.
+    std::map<std::uint32_t, const std::byte*> rawSectorsAt;
+    for (const auto& [filePath, content] : xaFiles) {
+        for (std::size_t i = 0; i < content.size() / kRawSize; ++i) {
+            rawSectorsAt[fileSector[filePath] + static_cast<std::uint32_t>(i)] = content.data() + i * kRawSize;
+        }
+    }
+
     std::ofstream file(path, std::ios::binary);
-    for (const Sector& data : sectors) {
-        if (rawSectors) {
+    for (std::uint32_t index = 0; index < sectors.size(); ++index) {
+        const Sector& data = sectors[index];
+        if (const auto raw = rawSectorsAt.find(index); rawSectors && raw != rawSectorsAt.end()) {
+            file.write(reinterpret_cast<const char*>(raw->second), static_cast<std::streamsize>(kRawSize));
+        } else if (rawSectors) {
             // Sync pattern, address, mode 2, 8-byte subheader, data, error correction.
             Sector sector(2352, 0);
             for (std::size_t i = 1; i <= 10; ++i) sector[i] = 0xFF;

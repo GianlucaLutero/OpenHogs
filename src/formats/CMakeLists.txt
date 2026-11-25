@@ -17,6 +17,7 @@
 #   MglPicture      - .mgl pictures: the game's LZ compression (menu pictures, PS1 screens)
 #   BitmapImage     - .BMP pictures (fonts, menu icons)
 #   BitmapFont      - FEText .tab + .BMP fonts
+#   XaAudio         - CD-ROM XA ADPCM audio (the PlayStation's speech)
 #
 # Format documentation lives in docs/formats/.
 
@@ -37,7 +38,8 @@ add_library(openhogs_formats STATIC
     src/TextTable.cpp
     src/TextureTable.cpp
     src/TimImage.cpp
-    src/WaveFile.cpp)
+    src/WaveFile.cpp
+    src/XaAudio.cpp)
 
 add_library(OpenHogs::formats ALIAS openhogs_formats)
 

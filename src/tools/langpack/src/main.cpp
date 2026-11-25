@@ -31,7 +31,9 @@ void printUsage() {
                  "  --language <code>   it (default), fr, de or es\n"
                  "  --out <folder>      pack folder (default: content/packs/lang-<code>)\n"
                  "  --overrides <file>  hand-written translations\n"
-                 "                      (default: content/translations/<code>.ini, if present)\n\n"
+                 "                      (default: content/translations/<code>.ini, if present)\n"
+                 "  --speech <mode>     auto (default: the dubbed voices of a localised disc,\n"
+                 "                      SLES-02766 to 02769), yes (from any disc) or no\n\n"
                  "The pack contains data from your own disc: do not share it.\n";
 }
 
@@ -55,6 +57,16 @@ std::optional<LanguagePackOptions> parseArguments(const std::vector<std::string>
             out = value;
         } else if (arg == "--overrides") {
             options.overridesFile = value;
+        } else if (arg == "--speech") {
+            if (value == "auto") {
+                options.speech = LanguagePackOptions::Speech::Auto;
+            } else if (value == "yes") {
+                options.speech = LanguagePackOptions::Speech::Always;
+            } else if (value == "no") {
+                options.speech = LanguagePackOptions::Speech::Never;
+            } else {
+                return std::nullopt;
+            }
         } else {
             return std::nullopt;
         }
@@ -107,8 +119,11 @@ int main(int argc, char* argv[]) {
         const auto report = buildLanguagePack(*options);
 
         std::cout << "\n";
-        printTableReport("Game text", report.gameText);
-        printTableReport("Menu text", report.menuText);
+        if (report.textFromDisc) {
+            printTableReport("Game text", report.gameText);
+            printTableReport("Menu text", report.menuText);
+        }
+        std::cout << "Speech lines: " << report.speechLines << "\n";
         std::cout << "Briefings: " << report.briefings << "\n";
         std::cout << "Title screens, newspapers and headlines: " << report.pictures << "\n";
         for (const auto& warning : report.warnings) {
