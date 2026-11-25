@@ -162,6 +162,13 @@ std::size_t randomDyingAnimation() {
     return kFirstDyingAnimation + generator() % kDyingAnimationCount;
 }
 
+std::size_t runAnimationFor(float health) {
+    // Health 25 and 10, in the executable's 1/128 points: 0xC80 and 0x500.
+    if (health <= 10.0f) return kVeryWoundedRunAnimation;
+    if (health <= 25.0f) return kWoundedRunAnimation;
+    return kRunAnimation;
+}
+
 bool isDyingAnimation(std::size_t animation) {
     return animation >= kFirstDyingAnimation && animation < kFirstDyingAnimation + kDyingAnimationCount;
 }
@@ -242,7 +249,7 @@ MovementEvents moveHog(std::vector<Hog>& hogs, std::size_t hogIndex, const Movem
                 hog.motion.state = inWater ? MotionState::Swimming
                                            : (direction > 0 ? MotionState::Running : MotionState::WalkingBack);
                 const std::size_t animation =
-                    inWater ? kSwimAnimation : (direction > 0 ? kRunAnimation : kWalkBackAnimation);
+                    inWater ? kSwimAnimation : (direction > 0 ? runAnimationFor(hog.health) : kWalkBackAnimation);
                 hog.animation.play(animation, Repeat::Loop);
                 countFootsteps(hog, animations, events);
             }
