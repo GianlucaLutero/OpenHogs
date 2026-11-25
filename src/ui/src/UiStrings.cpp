@@ -109,6 +109,14 @@ constexpr std::size_t kGtPaused = 173;
 constexpr std::size_t kGtAbortSkirmish = 180;
 constexpr std::size_t kGtContinue = 181;
 constexpr std::size_t kGtAreYouSure = 182;
+constexpr std::size_t kGtSpeech = 175;
+constexpr std::size_t kGtSpeechOn = 176;
+constexpr std::size_t kGtSpeechOff = 177;
+constexpr std::size_t kGtAbortMission = 179;
+constexpr std::size_t kGtPauseYes = 183;
+constexpr std::size_t kGtPauseNo = 184;
+constexpr std::size_t kGtMasterVolume = 238;
+constexpr std::size_t kGtSfxVolume = 239;
 // Class names: the game names each rank; OpenHogs' classes use the rank
 // their model stands for (heavy weapons -> "GUNNER").
 const std::vector<std::pair<std::string, std::size_t>> kGtClassNames{
@@ -303,6 +311,14 @@ UiStrings loadUiStrings(const std::vector<std::string>& frontEndText, const std:
     take(strings.abortSkirmish, gt, kGtAbortSkirmish);
     take(strings.continueGame, gt, kGtContinue);
     take(strings.areYouSure, gt, kGtAreYouSure);
+    take(strings.abortMission, gt, kGtAbortMission);
+    take(strings.masterVolume, gt, kGtMasterVolume);
+    take(strings.sfxVolume, gt, kGtSfxVolume);
+    take(strings.speech, gt, kGtSpeech);
+    take(strings.speechOn, gt, kGtSpeechOn);
+    take(strings.speechOff, gt, kGtSpeechOff);
+    take(strings.pauseYes, gt, kGtPauseYes);
+    take(strings.pauseNo, gt, kGtPauseNo);
     for (const auto& rank : game::allRanks()) {
         std::string name(rank.fallbackName);
         take(name, gt, rank.textEntry);

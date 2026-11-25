@@ -29,6 +29,7 @@
 #include "openhogs/ui/FloatingNumbers.h"
 #include "openhogs/ui/HogLabels.h"
 #include "openhogs/ui/Hud.h"
+#include "openhogs/ui/PauseMenu.h"
 #include "openhogs/ui/HudLayout.h"
 #include "openhogs/ui/Radar.h"
 #include "openhogs/ui/TextBox.h"
@@ -71,6 +72,12 @@ public:
     void drawHogLabel(Interface& userInterface, const ui::HogLabelBox& box, const ui::HogLabelText& label,
                       float alpha, bool arrows) const;
 
+    // The pause menu on the executable's panel (ui::OriginalPauseLayout):
+    // the half-dark veil in the frame of dashtims' pause1..8, the title in
+    // green, the items in FEText/CHARS2, white when selected and grey
+    // otherwise, the volume bars in red; ARE YOU SURE? on its own panel.
+    void drawPauseMenu(Interface& userInterface, const ui::PauseMenu& menu) const;
+
     // The weapon menu (ui::WeaponMenu) on its brass panel, sliding in from
     // the right while it is open: the tabs, the icons with their uses
     // left, the selection frame and the chosen weapon's name.
@@ -106,6 +113,8 @@ public:
 
 private:
     const render::UiImage* picture(std::string_view name) const;
+    // The pause menu's panel: the veil and the frame round it.
+    void drawPauseFrame(render::UiRenderer& ui, float left, float top, float right, float bottom) const;
     void drawPiece(render::UiRenderer& ui, const ui::HudPiece& piece, float yOffset = 0.0f,
                    const glm::vec4& tint = glm::vec4(1.0f)) const;
 

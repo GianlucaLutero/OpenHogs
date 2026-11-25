@@ -306,6 +306,11 @@ void Application::handleEvent(const SDL_Event& event, bool& running) {
         case GameRequest::LeaveMatch:
             leaveMatch();
             break;
+        case GameRequest::VolumesChanged:
+            frontEnd_->setVolumes(game_->pauseVolumes());
+            sounds_->setVolumes(mergeMenuVolumes(loadedVolumes_, frontEnd_->volumes()));
+            saveVolumes();
+            break;
         case GameRequest::Screenshot: {
             const std::string file = "openhogs-" + game_->mapName() + ".png";
             saveScreenshot(file);

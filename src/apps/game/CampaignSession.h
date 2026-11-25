@@ -146,6 +146,10 @@ private:
     // The briefing being shown.
     std::unique_ptr<render::UiImage> briefing_;
     std::unique_ptr<render::UiImage> briefingPhoto_;
+    std::unique_ptr<render::UiImage> loadBar_;  // loaded with the first briefing
+    double briefingSeconds_ = 0.0;              // since the briefing came up
+    // How much of the loading bar under the briefing is uncovered (0..17).
+    int loadBarSteps() const;
 
     // The newspaper printed after a won mission (game/Newspaper.h): the
     // paper with the story and the photo laid on it, until a key is

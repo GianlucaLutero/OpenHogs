@@ -93,7 +93,17 @@ TEST_CASE("Instruments slide in and out and the aim fades", "[ui][hudlayout]") {
     HudSlide slide;
     CHECK_FALSE(slide.visible());
     CHECK(slide.offset() == Approx(200.0f));
-    for (int i = 0; i < HudSlide::kTicks; ++i) slide.tick(true);
+    // The executable's table (VA 0x4D1958): still out of sight after two
+    // ticks, home after 14, then a small bounce below its place before it
+    // settles (decision 64).
+    for (int i = 0; i < 2; ++i) slide.tick(true);
+    CHECK(slide.offset() == Approx(200.0f));
+    for (int i = 2; i < 14; ++i) slide.tick(true);
+    CHECK(slide.offset() == Approx(0.0f));
+    slide.tick(true);
+    slide.tick(true);
+    CHECK(slide.offset() == Approx(10.0f));
+    for (int i = 16; i < HudSlide::kTicks; ++i) slide.tick(true);
     CHECK(slide.offset() == Approx(0.0f));
     slide.tick(true);
     CHECK(slide.offset() == Approx(0.0f));

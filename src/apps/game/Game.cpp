@@ -2,6 +2,8 @@
 
 #include "Game.h"
 
+#include "Application.h"  // toVolumeLevels
+
 #include "MenuControls.h"
 
 #include "openhogs/formats/PackageArchive.h"
@@ -63,7 +65,6 @@ constexpr float kBannerY = 140.0f;  // the executable writes match messages at y
 // The mission's title over its opening: longer than any opening, it is
 // replaced by GET READY when the first turn starts.
 constexpr double kArrivalTitleSeconds = 60.0;
-constexpr glm::vec4 kPauseShade{0.0f, 0.0f, 0.0f, 0.4f};
 
 // The computer opponent's settings. Its random errors are seeded from the
 // clock, so it does not play every match the same way.
@@ -137,7 +138,7 @@ Game::Game(const core::VirtualFileSystem& vfs, const GameOptions& options, Inter
            SoundPlayer& sounds, const Gamepads& gamepads)
     : mapName_(options.mapName), library_(vfs),
       world_(game::loadWorld(vfs, options.mapName, turnRules(options), options.prepareHogs)),
-      pauseMenu_(userInterface.strings()), hud_(vfs),
+      pauseMenu_(userInterface.strings(), options.campaign), hud_(vfs),
       computerTeams_(options.computerTeams.begin(), options.computerTeams.end()), computer_(computerSettings(options.versionRules)),
       keyboard_(options.keyBindings), interface_(userInterface), sounds_(sounds), gamepads_(gamepads),
       audio_(sounds, world_, [this](int team) { return isComputerTeam(team); }, options.versionRules.turnTuneLoops) {
@@ -303,7 +304,7 @@ const Game::TeamLook& Game::lookFor(int team) {
 void Game::pause() {
     if (!paused_) {
         paused_ = true;
-        pauseMenu_.reset();
+        pauseMenu_.reset(toVolumeLevels(sounds_.volumes()));
     }
 }
 
@@ -352,6 +353,12 @@ GameRequest Game::handlePauseInput(std::optional<ui::MenuInput> input) {
     switch (result.request) {
     case ui::PauseResult::Request::Resume: paused_ = false; break;
     case ui::PauseResult::Request::Abort: return GameRequest::LeaveMatch;
+    case ui::PauseResult::Request::VolumesChanged:
+        // Heard at once; the application saves them with the menus' own.
+        pauseVolumes_ = result.volumes;
+        pauseVolumes_.mode = toVolumeLevels(sounds_.volumes()).mode;
+        pauseVolumes_.music = toVolumeLevels(sounds_.volumes()).music;
+        return GameRequest::VolumesChanged;
     case ui::PauseResult::Request::None: break;
     }
     return GameRequest::None;
@@ -973,7 +980,7 @@ void Game::drawHud(int width, int height) {
     hud_.drawRadar(interface_.renderer(), ui::radarMarks(world_, world_.activeHog()), camera.forward());
     hud_.drawTextBox(interface_, teamStrengths());
     hud_.drawWeaponMenu(interface_, weaponMenu_);  // also while it slides away
-    if (const auto& message = banner_.current()) {
+    if (const auto& message = banner_.current(); message && !paused_) {
         // Turn messages fade out over their last quarter.
         const double progress = banner_.progress();
         const float alpha = progress > 0.75 ? static_cast<float>((1.0 - progress) / 0.25) : 1.0f;
@@ -1029,8 +1036,9 @@ void Game::draw(int width, int height) {
     auto& ui = interface_.renderer();
     ui.begin(width, height);
     if (paused_) {
-        ui.drawRect(0.0f, 0.0f, ui.canvasWidth(), render::kCanvasHeight, kPauseShade);
-        interface_.drawMenu(pauseMenu_.menu());
+        // The executable keeps the HUD under its pause panel.
+        drawHud(width, height);
+        hud_.drawPauseMenu(interface_, pauseMenu_);
     } else {
         drawHud(width, height);
     }

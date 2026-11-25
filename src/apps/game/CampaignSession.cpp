@@ -32,6 +32,18 @@ constexpr float kPhotoX = 350.0f;
 constexpr float kPhotoY = 197.0f;
 constexpr float kBriefingWidth = 640.0f;  // also the newspapers' width
 
+// The loading bar under the briefing (FUN_0045c460): loadbar.bmp, 328 x 15
+// of it, drawn at (152, 451) of the 640 x 480 briefing and uncovered from
+// the left in 17 steps as the map loads. OpenHogs loads the map after the
+// briefing, so the bar fills at a steady pace instead and the briefing
+// waits for it before a key leads on (decision 176).
+constexpr float kLoadBarX = 152.0f;
+constexpr float kLoadBarY = 451.0f;
+constexpr float kLoadBarWidth = 328.0f;
+constexpr float kLoadBarHeight = 15.0f;
+constexpr int kLoadBarSteps = 17;
+constexpr double kLoadBarStepSeconds = 0.1;
+
 // The photos level1n0..5 show the uniforms in the order British,
 // American, French, German, Russian, Japanese (checked against the team
 // textures); scene::characterTeams has Japanese before Russian.
@@ -228,10 +240,16 @@ void CampaignSession::teamNamed() {
 
 void CampaignSession::erase(SoundPlayer& sounds) { playMenuSound(sounds, menu_->erase().sound); }
 
+int CampaignSession::loadBarSteps() const {
+    return std::min(kLoadBarSteps, static_cast<int>(briefingSeconds_ / kLoadBarStepSeconds + 1e-6));
+}
+
 void CampaignSession::openBriefing() {
     const int number = campaign_->nextMission();
     briefing_ = loadPicture(vfs_, "Language/Tims/Briefing/level" + std::to_string(number) + ".bmp");
     briefingPhoto_.reset();
+    briefingSeconds_ = 0.0;
+    if (!loadBar_) loadBar_ = loadPicture(vfs_, "Language/Tims/Briefing/loadbar.bmp");
     if (number == 1) {
         briefingPhoto_ = loadPicture(vfs_, "Language/Tims/Briefing/level1n" +
                                                  std::to_string(kPhotoOfNation.at(static_cast<std::size_t>(campaign_->nation()))) + ".bmp");
@@ -405,6 +423,7 @@ void CampaignSession::update(double seconds) {
         if (campaignMap_->done()) campaignMap_.reset();  // on to the briefing
     }
     if (debrief_) debrief_->seconds += seconds;
+    if (briefing_ && !campaignMap_) briefingSeconds_ += seconds;
     if (!newspaper_) return;
     newspaper_->secondsLeft -= seconds;
     if (newspaper_->secondsLeft <= 0.0) newspaper_.reset();
@@ -466,8 +485,9 @@ CampaignSession::Action CampaignSession::handleMenuInput(ui::MenuInput input, So
     }
 
     if (briefing_) {
-        // Enter (or Space) goes to the mission, Esc back to the squad.
-        if (input == ui::MenuInput::Confirm) {
+        // Enter (or Space) goes to the mission once the loading bar is
+        // full, Esc back to the squad.
+        if (input == ui::MenuInput::Confirm && loadBarSteps() >= kLoadBarSteps) {
             playMenuSound(sounds, ui::MenuSound::Select);
             briefing_.reset();
             return Action::StartMission;
@@ -519,6 +539,7 @@ GameOptions CampaignSession::missionOptions() {
     const game::Mission& mission = game::campaignMission(campaign_->nextMission());
     GameOptions options;
     options.mapName = std::string(mission.map);
+    options.campaign = true;
     options.turnSeconds = mission.turnSeconds;
     if (mission.number != game::kBootCampMission) {
         // The squads parachute in under the mission's title (gtext 158), as
@@ -610,11 +631,16 @@ void CampaignSession::draw() {
     }
     if (briefing_) {
         interface_.drawPicture(*briefing_);
+        // The briefing picture is drawn 480 units tall, so its pixels are
+        // canvas units; it is centred horizontally.
+        const float left = (ui.canvasWidth() - kBriefingWidth) / 2.0f;
         if (briefingPhoto_) {
-            // The briefing picture is drawn 480 units tall, so its pixels
-            // are canvas units; it is centred horizontally.
-            const float left = (ui.canvasWidth() - kBriefingWidth) / 2.0f;
             ui.drawImage(*briefingPhoto_, left + kPhotoX, kPhotoY, briefingPhoto_->width(), briefingPhoto_->height());
+        }
+        if (loadBar_ && loadBar_->width() > 0.0f && loadBar_->height() > 0.0f) {
+            const float shown = kLoadBarWidth * static_cast<float>(loadBarSteps()) / kLoadBarSteps;
+            ui.drawImageRegion(*loadBar_, left + kLoadBarX, kLoadBarY, shown, kLoadBarHeight, 0.0f, 0.0f,
+                               shown / loadBar_->width(), kLoadBarHeight / loadBar_->height());
         }
         return;
     }

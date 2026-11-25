@@ -47,3 +47,20 @@ the bottom of the screen (2:05), where the PC's is the brass gauge
 OpenHogs draws from the executable's tables; the damage numbers rise and
 fade as decision 67 has them; the label's health runs down a few points a
 second after a hit instead of dropping at once (for `video-weapons`).
+
+## Part 2: the pause menu, the instruments, the briefing
+
+**The pause menu** (part 8, 2:06–2:08): a brown-framed panel over the
+match with -GIOCO IN PAUSA-, CONTINUA, VOLUME GENERALE and VOLUME
+EFFETTI with red bars, VOCI MAIALI ON, VIBRATION ON and ABBANDONA
+MISSIONE; the selected item is white. The PC executable has the same
+panel (`FUN_0045a9b0`, see [hud.md](../formats/hud.md#pause-menu)) without
+the PlayStation's vibration; OpenHogs' plain menu box gave way to it,
+with the volumes and the speech switch working and saved (decision 177).
+
+**The instruments** ease in along the executable's own table (`FUN_00458a80`),
+which settles decision 64: they wait two ticks, rise and bounce.
+
+**The briefing**: in the footage a loading bar runs along the bottom of
+the briefing before the mission can start (part 2, 0:38). The PC draws it
+too (`FUN_0045c460`): OpenHogs now fills it and waits for it (decision 176).

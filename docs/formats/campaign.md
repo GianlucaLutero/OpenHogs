@@ -245,7 +245,7 @@ ps1` (`game::GameVersion`, `Campaign::startHardMode`).
 |------|------|-----|
 | `Language/Tims/Briefing/level<N>.bmp` | 640 × 480 | the briefing of mission *N* (0 = Boot Camp) |
 | `Language/Tims/Briefing/level1n<K>.bmp` | 254 × 190 | photo for mission 1's empty frame (at 350, 197): a hog in the player's uniform, *K* = British, American, French, German, Russian, Japanese |
-| `Language/Tims/Briefing/loadbar.bmp` | | the loading bar under the briefing (not drawn by OpenHogs, which loads the map after the briefing) |
+| `Language/Tims/Briefing/loadbar.bmp` | | the loading bar under the briefing: 328 × 15 of it at (152, 451), uncovered from the left in 17 steps as the map loads (FUN_0045c460); OpenHogs fills it at a steady pace (decision 176) |
 | `Language/Tims/Papers/<Nation>.bmp`, `text<N>.bmp`, `pic0<N>.bmp` | 640 × 480, 314 × 204, 300 × 299 | the newspaper after a won mission (see *Newspapers*) |
 | `Language/Tims/Debrief/*` | | the debriefing page (see *Debriefing*) |
 | `Language/Tims/PigMap/` | | the campaign map (see *The campaign map*) |

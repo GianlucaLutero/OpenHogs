@@ -4,6 +4,7 @@
 #include "openhogs/ui/HudLayout.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 
 namespace openhogs::ui {
@@ -145,10 +146,14 @@ void HudSlide::tick(bool shown) {
 }
 
 float HudSlide::offset() const {
-    // The executable eases the instrument in from 200 pixels below; the
-    // exact curve is not known, so it slows down as it arrives.
-    const float remaining = 1.0f - static_cast<float>(ticks_) / static_cast<float>(kTicks);
-    return kHiddenOffset * remaining * remaining;
+    // FUN_00458a80 reads, after counting tick n (1..19), the per cent of
+    // the way still to go from the table that ends at VA 0x4D1958, read
+    // backwards; the offset is 200 - (100 - entry) x 0.01 x 200 = 2 x entry.
+    // The instrument rises fast in the middle, overshoots by 6, 10 and 4
+    // pixels and settles.
+    constexpr std::array<int, kTicks + 1> kPercentLeft{100, 100, 100, 95, 90, 87, 85, 78, 70, 65,
+                                                       60,  30,  10,  5,  0,  3,  5,  2,  0,  0};
+    return kHiddenOffset * static_cast<float>(kPercentLeft[static_cast<std::size_t>(ticks_)]) / 100.0f;
 }
 
 void HudFade::tick(bool shown) {

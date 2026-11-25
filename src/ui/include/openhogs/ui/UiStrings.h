@@ -81,7 +81,15 @@ struct UiStrings {
     std::string paused = "-GAME PAUSED-";
     std::string continueGame = "CONTINUE";
     std::string abortSkirmish = "ABORT SKIRMISH";
+    std::string abortMission = "ABORT MISSION";   // the pause menu in the campaign
+    std::string masterVolume = "MASTER VOLUME";
+    std::string sfxVolume = "SFX VOLUME";
+    std::string speech = "SPEECH";                // followed by ON or OFF
+    std::string speechOn = "ON";
+    std::string speechOff = "OFF";
     std::string areYouSure = "ARE YOU SURE?";
+    std::string pauseYes = "YES";                 // the pause menu's own words (gtext)
+    std::string pauseNo = "NO";
     std::string victory = "VICTORY TO >S!!";
     std::string draw = "IT'S A DRAW!!";
     std::string getReady = "GET READY >S...";

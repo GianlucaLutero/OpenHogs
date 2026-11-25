@@ -125,6 +125,9 @@ public:
     // 0 a person, 1 the computer, 2 nobody (switched off).
     std::vector<int> teamControls() const;
     VolumeLevels volumes() const { return volumes_; }
+    // Volumes changed elsewhere (the pause menu of a match): VOLUME
+    // CONTROL shows them from now on.
+    void setVolumes(const VolumeLevels& volumes);
 
     // CONTROLS: activating a control's row makes it wait for a key (the row
     // blinks, as in the original). While a control waits, the application

@@ -218,3 +218,29 @@ the hog (78 pixels wide) with the arrow `arrow000` of `FACETIMS.MAD`.
 hundredths), then a heart and the health, except in the Boot Camp. The
 labels fade in by 25/255 a tick while the camera stands still and out by
 40 while it moves. Details: `docs/video/ui.md`; OpenHogs: `ui::HogLabels`.
+
+## Pause menu
+
+`FUN_0045a9b0` draws the pause menu in the label font (`FEText/CHARS2`)
+on a panel of 260 × 300 round the centre of the screen: a black veil at
+half strength framed by `dashtims.mad`'s `pause1`–`pause8` (`FUN_0045b580`:
+16 × 16 corners and stretched edges, from 9 pixels left and 14 above the
+panel). From the panel's top: -GAME PAUSED- (gtext 173, green) at 30,
+CONTINUE (181) at 85, MASTER VOLUME (238) at 115 with its bar at 140,
+SFX VOLUME (239) at 165 with its bar at 190, SPEECH (175) ON/OFF (176/177)
+at 225, ABORT MISSION (179, campaign) or ABORT SKIRMISH (180) at 265.
+The selected item is white, the others grey (128); a bar is a row of
+volume / 5 red "I"s (255, 40, 40; 128, 40, 40 when not selected) over a
+scale of 20, from 117 left of the centre. ARE YOU SURE? (182) has its own
+panel (240 wide, from 115 above the centre to it): the question at 90
+above the centre, YES (183) and NO (184) at 50 above it, 30 left and 42
+right of the centre. OpenHogs: `ui::PauseMenu`, `OriginalHud::drawPauseMenu`.
+
+## Instruments sliding
+
+`FUN_00458a80` counts the power gauge's and the clock's ticks from 0 to
+19 and places them 2 × *entry* pixels below their place, *entry* being
+read backwards from the table that ends at VA `0x4D1958`: 100 100 100 95
+90 87 85 78 70 65 60 30 10 5 0 3 5 2 0 0 (per cent of the way left). They
+stay out of sight for two ticks, rise, dip a few pixels below their place
+and settle. OpenHogs: `ui::HudSlide`.
