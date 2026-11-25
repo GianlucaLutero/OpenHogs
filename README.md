@@ -92,7 +92,7 @@ animations.
 | video analysis: `video-ui` | ✅ done | Part 1 (done): the labels over the hogs as the PC executable draws them and the footage shows: every hog on the screen, name and rank in turn, heart and health, in its nation's colour and the original's narrow letters, fading in while the camera stands still, moved beside its hog with an arrow when labels would overlap; match messages in the original's tall letters. Part 2 (done): the pause menu on the original's framed panel with the volume bars and the speech switch, the instruments sliding along the executable's curve, the loading bar under the briefing |
 | video analysis: `video-physics` | ✅ done | What the footage and the executable say about movement (docs/video/physics.md): the executable moves hogs by the control's amount and only steps the animations from it; hurt hogs run with the wounded cycles (25 health or less, 10 or less); jump recovery and the rigid-body landing noted; running, turning and jumping could not be measured frame by frame from the footage |
 | video analysis: `video-weapons` | ✅ done | What the footage, the manual and the executable say about weapons (docs/video/weapons.md): airstrikes and special ops choose their spot with a crosshair on a view high over the map, the airship (AIRSHIP1) comes in along a way the player turns and drops its bombs along its course; hogs inside buildings and vehicles are labelled with the object's name and health; a hurt hog's label runs its health down |
-| `pal-dubbing` | 🔍 in review | The PlayStation's XA speech decoded (`formats::XaAudio`) and mapped line by line onto the PC's speech files; `openhogs-langpack` puts the dubbed voices of a localised PAL disc (SLES-02766 to 02769) in the language pack. Found and checked on the European disc; not yet tried on a localised one |
+| `pal-dubbing` | 🔍 in review | The PlayStation's XA speech decoded (`formats::XaAudio`) and mapped line by line onto the PC's speech files; `openhogs-langpack` puts the dubbed voices of a localised PAL disc (SLES-02766 to 02769) in the language pack (found and checked on the European disc; not yet tried on a localised one). A localised PC CD (`.bin`, `.iso`, `.mdf`) gives its text, pictures, films and dubbed speech directly: tried on the Italian PC release |
 
 ## Requirements
 
@@ -427,6 +427,13 @@ Boot Camp's instructor speak the dub. Speech needs the raw `.bin` image (an
 `.iso` cannot hold the PlayStation's XA audio). `--speech yes` takes the
 voices from any disc (the European one has the PC's English voices),
 `--speech no` none.
+
+A **localised PC CD** works too, and is the simplest source: the Italian PC
+release has the whole game in Italian, voices and films included, in the
+PC's own layout. Give its image (`.bin`, `.iso` or Alcohol 120% `.mdf`) to
+`--disc`: every file of `Language/` and `Speech/` that differs from your
+installation goes into the pack, and the report reads
+`From the PC CD: 4 text files, 77 pictures, 9 films, 1823 speech lines`.
 
 1. **Make an image of your disc** with any CD dumping tool. Only the first
    track (the data track, the largest `.bin` file) is needed; a plain

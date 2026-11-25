@@ -27,7 +27,7 @@ namespace {
 
 void printUsage() {
     std::cout << "OpenHogs language pack builder\n\n"
-                 "Usage: openhogs-langpack --disc <track1.bin|.iso> --game <PC folder> [options]\n\n"
+                 "Usage: openhogs-langpack --disc <track1.bin|.iso|.mdf> --game <PC folder> [options]\n\n"
                  "  --language <code>   it (default), fr, de or es\n"
                  "  --out <folder>      pack folder (default: content/packs/lang-<code>)\n"
                  "  --overrides <file>  hand-written translations\n"
@@ -119,13 +119,18 @@ int main(int argc, char* argv[]) {
         const auto report = buildLanguagePack(*options);
 
         std::cout << "\n";
-        if (report.textFromDisc) {
-            printTableReport("Game text", report.gameText);
-            printTableReport("Menu text", report.menuText);
+        if (report.pcDisc) {
+            std::cout << "From the PC CD: " << report.textFiles << " text files, " << report.pictures
+                      << " pictures, " << report.films << " films, " << report.speechLines << " speech lines\n";
+        } else {
+            if (report.textFromDisc) {
+                printTableReport("Game text", report.gameText);
+                printTableReport("Menu text", report.menuText);
+            }
+            std::cout << "Speech lines: " << report.speechLines << "\n";
+            std::cout << "Briefings: " << report.briefings << "\n";
+            std::cout << "Title screens, newspapers and headlines: " << report.pictures << "\n";
         }
-        std::cout << "Speech lines: " << report.speechLines << "\n";
-        std::cout << "Briefings: " << report.briefings << "\n";
-        std::cout << "Title screens, newspapers and headlines: " << report.pictures << "\n";
         for (const auto& warning : report.warnings) {
             std::cout << "warning: " << warning << "\n";
         }

@@ -3,11 +3,14 @@
 // Read-only access to the files on a PlayStation disc image.
 //
 // Used to take content (e.g. the Italian text and briefings) from the
-// user's own copy of the PlayStation version. Supported images:
+// user's own copy of the PlayStation version, or of a localised PC CD.
+// Supported images:
 //
 //   - raw "BIN" images with 2352-byte sectors (the usual .bin/.cue dumps;
 //     PlayStation data tracks are "Mode 2 Form 1": 2048 bytes of data at
-//     offset 24 of each sector), and
+//     offset 24 of each sector; PC CDs are "Mode 1", data at offset 16),
+//   - Alcohol 120% .mdf images: raw sectors followed by 96 bytes of
+//     subchannel data (2448 bytes a sector), and
 //   - plain ISO images with 2048-byte sectors.
 //
 // Only the first (data) track is needed; audio tracks are ignored. Files
@@ -52,7 +55,8 @@ public:
     // (2048-byte sectors keep neither subheaders nor XA audio).
     std::vector<std::byte> readRawSectors(std::string_view path) const;
 
-    // Sector size of the image: 2352 (raw) or 2048 (ISO).
+    // Distance between sectors in the image: 2352 (raw), 2448 (.mdf) or
+    // 2048 (ISO).
     std::size_t sectorSize() const { return sectorSize_; }
 
 private:

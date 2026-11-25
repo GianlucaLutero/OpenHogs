@@ -59,7 +59,17 @@ speech needs the raw `.bin`.
 Source: Martin Korth's *Nocash PSX Specifications* (CDROM XA audio ADPCM),
 checked against the disc as above.
 
-## Localised releases
+## The Italian PC release
+
+The Italian PC CD (Mode 1, here as an Alcohol 120% `.mdf`) is a whole PC
+installation in Italian: all 1,823 speech WAVs differ from the English
+release's (the dub), as do the four text tables (complete: 272 game texts
+and the menus), 77 pictures of `Language/Tims` and the nine films. The
+language pack builder copies them as they are when the disc has
+`LANGUAGE/TEXT/GTEXT.BIN`, so this is the simplest way to the Italian
+voices; it needs no decoding.
+
+## Localised PlayStation releases
 
 The dubbed releases are SLES-02766 (French), 02767 (German), 02768
 (Spanish) and 02769 (Italian), told apart by the boot file in

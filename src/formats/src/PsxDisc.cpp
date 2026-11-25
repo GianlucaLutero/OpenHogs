@@ -13,6 +13,9 @@ namespace openhogs::formats {
 namespace {
 
 constexpr std::size_t kRawSectorSize = 2352;
+// Alcohol 120% .mdf images keep 96 bytes of subchannel data after each
+// raw sector.
+constexpr std::size_t kSubchannelSectorSize = 2352 + 96;
 constexpr std::size_t kIsoSectorSize = 2048;
 constexpr std::size_t kDataSize = 2048;
 
@@ -61,7 +64,14 @@ PsxDisc::PsxDisc(const std::filesystem::path& imagePath)
     const bool isRaw = std::equal(kSyncPattern.begin(), kSyncPattern.end(), header.begin(),
                                   [](std::uint8_t a, char b) { return a == static_cast<std::uint8_t>(b); });
     if (isRaw) {
-        sectorSize_ = kRawSectorSize;
+        // The next sector's sync pattern says how far apart sectors are.
+        std::array<char, 12> next{};
+        file_.seekg(static_cast<std::streamoff>(kSubchannelSectorSize));
+        file_.read(next.data(), next.size());
+        const bool subchannel = file_ && std::equal(kSyncPattern.begin(), kSyncPattern.end(), next.begin(),
+                                                    [](std::uint8_t a, char b) { return a == static_cast<std::uint8_t>(b); });
+        file_.clear();
+        sectorSize_ = subchannel ? kSubchannelSectorSize : kRawSectorSize;
         // Byte 15 is the sector mode: Mode 2 (PlayStation) has an 8-byte
         // subheader before the data, Mode 1 does not.
         dataOffset_ = (static_cast<std::uint8_t>(header[15]) == 2) ? 24 : 16;
@@ -170,15 +180,19 @@ std::vector<std::byte> PsxDisc::readRawSectors(std::string_view path) const {
     if (it == files_.end()) {
         throw std::runtime_error("File not found on the disc image: " + std::string(path));
     }
-    if (sectorSize_ != kRawSectorSize) {
+    if (sectorSize_ == kIsoSectorSize) {
         throw std::runtime_error("XA audio needs a raw .bin image with 2352-byte sectors, not an .iso: " +
                                  std::string(path));
     }
     const std::size_t sectors = (it->second.size + kDataSize - 1) / kDataSize;
     std::vector<std::byte> content(sectors * kRawSectorSize);
     file_.clear();
-    file_.seekg(static_cast<std::streamoff>(std::uint64_t{it->second.firstSector} * kRawSectorSize));
-    file_.read(reinterpret_cast<char*>(content.data()), static_cast<std::streamsize>(content.size()));
+    for (std::size_t i = 0; i < sectors; ++i) {
+        // Read sector by sector: an .mdf image has subchannel data between them.
+        file_.seekg(static_cast<std::streamoff>((std::uint64_t{it->second.firstSector} + i) * sectorSize_));
+        file_.read(reinterpret_cast<char*>(content.data() + i * kRawSectorSize),
+                   static_cast<std::streamsize>(kRawSectorSize));
+    }
     if (!file_) {
         throw core::FormatError("Disc image is truncated: cannot read " + std::string(path));
     }
