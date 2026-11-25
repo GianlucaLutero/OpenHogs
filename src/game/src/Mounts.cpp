@@ -90,10 +90,12 @@ const MountSpec& mountSpec(MountKind kind) {
     throw std::out_of_range("Unknown mount kind");
 }
 
-std::vector<std::pair<std::size_t, MountKind>> findMounts(const std::vector<formats::MapObject>& objects) {
-    std::vector<std::pair<std::size_t, MountKind>> mounts;
+std::vector<FoundMount> findMounts(const std::vector<formats::MapObject>& objects) {
+    std::vector<FoundMount> mounts;
     for (std::size_t i = 0; i < objects.size(); ++i) {
-        if (const auto kind = mountKind(objects[i].modelName)) mounts.emplace_back(i, *kind);
+        if (const auto kind = mountKind(objects[i].modelName)) {
+            mounts.push_back({i, *kind, core::toUpper(objects[i].modelName)});
+        }
     }
     return mounts;
 }

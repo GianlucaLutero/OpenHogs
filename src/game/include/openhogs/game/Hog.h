@@ -116,6 +116,19 @@ struct Hog {
     float jetpackSecondsLeft = 0.0f;
     bool parachute = false;
 
+    // Choosing the spot of an airstrike or of special ops. As the manual
+    // says, these weapons "present you with an aerial view of the map":
+    // the player moves a crosshair with the movement keys and fires again
+    // to confirm; with an airstrike the aim keys turn the way the airship
+    // will come in from (the manual's Page Up and Page Down). Empty when
+    // nothing is being chosen.
+    struct StrikeAim {
+        glm::vec3 spot{0.0f};     // the crosshair, on the ground
+        float viewYaw = 0.0f;     // the aerial view looks this way (radians, as yawRadians)
+        float approachYaw = 0.0f; // the airship flies this way over the spot
+    };
+    std::optional<StrikeAim> strikeAim;
+
     // Inside a building or vehicle (index into World::mounts()): safe from
     // harm, using the object's weapons. Empty when out in the open.
     std::optional<std::size_t> mount;

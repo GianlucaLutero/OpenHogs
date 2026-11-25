@@ -72,6 +72,21 @@ constexpr float kEyeHeight = 230.0f;
 
 // How far apart the bombs of an airstrike fall, as a share of their blast.
 constexpr float kAirstrikeSpacing = 0.8f;
+// Choosing the spot of an airstrike or special ops: how fast the
+// crosshair moves over the aerial view, and how fast the aim keys turn
+// the airship's way in (decision 129).
+constexpr float kStrikeAimSpeed = 2000.0f;
+constexpr float kStrikeAimTurnDegreesPerSecond = 90.0f;
+// The airship: it starts this far before the spot and flies this fast, so
+// it takes about five seconds to come in, as on the footage (part 17,
+// 30:53 to 30:58); it is gone once this far past the spot. Its bombs leave
+// the gondola, the lowest point of AIRSHIP1 (2034 model units under the
+// middle of the gas bag, 1017 world units), kDropHeight above the spot.
+constexpr float kAirshipApproach = 5000.0f;
+constexpr float kAirshipSpeed = 1000.0f;
+constexpr float kAirshipGondola = 1017.0f;
+// A bomb let go over high ground still starts at least this far above it.
+constexpr float kLowestBombRelease = 300.0f;
 constexpr float kMadnessSeconds = 10.0f;
 
 // Cluster grenades break into bomblets thrown around and up.
@@ -187,6 +202,7 @@ void World::handleAiming(std::size_t hogIndex, const PlayerInput& input, double 
     const bool canUseWeapon = hog.alive && !isAirborne(hog) && hog.motion.state != MotionState::Swimming;
     if (!canUseWeapon) {
         hog.charging = false;
+        hog.strikeAim.reset();
         return;
     }
 
@@ -200,6 +216,22 @@ void World::handleAiming(std::size_t hogIndex, const PlayerInput& input, double 
     }
 
     const int aim = (input.aimUp ? 1 : 0) - (input.aimDown ? 1 : 0);
+    const WeaponSpec& selected = weaponSpec(hog.selectedWeapon());
+    if (selected.kind == WeaponKind::Airstrike || selected.kind == WeaponKind::SpecialOps) {
+        // The first press opens the aerial view with its crosshair, the
+        // second confirms the spot. The aim keys turn the airship's way in.
+        if (!hog.strikeAim) {
+            if (fireJustPressed) startStrikeAim(hog);
+            return;
+        }
+        if (selected.kind == WeaponKind::Airstrike) {
+            hog.strikeAim->approachYaw += static_cast<float>(aim) * glm::radians(kStrikeAimTurnDegreesPerSecond) *
+                                          static_cast<float>(seconds);
+        }
+        if (fireJustPressed) fire(hogIndex, 1.0f, events);
+        return;
+    }
+    hog.strikeAim.reset();
     hog.aimDegrees = std::clamp(hog.aimDegrees + static_cast<float>(aim) * kAimDegreesPerSecond *
                                                      static_cast<float>(seconds),
                                 kLowestAimDegrees, kHighestAimDegrees);
@@ -893,7 +925,8 @@ void World::fire(std::size_t hogIndex, float power, std::vector<GameEvent>& even
     case WeaponKind::SpecialOps: {
         // Dropped by parachute on the chosen spot.
         events.push_back(fired);
-        const glm::vec3 spot = targetSpot(hog, spec, power);
+        const glm::vec3 spot = hog.strikeAim ? hog.strikeAim->spot : onGroundInPlayArea(hog.position);
+        hog.strikeAim.reset();
         hog.position = spot + glm::vec3(0.0f, kDropHeight, 0.0f);
         hog.motion.state = MotionState::Airborne;
         hog.motion.velocity = glm::vec3(0.0f);
@@ -921,20 +954,13 @@ void World::fire(std::size_t hogIndex, float power, std::vector<GameEvent>& even
         break;
     }
     case WeaponKind::Airstrike: {
-        // Bombs fall in a line across the chosen spot, along the hog's aim.
+        // The airship is on its way; it drops the bombs (flyAirship).
         events.push_back(fired);
-        const glm::vec3 spot = targetSpot(hog, spec, power);
-        const glm::vec3 along = hogFacing(hog);
-        const float spacing = spec.blastRadius * kAirstrikeSpacing;
-        for (int i = 0; i < spec.shots; ++i) {
-            const float offset = (static_cast<float>(i) - static_cast<float>(spec.shots - 1) / 2.0f) * spacing;
-            glm::vec3 drop = spot + along * offset;
-            drop.y = map_.groundHeight(drop.x, drop.z, drop.y + kDropHeight) + kDropHeight +
-                     static_cast<float>(i) * 60.0f;  // one after the other
-            Projectile bomb = launchProjectile(spec.id, hogIndex, drop, glm::vec3(0.0f), 0.0f);
-            bomb.velocity = glm::vec3(0.0f, -kAirstrikeFallSpeed, 0.0f);
-            projectiles_.push_back(bomb);
-        }
+        Hog::StrikeAim aim;
+        aim.spot = onGroundInPlayArea(hog.position);
+        aim.approachYaw = hog.yawRadians;
+        callAirship(hogIndex, spec, hog.strikeAim.value_or(aim));
+        hog.strikeAim.reset();
         break;
     }
     }
@@ -1096,13 +1122,14 @@ void World::driveMount(std::size_t hogIndex, const MovementInput& input, double 
     hog.position = glm::vec3(boxes.front().centre.x, boxes.front().bottom(), boxes.front().centre.z);
 }
 
-void World::setMounts(const std::vector<std::pair<std::size_t, MountKind>>& mounts) {
+void World::setMounts(const std::vector<FoundMount>& mounts) {
     mounts_.clear();
-    for (const auto& [object, kind] : mounts) {
+    for (const auto& found : mounts) {
         Mount mount;
-        mount.object = object;
-        mount.kind = kind;
-        for (const auto& [weapon, uses] : mountSpec(kind).arsenal) {
+        mount.object = found.object;
+        mount.kind = found.kind;
+        mount.model = found.model;
+        for (const auto& [weapon, uses] : mountSpec(found.kind).arsenal) {
             if (uses > 0) mount.ammo[weapon] = uses;
         }
         if (const CollisionBox* box = mountBox(mount)) mount.origin = box->centre;
@@ -1136,17 +1163,76 @@ bool World::mapView() const {
     return active && phase_ == MatchPhase::Playing && hogs_[*active].looking == Hog::Looking::AtTheMap;
 }
 
-glm::vec3 World::targetSpot(const Hog& hog, const WeaponSpec& spec, float power) const {
-    // Straight ahead, as far as the charged power, kept inside the play
-    // area and on the ground.
+glm::vec3 World::onGroundInPlayArea(glm::vec3 spot) const {
     const auto& terrain = map_.terrain();
     const float centreX = (terrain.minX() + terrain.maxX()) / 2.0f;
     const float centreZ = (terrain.minZ() + terrain.maxZ()) / 2.0f;
-    glm::vec3 spot = hog.position + hogFacing(hog) * (spec.range * std::clamp(power, kMinimumPower, 1.0f));
     spot.x = std::clamp(spot.x, centreX - kPlayAreaHalfSize, centreX + kPlayAreaHalfSize);
     spot.z = std::clamp(spot.z, centreZ - kPlayAreaHalfSize, centreZ + kPlayAreaHalfSize);
     spot.y = map_.groundHeight(spot.x, spot.z, spot.y + kDropHeight);
     return spot;
+}
+
+void World::startStrikeAim(Hog& hog) const {
+    // The crosshair starts on the hog, as on the footage (part 17, 30:41),
+    // and the view looks the way the hog faces.
+    Hog::StrikeAim aim;
+    aim.spot = onGroundInPlayArea(hog.position);
+    aim.viewYaw = hog.yawRadians;
+    aim.approachYaw = hog.yawRadians;
+    hog.strikeAim = aim;
+}
+
+void World::moveStrikeAim(Hog& hog, const MovementInput& movement, double seconds) const {
+    // Forward and back move the crosshair up and down the aerial view,
+    // the turn keys left and right ("move your crosshair with the cursor
+    // keys", the manual).
+    Hog::StrikeAim& aim = *hog.strikeAim;
+    const glm::vec3 ahead{std::cos(aim.viewYaw), 0.0f, -std::sin(aim.viewYaw)};
+    const glm::vec3 left{ahead.z, 0.0f, -ahead.x};
+    const float forward = (movement.forward ? 1.0f : 0.0f) - (movement.backward ? 1.0f : 0.0f);
+    const float sideways = (movement.turnLeft ? 1.0f : 0.0f) - (movement.turnRight ? 1.0f : 0.0f);
+    const glm::vec3 step = (ahead * forward + left * sideways) * (kStrikeAimSpeed * static_cast<float>(seconds));
+    aim.spot = onGroundInPlayArea(aim.spot + step);
+}
+
+glm::vec3 Airship::dropPlace(int index) const {
+    const float offset = (static_cast<float>(index) - static_cast<float>(bombs - 1) / 2.0f) * spacing;
+    return spot + direction * offset;
+}
+
+void World::callAirship(std::size_t hogIndex, const WeaponSpec& spec, const Hog::StrikeAim& aim) {
+    Airship ship;
+    ship.hog = hogIndex;
+    ship.weapon = spec.id;
+    ship.direction = glm::vec3(std::cos(aim.approachYaw), 0.0f, -std::sin(aim.approachYaw));
+    ship.spot = aim.spot;
+    ship.bombs = spec.shots;
+    ship.spacing = spec.blastRadius * kAirstrikeSpacing;
+    ship.position = aim.spot - ship.direction * kAirshipApproach;
+    ship.position.y = aim.spot.y + kDropHeight + kAirshipGondola;
+    airship_ = ship;
+}
+
+void World::flyAirship(double seconds) {
+    if (!airship_) return;
+    Airship& ship = *airship_;
+    ship.position += ship.direction * (kAirshipSpeed * static_cast<float>(seconds));
+    // A bomb goes as the gondola passes over its place and falls straight
+    // down (the footage: about 1.3 seconds to the ground).
+    while (ship.bombsDropped < ship.bombs &&
+           glm::dot(ship.position - ship.dropPlace(ship.bombsDropped), ship.direction) >= 0.0f) {
+        glm::vec3 release = ship.dropPlace(ship.bombsDropped);
+        const float ground = map_.groundHeight(release.x, release.z, ship.position.y);
+        release.y = std::max(ship.position.y - kAirshipGondola, ground + kLowestBombRelease);
+        Projectile bomb = launchProjectile(ship.weapon, ship.hog, release, glm::vec3(0.0f), 0.0f);
+        bomb.velocity = glm::vec3(0.0f, -kAirstrikeFallSpeed, 0.0f);
+        projectiles_.push_back(bomb);
+        ++ship.bombsDropped;
+    }
+    if (glm::dot(ship.position - ship.spot, ship.direction) > kAirshipApproach) {
+        airship_.reset();  // out of sight
+    }
 }
 
 void World::flyJetpack(std::size_t index, const MovementInput& input, double seconds,
@@ -1537,7 +1623,7 @@ void World::updateEffects(double seconds) {
 }
 
 bool World::shotSettled() const {
-    if (burst_ || !explosions_.empty()) {
+    if (burst_ || airship_ || !explosions_.empty()) {
         return false;
     }
     for (const auto& projectile : projectiles_) {
@@ -1604,6 +1690,7 @@ void World::startNextTurn(std::vector<GameEvent>& events) {
         hog.held.reset();
         hog.drawnWeapon.reset();
         hog.charging = false;
+        hog.strikeAim.reset();
     }
     if (isDeathmatch()) respawnDeadHogs(events);  // the turn's dead count, then come back
     if (matchIsDecided()) {
@@ -1799,6 +1886,12 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
                 }
                 continue;
             }
+            if (hogs_[i].strikeAim) {
+                // Choosing a spot: the keys move the crosshair, not the hog.
+                moveStrikeAim(hogs_[i], movement, seconds);
+                hogs_[i].animation.update(seconds, animations);
+                continue;
+            }
             if (hogs_[i].looking != Hog::Looking::Normally) {
                 movement.forward = movement.backward = movement.jump = false;  // looking, not walking
             }
@@ -1850,6 +1943,7 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
         }
     }
     steerGuided(input, seconds);
+    flyAirship(seconds);
     stepProjectiles(seconds, events);
     updateEffects(seconds);
     updateObjectives(events);
@@ -1879,6 +1973,7 @@ std::vector<GameEvent> World::update(double seconds, const PlayerInput& input,
             // Out of time: TurnSystem already passed the turn on.
             hogs_[*active].held.reset();
             hogs_[*active].charging = false;
+            hogs_[*active].strikeAim.reset();
             fireWasHeld_ = true;
             if (turns_->turnNumber() != before) {
                 turnBegan(events);
@@ -1915,19 +2010,29 @@ std::vector<glm::vec3> World::aimPreview() const {
         return predictTrajectory(start, aimDirection(hog) * (spec.launchSpeed * power), spec.gravityFactor, map_);
     }
     if (spec.kind == WeaponKind::SpecialOps || spec.kind == WeaponKind::Airstrike) {
-        // A ring on the chosen spot.
-        const float power = hog.charging ? std::max(hog.power, kMinimumPower) : 1.0f;
-        const glm::vec3 spot = targetSpot(hog, spec, power);
-        std::vector<glm::vec3> ring;
+        // While a spot is chosen: a ring round the crosshair and, for an
+        // airstrike, a line of dots from it back the way the airship will
+        // come in from (the long arrow of the original's crosshair).
+        if (!hog.strikeAim) return {};
+        const Hog::StrikeAim& aim = *hog.strikeAim;
+        std::vector<glm::vec3> marks;
         constexpr int kRingPoints = 16;
         constexpr float kRingRadius = 200.0f;
+        const auto onGround = [&](glm::vec3 point) {
+            point.y = map_.groundHeight(point.x, point.z, aim.spot.y + kRingRadius) + 20.0f;
+            return point;
+        };
         for (int i = 0; i < kRingPoints; ++i) {
             const float angle = glm::two_pi<float>() * static_cast<float>(i) / kRingPoints;
-            glm::vec3 point = spot + glm::vec3(std::cos(angle), 0.0f, std::sin(angle)) * kRingRadius;
-            point.y = map_.groundHeight(point.x, point.z, spot.y + kRingRadius) + 20.0f;
-            ring.push_back(point);
+            marks.push_back(onGround(aim.spot + glm::vec3(std::cos(angle), 0.0f, std::sin(angle)) * kRingRadius));
         }
-        return ring;
+        if (spec.kind == WeaponKind::Airstrike) {
+            const glm::vec3 course{std::cos(aim.approachYaw), 0.0f, -std::sin(aim.approachYaw)};
+            for (float back = kRingRadius + 100.0f; back <= 800.0f; back += 100.0f) {
+                marks.push_back(onGround(aim.spot - course * back));
+            }
+        }
+        return marks;
     }
     if (spec.kind == WeaponKind::Bullet) {
         const auto hit = traceBullet(start, aimDirection(hog), spec.range, map_, hogs_, *active);
@@ -1975,7 +2080,7 @@ World loadWorld(const core::VirtualFileSystem& vfs, std::string_view mapName, Tu
     std::vector<Objective> objectives;
     std::vector<Destructible> destructibles;
     std::vector<std::size_t> hidden;
-    std::vector<std::pair<std::size_t, MountKind>> mounts;
+    std::vector<FoundMount> mounts;
     std::size_t objectCount = 0;
     if (vfs.exists(base + ".pog")) {
         const auto objects = formats::parseMapObjects(vfs.readFile(base + ".pog"));

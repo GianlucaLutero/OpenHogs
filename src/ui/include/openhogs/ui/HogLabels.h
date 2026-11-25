@@ -3,9 +3,9 @@
 // The labels over the hogs, as the PC executable draws them (FUN_00459b20,
 // called by the HUD routine FUN_00457840):
 //
-//   - every hog on the screen has one (a living hog, not hidden in a crate
-//     nor inside a building or vehicle); an espionage hog's (Scout, Sniper,
-//     Spy) only shows in its own team's turn, so the others cannot spot it;
+//   - every hog on the screen has one (a living hog, not hidden in a
+//     crate); an espionage hog's (Scout, Sniper, Spy) only shows in its own
+//     team's turn, so the others cannot spot it;
 //   - the label is a box of 70 x 48 pixels (of 640 x 480) standing on the
 //     top of the hog as it appears on the screen: the hog is taken as a
 //     square of 182400 / depth pixels round its centre, which with the
@@ -15,6 +15,8 @@
 //     corner of its hog (above right, above left, below left, below
 //     right), with a curved arrow (FACETIMS.MAD `arrow000`) pointing at
 //     the hog;
+//   - a hog inside a building or vehicle is labelled with the object's
+//     name and health instead (FUN_0045a5c0, hog states 3 and 4);
 //   - the text is the hog's name or its rank (class), in turn every 1.28
 //     seconds (bit 7 of the match clock in hundredths), and under it its
 //     health, in the colour of its nation (VA 0x4CF1E0); the Boot Camp
@@ -95,7 +97,7 @@ std::vector<std::size_t> labelledHogs(const game::World& world);
 
 // What one label says.
 struct HogLabelText {
-    std::string text;        // name or rank (class)
+    std::string text;        // name or rank (class), or the building or vehicle it is in
     int health = 0;          // whole points, rounded up
     bool showHealth = true;  // not in the Boot Camp
     int nation = 0;          // scene::characterTeams index, for the colour
@@ -103,10 +105,34 @@ struct HogLabelText {
 
 // A named hog's label switches between its name and its rank this often.
 inline constexpr double kHogLabelSwapSeconds = 1.28;
-HogLabelText describeHogLabel(const game::World& world, const UiStrings& strings, std::size_t hog);
+// `shownHealth` replaces the hog's health (HealthCountdown).
+HogLabelText describeHogLabel(const game::World& world, const UiStrings& strings, std::size_t hog,
+                              std::optional<float> shownHealth = std::nullopt);
+
+// The health a label shows runs down to the hog's real health instead of
+// dropping at once, as on the footage (part 3, 1:45-1:48 and 2:14-2:16):
+// slowly at first, then faster, about 2.5 x t^2 points t seconds after
+// the drop began (5 x t points a second). Healing shows at once.
+class HealthCountdown {
+public:
+    void update(const game::World& world, double seconds);
+    // What the label of hog `index` shows (its health if not followed yet).
+    float shown(const game::World& world, std::size_t index) const;
+
+    static constexpr float kAcceleration = 5.0f;  // points a second, each second
+
+private:
+    struct Shown {
+        float health = 0.0f;
+        float drainSeconds = 0.0f;  // how long it has been running down
+    };
+    std::vector<Shown> hogs_;
+};
 
 // The labels' fading, as FUN_00457840: up while the camera stands still,
 // down while it moves.
+// The labels fade in while the camera stands still and fade out while it
+// moves.
 class HogLabelFade {
 public:
     void update(double seconds, bool cameraStill);

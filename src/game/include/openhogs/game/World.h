@@ -68,6 +68,24 @@ struct SightView {
     glm::vec3 direction{1.0f, 0.0f, 0.0f};  // unit vector
 };
 
+// The airship of an airstrike (World::airship). As the footage shows
+// (docs/video/weapons.md), once the spot is chosen the turn's clock stops,
+// the airship flies in high over the spot along the way the player
+// chose, lets its bombs go one after the other as it passes over their
+// places (a line along its course, centred on the spot), and flies on.
+struct Airship {
+    std::size_t hog = 0;                 // who called it
+    WeaponId weapon = WeaponId::Airstrike;
+    glm::vec3 position{0.0f};            // the middle of the gas bag
+    glm::vec3 direction{1.0f, 0.0f, 0.0f};  // its course, a unit vector on the ground
+    glm::vec3 spot{0.0f};                // the chosen spot, on the ground
+    int bombs = 0;                       // how many it carries
+    int bombsDropped = 0;
+    float spacing = 0.0f;                // between the bombs' places, along the course
+    // Where bomb `index` (0 to bombs - 1) is let go, on the ground.
+    glm::vec3 dropPlace(int index) const;
+};
+
 // Arriving: a campaign mission's opening, the squads coming down by
 // parachute before the first turn (beginArrival). Playing: a hog's turn.
 // Resolving: a shot or a fall settling. Over: someone won.
@@ -178,8 +196,11 @@ public:
     // The buildings and vehicles hogs can get into (Mounts.h), and where
     // each is now. Set by loadWorld from the map's objects; a hog standing
     // inside one when the match starts is put in it.
-    void setMounts(const std::vector<std::pair<std::size_t, MountKind>>& mounts);
+    void setMounts(const std::vector<FoundMount>& mounts);
     const std::vector<Mount>& mounts() const { return mounts_; }
+
+    // The airship of an airstrike in flight, if any.
+    const std::optional<Airship>& airship() const { return airship_; }
 
     // While the active hog's player looks through binoculars: the view.
     std::optional<SightView> binocularView() const;
@@ -230,7 +251,12 @@ private:
     void shockwave(std::size_t hogIndex, const WeaponSpec& spec, std::vector<GameEvent>& events);
     void pickPocket(std::size_t hogIndex, const WeaponSpec& spec, std::vector<GameEvent>& events);
     void useOwnWeapon(Hog& hog, std::size_t slot);
-    glm::vec3 targetSpot(const Hog& hog, const WeaponSpec& spec, float power) const;
+    // Choosing the spot of an airstrike or special ops (Hog::StrikeAim).
+    void startStrikeAim(Hog& hog) const;
+    void moveStrikeAim(Hog& hog, const MovementInput& movement, double seconds) const;
+    glm::vec3 onGroundInPlayArea(glm::vec3 spot) const;
+    void callAirship(std::size_t hogIndex, const WeaponSpec& spec, const Hog::StrikeAim& aim);
+    void flyAirship(double seconds);
     void flyJetpack(std::size_t index, const MovementInput& input, double seconds,
                     const std::vector<formats::Animation>& animations, std::vector<GameEvent>& events);
     // Ends a jetpack flight: dropped in the air (the parachute opens and
@@ -289,6 +315,7 @@ private:
     double timeSeconds_ = 0.0;
 
     std::vector<Projectile> projectiles_;
+    std::optional<Airship> airship_;
     std::vector<ExplosionEffect> explosions_;
     std::vector<TracerEffect> tracers_;
 

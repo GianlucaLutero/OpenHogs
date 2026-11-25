@@ -387,16 +387,13 @@ std::array<WeaponSpec, kWeaponCount> makeWeapons() {
     jetpack.knockback = 300.0f;
     jetpack.endsTurn = false;
     auto specialOps = action(W::SpecialOps, K::SpecialOps, "SPECIAL OPS");
-    specialOps.range = 8000.0f;
-    specialOps.usesPower = true;
+    // The spot is chosen on an aerial view (Hog::StrikeAim), not thrown.
     // The wiki: the blimp drops five shells of 50 points.
     auto airstrike = action(W::Airstrike, K::Airstrike, "AIRSTRIKE");
     airstrike.damage = 50.0f;
     airstrike.blastRadius = 400.0f;
     airstrike.knockback = 900.0f;
     airstrike.shots = 5;
-    airstrike.range = 8000.0f;
-    airstrike.usesPower = true;
     auto fireRain = airstrike;
     fireRain.id = W::FireRainAirstrike;
     fireRain.fallbackName = "F-RAIN AIRSTRIKE";

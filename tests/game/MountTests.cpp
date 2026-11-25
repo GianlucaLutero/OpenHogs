@@ -74,7 +74,7 @@ World worldWith(MountKind kind, float health = 100.0f, float hogX = 120.0f) {
     Scene scene = sceneWith(health, hogX);
     World world(scene.map, scene.hogs);
     world.setDestructibles({{0, kind == MountKind::Tank ? ObjectClass::Vehicle : ObjectClass::Building, health, false}});
-    world.setMounts({{0, kind}});
+    world.setMounts({{0, kind, ""}});  // the model name only matters to labels
     return world;
 }
 
@@ -164,7 +164,7 @@ TEST_CASE("A hog the map puts inside a building starts in it; a medic tent heals
     Scene scene = sceneWith(100.0f, 300.0f);  // standing inside the box
     scene.hogs[0].health = 20.0f;
     World world(scene.map, scene.hogs);
-    world.setMounts({{0, MountKind::MedicTent}});
+    world.setMounts({{0, MountKind::MedicTent, "M_TENT1"}});
     CHECK(world.hogs()[0].sheltered());
     world.endTurn();
     run(world, PlayerInput{}, 1);

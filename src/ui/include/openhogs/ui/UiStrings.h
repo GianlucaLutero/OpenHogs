@@ -114,6 +114,18 @@ struct UiStrings {
     // The name of a class; the id in capitals if it is unknown.
     std::string className(std::string_view classId) const;
 
+    // Names of the buildings and vehicles, by model name (gtext 82-95):
+    // the label over a hog inside one shows it instead of the hog's name
+    // (the executable's tables at VA 0x4CF098 and 0x4CF0B0).
+    std::vector<std::pair<std::string, std::string>> objectNames{
+        {"BIG_GUN", "ARTILLERY"}, {"M_TENT1", "MEDIC TENT"}, {"M_TENT2", "MASH TENT"}, {"PILLBOX", "PILLBOX"},
+        {"SHELTER", "SHELTER"},   {"TENT_S", "TENT"},        {"AMLAUNCH", "DUCK"},     {"AM_TANK", "AQUA-TANK"},
+        {"BOAT", "BOAT"},         {"TANK", "TANK"},          {"CARRY", "TRUCK"},       {"AIRSHIP1", "AIRSHIP"},
+        {"PP1", "PLANE"}};
+
+    // The name of a building or vehicle; the model name if it is unknown.
+    std::string objectName(std::string_view model) const;
+
     // Campaign menus (fetext).
     std::string newGame = "NEW GAME";
     std::string loadGame = "LOAD GAME";

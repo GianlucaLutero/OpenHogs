@@ -58,28 +58,96 @@ std::vector<Hog> shooterAndEnemy(const MapCollision& map, WeaponId weapon, float
 
 } // namespace
 
-TEST_CASE("An airstrike drops its bombs on the spot the power chooses", "[game][weapons][reach]") {
-    // Five bombs fall across a spot 15% of the strike's reach ahead:
-    // the enemy standing there is hurt, the hog that called it is not.
+// Moves the crosshair of an airstrike or special ops: one press of fire
+// opens the aerial view, `move` is held for `steps`, a second press
+// confirms the spot.
+std::vector<GameEvent> chooseSpot(World& world, const MovementInput& move, int steps) {
+    auto events = run(world, firing(), 1);
+    run(world, PlayerInput{}, 1);
+    PlayerInput moving;
+    moving.movement = move;
+    run(world, moving, steps);
+    const auto confirmed = run(world, firing(), 1);
+    events.insert(events.end(), confirmed.begin(), confirmed.end());
+    return events;
+}
+
+MovementInput forward() {
+    MovementInput move;
+    move.forward = true;
+    return move;
+}
+
+TEST_CASE("Airstrike: the first press opens the aerial view and the keys move the crosshair, not the hog",
+          "[game][weapons][reach]") {
+    // The manual: such skills "present you with an aerial view of the map -
+    // move your crosshair with the cursor keys". While the spot is chosen
+    // the hog must stay put and nothing may be fired yet.
+    const auto map = flatMap();
+    World world(map, shooterAndEnemy(map, WeaponId::Airstrike, 1000, 0));
+    auto events = run(world, firing(), 1);
+    run(world, PlayerInput{}, 1);
+    REQUIRE(world.hogs()[0].strikeAim.has_value());
+    PlayerInput moving;
+    moving.movement = forward();
+    moving.movement.turnLeft = true;
+    events = run(world, moving, 25);
+    const Hog& hog = world.hogs()[0];
+    CHECK(hog.position.x == Approx(0.0f).margin(1.0f));  // the hog did not walk
+    CHECK(hog.strikeAim->spot.x > 500.0f);                // forward: the way the hog faces (+x)
+    CHECK(hog.strikeAim->spot.z < -500.0f);               // left of +x is -z
+    CHECK(count(events, GameEventType::Fired) == 0);
+    CHECK_FALSE(world.airship().has_value());
+}
+
+TEST_CASE("Airstrike: an airship flies over the chosen spot and its bombs hit there", "[game][weapons][reach]") {
+    // The footage (part 17, 30:53-31:01): after the spot is confirmed an
+    // airship comes in, lets five bombs go over the spot and flies off.
+    // The enemy standing on the spot is hurt, the hog that called it is
+    // not, and the turn waits for the airship before it passes on.
     const auto map = flatMap();
     const WeaponSpec& strike = weaponSpec(WeaponId::Airstrike);
-    World world(map, shooterAndEnemy(map, WeaponId::Airstrike, strike.range * 0.15f, 0));
-    auto events = fireAtPower(world, 0.15f);
-    const auto later = run(world, PlayerInput{}, 50 * 6);
+    World world(map, shooterAndEnemy(map, WeaponId::Airstrike, 1320, 0));
+    auto events = chooseSpot(world, forward(), 33);  // 0.66 s at 2000 units/s
+    REQUIRE(world.airship().has_value());
+    CHECK(world.airship()->spot.x == Approx(1320.0f).margin(50.0f));
+    const auto during = run(world, PlayerInput{}, 50 * 4);
+    events.insert(events.end(), during.begin(), during.end());
+    CHECK(world.activeHog() == std::optional<std::size_t>(0));  // still coming in: the turn waits
+    const auto later = run(world, PlayerInput{}, 50 * 10);
     events.insert(events.end(), later.begin(), later.end());
+    CHECK_FALSE(world.airship().has_value());
     CHECK(count(events, GameEventType::Explosion) == strike.shots);
     CHECK(world.hogs()[1].health < kMaxHealth);
     CHECK(world.hogs()[0].health == Approx(kMaxHealth));
 }
 
+TEST_CASE("Airstrike: the aim keys turn the way the airship comes in", "[game][weapons][reach]") {
+    // The manual: "use the Page up and Page down keys to rotate the angle
+    // that your transport Airship will come in from"; the bombs then fall
+    // in a line along that course, so turning it decides what the line
+    // covers.
+    const auto map = flatMap();
+    World world(map, shooterAndEnemy(map, WeaponId::Airstrike, 1000, 0));
+    run(world, firing(), 1);
+    run(world, PlayerInput{}, 1);
+    PlayerInput turning;
+    turning.aimUp = true;
+    run(world, turning, 50);  // 90 degrees at 90 per second
+    run(world, firing(), 1);
+    REQUIRE(world.airship().has_value());
+    const glm::vec3 course = world.airship()->direction;
+    CHECK(course.x == Approx(0.0f).margin(0.05f));
+    CHECK(course.z == Approx(-1.0f).margin(0.05f));  // turned left from +x
+}
+
 TEST_CASE("Special ops drop the hog unhurt on the chosen spot, then the turn ends", "[game][weapons][reach]") {
     const auto map = flatMap();
-    const WeaponSpec& drop = weaponSpec(WeaponId::SpecialOps);
     World world(map, shooterAndEnemy(map, WeaponId::SpecialOps, 0, 3000));
-    fireAtPower(world, 0.5f);
+    chooseSpot(world, forward(), 25);  // 0.5 s at 2000 units/s
     run(world, PlayerInput{}, 50 * 12);
     const Hog& hog = world.hogs()[0];
-    CHECK(hog.position.x == Approx(drop.range * 0.5f).margin(100.0f));
+    CHECK(hog.position.x == Approx(1000.0f).margin(100.0f));
     CHECK(hog.health == Approx(kMaxHealth));  // the parachute: no fall damage
     CHECK_FALSE(hog.parachute);
     CHECK(world.activeHog() == std::optional<std::size_t>(1));

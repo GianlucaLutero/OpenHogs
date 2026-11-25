@@ -109,10 +109,10 @@ TEST_CASE("Weapons: the table is complete and consistent", "[game][weapons]") {
             CHECK(spec.fuseSeconds > 0.0f);  // seconds of flight
             break;
         case WeaponKind::SpecialOps:
-            CHECK(spec.range > 0.0f);
+            CHECK_FALSE(spec.usesPower);  // the spot is chosen on the aerial view
             break;
         case WeaponKind::Airstrike:
-            CHECK(spec.range > 0.0f);
+            CHECK_FALSE(spec.usesPower);
             CHECK(spec.shots > 0);
             CHECK(spec.blastRadius > 0.0f);
             break;

@@ -123,6 +123,13 @@ const std::vector<std::pair<std::string, std::size_t>> kGtClassNames{
     {"ace", 78},    {"grunt", 63},    {"heavy", 64},  {"legend", 79}, {"medic", 75},
     {"sapper", 68}, {"saboteur", 70}, {"sniper", 72}, {"spy", 73}};
 
+// The buildings' and vehicles' names, in the order of the executable's
+// tables: buildings 82-88 (86, SANDBAGS, is not used), vehicles 89-95.
+const std::vector<std::pair<std::string, std::size_t>> kGtObjectNames{
+    {"BIG_GUN", 82},  {"M_TENT1", 83}, {"M_TENT2", 84}, {"PILLBOX", 85}, {"SHELTER", 87},
+    {"TENT_S", 88},   {"AIRSHIP1", 89}, {"AMLAUNCH", 90}, {"AM_TANK", 91}, {"BOAT", 92},
+    {"PP1", 93},      {"TANK", 94},    {"CARRY", 95}};
+
 bool isBlank(const std::string& text) {
     for (const char c : text) {
         if (!std::isspace(static_cast<unsigned char>(c))) return false;
@@ -148,6 +155,13 @@ std::string UiStrings::trainingText(int text) const {
 const std::string& UiStrings::teamName(int team) const {
     const auto count = static_cast<int>(teamNames.size());
     return teamNames[static_cast<std::size_t>(((team % count) + count) % count)];
+}
+
+std::string UiStrings::objectName(std::string_view model) const {
+    for (const auto& [id, name] : objectNames) {
+        if (id == model) return name;
+    }
+    return std::string(model);
 }
 
 std::string UiStrings::className(std::string_view classId) const {
@@ -327,6 +341,11 @@ UiStrings loadUiStrings(const std::vector<std::string>& frontEndText, const std:
     for (auto& [id, name] : strings.classNames) {
         for (const auto& [classId, index] : kGtClassNames) {
             if (classId == id) take(name, gt, index);
+        }
+    }
+    for (auto& [model, name] : strings.objectNames) {
+        for (const auto& [objectModel, index] : kGtObjectNames) {
+            if (objectModel == model) take(name, gt, index);
         }
     }
     return strings;

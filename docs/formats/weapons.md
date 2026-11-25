@@ -49,6 +49,10 @@ pick pocket, hide, shockwave, guided and homing missiles, the six shells
 ops, airstrike and F-rain airstrike, vehicle and building in/out, map
 view and binoculars. EJECT PIG is not (`docs/open-decisions.md`).
 Buildings and vehicles bring their own weapons (`game::Mounts`).
+Airstrikes and special ops choose their spot with a crosshair on an
+aerial view, and an airstrike's bombs come from the map's `AIRSHIP1`
+model flying over it, as the manual and the footage show
+(`docs/video/weapons.md`).
 Behaviour not found in the executable (lasting effects, healing amounts,
 the ranks' number of uses) follows the Hogs of War Wiki.
 
