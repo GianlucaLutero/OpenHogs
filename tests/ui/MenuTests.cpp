@@ -302,14 +302,15 @@ TEST_CASE("VOICES switches speech off and back to its level; MODE picks mono", "
 TEST_CASE("The pause menu resumes, or aborts only after confirmation", "[ui][pause]") {
     // Aborting throws the match away, so it needs a YES; Esc and CONTINUE
     // must both get back into the match.
-    PauseMenu pause{UiStrings{}};
+    PauseMenu pause{UiStrings{}, false};
     CHECK(pause.handle(MenuInput::Back).request == PauseResult::Request::Resume);
 
-    pause.reset();
+    pause.reset(VolumeLevels{});
     CHECK(pause.handle(MenuInput::Confirm).request == PauseResult::Request::Resume);
 
-    pause.reset();
-    pause.handle(MenuInput::Down);  // ABORT SKIRMISH
+    pause.reset(VolumeLevels{});
+    pause.handle(MenuInput::Up);  // ABORT SKIRMISH, the last item
+    CHECK(pause.menu().selectedItem().label == "ABORT SKIRMISH");
     CHECK(pause.handle(MenuInput::Confirm).request == PauseResult::Request::None);
     CHECK(pause.confirming());
     CHECK(pause.handle(MenuInput::Confirm).request == PauseResult::Request::None);  // NO is selected
@@ -318,6 +319,37 @@ TEST_CASE("The pause menu resumes, or aborts only after confirmation", "[ui][pau
     pause.handle(MenuInput::Confirm);  // ABORT SKIRMISH again
     pause.handle(MenuInput::Up);       // YES
     CHECK(pause.handle(MenuInput::Confirm).request == PauseResult::Request::Abort);
+
+    // In the campaign the same item leaves the mission.
+    PauseMenu campaign{UiStrings{}, true};
+    campaign.handle(MenuInput::Up);
+    CHECK(campaign.menu().selectedItem().label == "ABORT MISSION");
+}
+
+TEST_CASE("The pause menu changes the volumes as the original's does", "[ui][pause]") {
+    // The executable's pause menu has the two volume bars and the speech
+    // switch (FUN_0045a9b0): changing them must be heard at once, and a
+    // bar shows volume / 5 notches of 20.
+    PauseMenu pause{UiStrings{}, false};
+    VolumeLevels levels;
+    levels.master = 6;
+    levels.effects = 10;
+    levels.speech = 7;
+    pause.reset(levels);
+    CHECK(pause.litNotches(PauseMenu::kMasterVolume) == 12);
+
+    pause.handle(MenuInput::Down);  // MASTER VOLUME
+    auto result = pause.handle(MenuInput::Left);
+    CHECK(result.request == PauseResult::Request::VolumesChanged);
+    CHECK(result.volumes.master == 5);
+    CHECK(pause.litNotches(PauseMenu::kMasterVolume) == 10);
+
+    pause.handle(MenuInput::Down);  // SFX VOLUME
+    pause.handle(MenuInput::Down);  // SPEECH
+    result = pause.handle(MenuInput::Right);  // ON -> OFF
+    CHECK(result.volumes.speech == 0);
+    result = pause.handle(MenuInput::Left);   // back ON, at the level it had
+    CHECK(result.volumes.speech == 7);
 }
 
 TEST_CASE("Messages disappear after their time; a new one replaces the old", "[ui][banner]") {

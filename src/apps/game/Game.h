@@ -77,6 +77,7 @@ namespace openhogs::gameapp {
 
 struct GameOptions {
     std::string mapName;
+    bool campaign = false;                // a campaign mission (the pause menu offers ABORT MISSION)
     std::optional<std::size_t> startHog;  // hog to start with (0-based), if of the first team
     bool autoWalk = false;                // hold "forward" (for screenshots of a walking hog)
     bool autoSight = false;               // hold the rifle sight (for screenshots of it)
@@ -111,8 +112,9 @@ struct GameOptions {
 // What the match asks of the application after an input event.
 enum class GameRequest {
     None,
-    LeaveMatch,  // back to the menus (match aborted or over)
-    Screenshot,  // F12: save a screenshot of the current frame
+    LeaveMatch,      // back to the menus (match aborted or over)
+    Screenshot,      // F12: save a screenshot of the current frame
+    VolumesChanged,  // changed in the pause menu: see Game::pauseVolumes()
 };
 
 class Game {
@@ -139,6 +141,9 @@ public:
 
     // Opens the pause menu (also used when the window loses focus).
     void pause();
+
+    // The volumes last chosen in the pause menu (after VolumesChanged).
+    const ui::VolumeLevels& pauseVolumes() const { return pauseVolumes_; }
 
     const std::string& mapName() const { return mapName_; }
     const game::World& world() const { return world_; }
@@ -197,6 +202,7 @@ private:
     game::FixedTimestep timestep_;
     bool paused_ = false;
     ui::PauseMenu pauseMenu_;
+    ui::VolumeLevels pauseVolumes_;
     ui::MessageBanner banner_;
     glm::vec4 bannerColour_{1.0f};  // turn messages in the team's colour, others white
     OriginalHud hud_;

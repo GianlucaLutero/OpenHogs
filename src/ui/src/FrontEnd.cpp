@@ -587,4 +587,13 @@ FrontEndResult FrontEnd::handleConfirmQuit(const MenuResponse& response) {
     return result;
 }
 
+void FrontEnd::setVolumes(const VolumeLevels& volumes) {
+    volumes_ = volumes;
+    if (volumes.speech > 0) speechWhenOn_ = volumes.speech;
+    volume_.setValue(kMaster, volumes.master);
+    volume_.setValue(kEffects, volumes.effects);
+    volume_.setValue(kVoices, volumes.speech > 0 ? kVoicesOn : kVoicesOff);
+    volume_.setValue(kMode, static_cast<int>(volumes.mode));
+}
+
 } // namespace openhogs::ui

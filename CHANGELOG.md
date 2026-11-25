@@ -5,6 +5,11 @@ the `project()` call in `CMakeLists.txt`.
 
 ## Unreleased — refinement
 
+- **Pause menu** as the original: its framed panel, MASTER VOLUME and SFX
+  VOLUME bars, SPEECH ON/OFF and ABORT MISSION in the campaign; the
+  volumes change at once and are saved.
+- **Instruments** slide in along the original's curve, with its small
+  bounce; the **briefing** has the original's loading bar.
 - **Labels over every hog** as the PC original: name and rank in turn,
   heart and health, in the colour of the hog's nation and in the
   original's narrow letters (CHARS2); they fade in while the camera stands

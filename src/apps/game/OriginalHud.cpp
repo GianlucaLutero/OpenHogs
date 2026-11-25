@@ -366,6 +366,91 @@ void OriginalHud::drawHogLabel(Interface& userInterface, const ui::HogLabelBox& 
     }
 }
 
+namespace {
+
+// The pause menu's colours (FUN_0045a9b0).
+const glm::vec4 kPauseTitle{0.0f, 1.0f, 0.0f, 1.0f};
+const glm::vec4 kPauseSelected{1.0f, 1.0f, 1.0f, 1.0f};
+const glm::vec4 kPauseOther{0.5f, 0.5f, 0.5f, 1.0f};
+const glm::vec4 kPauseBarSelected{1.0f, 40.0f / 255.0f, 40.0f / 255.0f, 1.0f};
+const glm::vec4 kPauseBarOther{0.5f, 40.0f / 255.0f, 40.0f / 255.0f, 1.0f};
+const glm::vec4 kPauseVeil{0.0f, 0.0f, 0.0f, 0.5f};
+constexpr float kPauseFrameCorner = 16.0f;
+
+} // namespace
+
+void OriginalHud::drawPauseFrame(render::UiRenderer& ui, float left, float top, float right, float bottom) const {
+    ui.drawRect(left, top, right - left, bottom - top, kPauseVeil);
+    // FUN_0045b580: corners and stretched edges of dashtims' pause1..8,
+    // laid from 9 pixels left of the panel and 14 above it.
+    const float width = right - left;
+    const float height = bottom - top;
+    const float c = kPauseFrameCorner;
+    const auto piece = [&](const char* name, float x, float y, float w, float h) {
+        if (const auto* image = picture(name)) ui.drawImage(*image, x, y, w, h);
+    };
+    piece("pause2", left - 9.0f, top - 14.0f, width + 2.0f, c);    // top edge
+    piece("pause7", left + 5.0f, bottom - 2.0f, width + 2.0f, c);  // bottom edge
+    piece("pause4", left - 9.0f, top - 14.0f, c, height + 12.0f);  // left edge
+    piece("pause5", right - 7.0f, top - 14.0f, c, height + 12.0f); // right edge
+    piece("pause1", left - 9.0f, top - 14.0f, c, c);
+    piece("pause3", right - 7.0f, top - 14.0f, c, c);
+    piece("pause6", left - 9.0f, bottom - 2.0f, c, c);
+    piece("pause8", right - 7.0f, bottom - 2.0f, c, c);
+}
+
+void OriginalHud::drawPauseMenu(Interface& userInterface, const ui::PauseMenu& pause) const {
+    using Layout = ui::OriginalPauseLayout;
+    auto& ui = userInterface.renderer();
+    const render::UiFont& font = userInterface.labelFont();
+    render::TextStyle style;
+    style.scale = kLabelLineHeight / static_cast<float>(std::max(1, font.font().lineHeight));
+    style.align = render::TextAlign::Centre;
+    const float centreX = ui.canvasWidth() / 2.0f;
+    const float centreY = render::kCanvasHeight / 2.0f;
+    const auto& menu = pause.menu();
+
+    if (pause.confirming()) {
+        drawPauseFrame(ui, centreX - Layout::kConfirmHalfWidth, centreY + Layout::kConfirmTop,
+                       centreX + Layout::kConfirmHalfWidth, centreY);
+        style.colour = kPauseTitle;
+        ui.drawText(font, menu.title(), centreX, centreY + Layout::kConfirmTitleY, style);
+        const float xs[2] = {Layout::kYesX, Layout::kNoX};
+        for (std::size_t i = 0; i < menu.items().size() && i < 2; ++i) {
+            style.colour = i == menu.selectedIndex() ? kPauseSelected : kPauseOther;
+            ui.drawText(font, menu.items()[i].label, centreX + xs[i], centreY + Layout::kConfirmChoiceY, style);
+        }
+        return;
+    }
+
+    const float top = centreY - Layout::kHalfHeight;
+    drawPauseFrame(ui, centreX - Layout::kHalfWidth, top, centreX + Layout::kHalfWidth, centreY + Layout::kHalfHeight);
+    style.colour = kPauseTitle;
+    ui.drawText(font, menu.title(), centreX, top + Layout::kTitleY, style);
+    for (std::size_t i = 0; i < menu.items().size() && i < 5; ++i) {
+        const auto& item = menu.items()[i];
+        const bool selected = i == menu.selectedIndex();
+        style.colour = selected ? kPauseSelected : kPauseOther;
+        style.align = render::TextAlign::Centre;
+        const std::string text = item.kind == ui::MenuItem::Kind::Choice ? item.label + " " + item.choiceText() : item.label;
+        ui.drawText(font, text, centreX, top + Layout::kItemY[i], style);
+        if (item.kind != ui::MenuItem::Kind::Slider) continue;
+        // The bar: the lit notches in red over the 20 notches of the scale.
+        const int lit = pause.litNotches(static_cast<ui::PauseMenu::Item>(item.id));
+        std::string scale;
+        std::string litPart;
+        for (int notch = 0; notch < ui::PauseMenu::kVolumeNotches; ++notch) {
+            scale += "I ";
+            if (notch < lit) litPart += "I ";
+        }
+        style.align = render::TextAlign::Left;
+        const float barY = top + Layout::kItemY[i] + Layout::kBarDrop;
+        ui.drawText(font, scale, centreX + Layout::kBarLeft, barY, style);
+        style.colour = selected ? kPauseBarSelected : kPauseBarOther;
+        ui.drawText(font, litPart, centreX + Layout::kBarLeft, barY, style);
+    }
+}
+
 const render::UiImage* OriginalHud::picture(std::string_view name) const {
     const auto found = pictures_.find(name);
     return found == pictures_.end() ? nullptr : &found->second;
