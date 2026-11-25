@@ -5,6 +5,8 @@ the `project()` call in `CMakeLists.txt`.
 
 ## Unreleased — refinement
 
+- **Hurt hogs limp**: at 25 health or less they run with the original's
+  wounded run cycle, at 10 or less with the more wounded one.
 - **Pause menu** as the original: its framed panel, MASTER VOLUME and SFX
   VOLUME bars, SPEECH ON/OFF and ABORT MISSION in the campaign; the
   volumes change at once and are saved.

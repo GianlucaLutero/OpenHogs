@@ -29,6 +29,8 @@ namespace openhogs::game {
 
 // Animation numbers used for movement (names in scene::animationName).
 inline constexpr std::size_t kRunAnimation = 0;           // "Run cycle (normal)", 17 frames
+inline constexpr std::size_t kWoundedRunAnimation = 1;    // "Run cycle (wounded)", 20 frames
+inline constexpr std::size_t kVeryWoundedRunAnimation = 2;  // "Run cycle (more wounded)", 17 frames
 inline constexpr std::size_t kWalkBackAnimation = 3;      // "Walk cycle (backwards)"
 inline constexpr std::size_t kTurnAnimation = 4;          // "Turning on Spot"
 inline constexpr std::size_t kSwimAnimation = 6;          // "Swimming like Rick": with nothing in hand (the executable uses 5 only with a weapon out)
@@ -43,6 +45,12 @@ inline constexpr std::size_t kParachuteAnimation = 58;    // "Parachuting"
 inline constexpr std::size_t kFirstDyingAnimation = 57;
 inline constexpr std::size_t kDyingAnimationCount = 17;
 inline constexpr std::size_t kDrowningAnimation = 74;     // sinking: the executable's death in water
+
+// The run cycle a hog uses: the executable (FUN_0046b1e0) picks the
+// wounded cycle at 25 health or less and the more wounded one at 10 or
+// less. The hog moves as far either way: the executable moves it by the
+// control's amount, whatever the cycle (decision 178).
+std::size_t runAnimationFor(float health);
 
 // One of the dying animations, at random (a fixed sequence, so matches
 // can be replayed).

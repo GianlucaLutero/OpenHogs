@@ -246,6 +246,24 @@ TEST_CASE("Movement: running moves the hog along its facing at the running speed
     CHECK(events.footsteps == 4);
 }
 
+// A hurt hog runs with the wounded cycles, as the executable picks them
+// (FUN_0046b1e0: 25 health or less, then 10 or less), and covers the same
+// ground, since the executable moves it by the control's amount whatever
+// the cycle. Players read a hog's state from its gait.
+TEST_CASE("Movement: hurt hogs run with the wounded cycles", "[game][movement]") {
+    CHECK(runAnimationFor(100.0f) == kRunAnimation);
+    CHECK(runAnimationFor(25.5f) == kRunAnimation);
+    CHECK(runAnimationFor(25.0f) == kWoundedRunAnimation);
+    CHECK(runAnimationFor(10.0f) == kVeryWoundedRunAnimation);
+
+    const auto map = flatMap();
+    std::vector<Hog> hogs{makeHog(map, 0, 0)};
+    hogs[0].health = 20.0f;
+    const auto events = runSteps(hogs, map, forward(), 50);
+    CHECK(hogs[0].animation.animation() == kWoundedRunAnimation);
+    CHECK(events.distanceMoved == Approx(kRunSpeed).margin(1.0));
+}
+
 // Turning works on the spot at a fixed rate, and stays possible when the
 // movement allowance is used up (to face a target later); walking and
 // jumping then do nothing.

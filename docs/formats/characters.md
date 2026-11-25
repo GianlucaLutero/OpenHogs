@@ -196,7 +196,11 @@ steps per cycle, which at 25 frames per second is **480 world units per
 second**. The backward walk (animation 3, 20 frames) gives 180 units per
 second the same way.
 
-OpenHogs uses: 0 running, 3 walking back, 4 turning on the spot, 5
+The executable runs with animation 1 ("Run cycle (wounded)") at 25 health
+or less and 2 ("Run cycle (more wounded)") at 10 or less, moving the hog
+as far as with the normal cycle (`FUN_0046b1e0`, docs/video/physics.md).
+
+OpenHogs uses: 0 running (1 and 2 when hurt, as the executable), 3 walking back, 4 turning on the spot, 5
 swimming (its root is 140 units lower, so the body sinks into the water),
 8, 9 and 10 for the start, middle and end of a jump, 38 for falling.
 
