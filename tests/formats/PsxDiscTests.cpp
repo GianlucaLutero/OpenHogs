@@ -121,6 +121,26 @@ TEST_CASE("PsxDisc reads files from raw and ISO images", "[formats][PsxDisc]") {
     }
 }
 
+// The speech is XA audio, which only a raw image keeps: its sectors must
+// come back whole (2352 bytes each, subheader included), one per 2048
+// bytes of the directory's size; an .iso must refuse rather than hand back
+// data without the subheaders that say which channel a sector is.
+TEST_CASE("PsxDisc reads whole sectors for XA audio from raw images only", "[formats][PsxDisc]") {
+    TempDirectory folder;
+    writeImage(folder.path() / "disc.bin", true);
+    writeImage(folder.path() / "disc.iso", false);
+
+    const PsxDisc raw(folder.path() / "disc.bin");
+    const auto sectors = raw.readRawSectors("TEXT/GITALIAN.BIN");
+    REQUIRE(sectors.size() == 2 * 2352u);  // 2100 bytes: two sectors
+    CHECK(std::to_integer<int>(sectors[15]) == 2);           // the header: mode 2
+    CHECK(static_cast<char>(sectors[24]) == 'A');            // data after the subheader
+    CHECK(static_cast<char>(sectors[2352 + 24]) == 'B');
+
+    const PsxDisc iso(folder.path() / "disc.iso");
+    CHECK_THROWS(iso.readRawSectors("TEXT/GITALIAN.BIN"));
+}
+
 // Disc paths appear with different spellings (lower case, '\', ";1"
 // version suffix, leading '/'); all must find the same file.
 TEST_CASE("PsxDisc paths are case-insensitive and ignore version suffixes", "[formats][PsxDisc]") {

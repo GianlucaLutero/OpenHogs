@@ -43,6 +43,15 @@ public:
     // leading '/'. Throws std::runtime_error if the file does not exist.
     std::vector<std::byte> readFile(std::string_view path) const;
 
+    // Reads a file's sectors whole, 2352 bytes each (sync, header, the
+    // 8-byte subheader, data). Needed for XA audio (XaAudio.h): its
+    // sectors are Mode 2 Form 2, with 2324 data bytes instead of 2048,
+    // and their subheader tells which channel each belongs to. The file
+    // has ceil(size / 2048) sectors, as the directory counts them. Throws
+    // std::runtime_error for a missing file, or on a plain ISO image
+    // (2048-byte sectors keep neither subheaders nor XA audio).
+    std::vector<std::byte> readRawSectors(std::string_view path) const;
+
     // Sector size of the image: 2352 (raw) or 2048 (ISO).
     std::size_t sectorSize() const { return sectorSize_; }
 

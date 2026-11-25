@@ -165,4 +165,24 @@ std::vector<std::byte> PsxDisc::readFile(std::string_view path) const {
     return content;
 }
 
+std::vector<std::byte> PsxDisc::readRawSectors(std::string_view path) const {
+    const auto it = files_.find(normalisePsxPath(path));
+    if (it == files_.end()) {
+        throw std::runtime_error("File not found on the disc image: " + std::string(path));
+    }
+    if (sectorSize_ != kRawSectorSize) {
+        throw std::runtime_error("XA audio needs a raw .bin image with 2352-byte sectors, not an .iso: " +
+                                 std::string(path));
+    }
+    const std::size_t sectors = (it->second.size + kDataSize - 1) / kDataSize;
+    std::vector<std::byte> content(sectors * kRawSectorSize);
+    file_.clear();
+    file_.seekg(static_cast<std::streamoff>(std::uint64_t{it->second.firstSector} * kRawSectorSize));
+    file_.read(reinterpret_cast<char*>(content.data()), static_cast<std::streamsize>(content.size()));
+    if (!file_) {
+        throw core::FormatError("Disc image is truncated: cannot read " + std::string(path));
+    }
+    return content;
+}
+
 } // namespace openhogs::formats

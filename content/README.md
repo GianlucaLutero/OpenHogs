@@ -82,6 +82,10 @@ for OpenHogs that anyone can improve:
 Keys are string indices of the PC tables (see them with
 `openhogs-text export`). Generated `lang-*` packs are ignored by git.
 
+From a localised PAL disc (SLES-02766 to 02769) the pack also gets the
+dubbed speech, as `data/Speech/Sku1/...` WAV files with the PC's own names
+(`docs/formats/psx-speech.md`).
+
 ## Facial expressions
 
 The hogs change their eyes and mouth with what they are doing. Which face

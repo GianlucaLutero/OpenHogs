@@ -6,6 +6,7 @@
 
 #include "openhogs/langpack/Bitmap.h"
 #include "openhogs/langpack/LanguagePackBuilder.h"
+#include "openhogs/langpack/SpeechExtraction.h"
 #include "openhogs/langpack/TextAlignment.h"
 #include "openhogs/langpack/TranslationOverrides.h"
 
@@ -16,6 +17,8 @@
 #include "openhogs/core/IniFile.h"
 #include "openhogs/core/VirtualFileSystem.h"
 #include "openhogs/formats/TextTable.h"
+#include "openhogs/formats/WaveFile.h"
+#include "openhogs/formats/XaAudio.h"
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
@@ -235,4 +238,74 @@ TEST_CASE("buildLanguagePack explains unusable discs and languages", "[langpack]
 
     options.language = "ja";
     CHECK_THROWS_WITH(buildLanguagePack(options), ContainsSubstring("not on the PlayStation disc"));
+}
+
+// Each PC speech line must come from the same line on the disc: a wrong
+// channel gives a hog another line (a battle cry for a cry of pain), a
+// wrong file another hog's voice. The numbers were checked on the
+// European disc, whose English lines match the PC's in length.
+TEST_CASE("Speech: where each PC line is on the disc", "[langpack][speech]") {
+    CHECK(discSourceOf("Speech/Sku1/Pig01/01EN0101.wav") == SpeechSource{"SPEECH/SKU1/PIG01/01EN01.IXA", 0});
+    CHECK(discSourceOf("speech/sku1/pig03/03fr0203.wav") == SpeechSource{"SPEECH/SKU1/PIG03/03FR01.IXA", 8});
+    CHECK(discSourceOf("Speech\\Sku1\\Pig09\\09RU0506.wav") == SpeechSource{"SPEECH/SKU1/PIG09/09RU01.IXA", 29});
+    CHECK(discSourceOf("Speech/Sku1/Sarge/SGEN0101.wav") == SpeechSource{"SPEECH/SKU1/SARGE/SGEN01.IXA", 0});
+    CHECK(discSourceOf("Speech/Sku1/Sarge/SGEN0501.wav") == SpeechSource{"SPEECH/SKU1/SARGE/SGEN02.IXA", 0});
+    CHECK(discSourceOf("Speech/Sku1/Sarge/SGEN2207.wav") == SpeechSource{"SPEECH/SKU1/SARGE/SGEN06.IXA", 14});
+    CHECK(discSourceOf("Speech/Sku1/Train1/tr1_en28.wav") == SpeechSource{"SPEECH/SKU1/TRAIN1/TR1_EN.IXA", 27});
+
+    CHECK_FALSE(discSourceOf("Speech/Sku1/Pig01/02EN0101.wav"));  // another hog's file in this folder
+    CHECK_FALSE(discSourceOf("Speech/Sku1/Pig01/01EN0601.wav"));  // no group 6
+    CHECK_FALSE(discSourceOf("Audio/sfxday.srl"));
+}
+
+// Only the localised releases are dubbed: from the European disc the
+// speech would just be the PC's English again.
+TEST_CASE("Speech: dubbed releases are told by their boot file", "[langpack][speech]") {
+    CHECK(isDubbedRelease("BOOT = cdrom:\\SLES_027.69;1\nTCB = 4\n"));
+    CHECK(isDubbedRelease("BOOT=cdrom:\\sles_027.66;1"));
+    CHECK_FALSE(isDubbedRelease("BOOT = cdrom:\\SLES_010.41;1\n"));
+}
+
+// A dubbed disc gives its voices to the pack under the PC's own file
+// names, so the game plays them in place of the English ones; lines the
+// disc lacks keep the PC's, and a disc without text still makes a pack.
+TEST_CASE("buildLanguagePack takes the dubbed speech of a localised disc", "[langpack][builder][speech]") {
+    tests::TempDirectory root;
+    const auto game = root.makeFolder("game");
+    formats::PcmSound english;
+    english.sampleRate = 22050;
+    english.channels = 1;
+    english.samples = {1, 2, 3};
+    writeBinary(game / "Speech/Sku1/Pig01/01EN0102.wav", formats::encodeWave(english));
+    writeBinary(game / "Speech/Sku1/Pig02/02EN0101.wav", formats::encodeWave(english));
+
+    // One XA sector on channel 1 (group 1, variant 2), 4-bit mono, value 3
+    // at range 0 (3 x 4096).
+    std::vector<std::byte> sector(formats::kXaSectorSize, std::byte{0});
+    sector[17] = std::byte{1};
+    sector[18] = std::byte{0x64};
+    sector[19] = std::byte{0x04};
+    for (std::size_t group = 0; group < 18; ++group) {
+        for (std::size_t i = 0; i < 16; ++i) sector[24 + group * 128 + i] = std::byte{0x00};
+        for (std::size_t i = 16; i < 128; ++i) sector[24 + group * 128 + i] = std::byte{0x33};
+    }
+    tests::writeIsoImage(root.path() / "dub.bin", {{"SYSTEM.CNF", tests::toBytes("BOOT = cdrom:\\SLES_027.69;1\n")}},
+                         true, {{"SPEECH/SKU1/PIG01/01EN01.IXA", sector}});
+
+    LanguagePackOptions options;
+    options.gameDirectory = game;
+    options.discImage = root.path() / "dub.bin";
+    options.outputDirectory = root.path() / "packs/lang-it";
+    const auto report = buildLanguagePack(options);
+
+    CHECK(report.speechLines == 1);
+    CHECK_FALSE(report.textFromDisc);
+    core::VirtualFileSystem pack;
+    pack.mount("lang-it", options.outputDirectory / "data");
+    const auto dubbed = formats::parseWave(pack.readFile("Speech/Sku1/Pig01/01EN0102.wav"));
+    CHECK(dubbed.sampleRate == 18900);
+    REQUIRE_FALSE(dubbed.samples.empty());
+    CHECK(dubbed.samples.front() == 3 * 4096);
+    CHECK_FALSE(pack.exists("Speech/Sku1/Pig02/02EN0101.wav"));  // not on this disc: the PC's stays
+    CHECK(content::ContentPack::load(options.outputDirectory).language == "it");
 }

@@ -21,7 +21,10 @@ namespace openhogs::tests {
 // Disc path ("TEXT/GITALIAN.BIN", upper case, '/' separators) -> content.
 using DiscFiles = std::map<std::string, std::vector<std::byte>>;
 
-void writeIsoImage(const std::filesystem::path& path, const DiscFiles& files, bool rawSectors);
+// `xaFiles` hold whole 2352-byte sectors (XA audio, raw images only),
+// written as they are; the directory gives them 2048 bytes a sector.
+void writeIsoImage(const std::filesystem::path& path, const DiscFiles& files, bool rawSectors,
+                   const DiscFiles& xaFiles = {});
 
 // Convenience: bytes of a string.
 std::vector<std::byte> toBytes(const std::string& text);

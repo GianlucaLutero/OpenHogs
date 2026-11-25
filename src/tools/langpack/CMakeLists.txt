@@ -4,6 +4,7 @@
 #   TextAlignment         - moves PlayStation translations onto the PC tables
 #   TranslationOverrides  - hand-written translations (content/translations/)
 #   Bitmap                - .BMP reading/writing and bilinear scaling
+#   SpeechExtraction      - where the PC's speech lines are on the disc
 #   LanguagePackBuilder   - puts it all together
 #
 # The logic is a library so the unit tests can use it directly.
@@ -11,6 +12,7 @@
 add_library(openhogs_langpack STATIC
     src/Bitmap.cpp
     src/LanguagePackBuilder.cpp
+    src/SpeechExtraction.cpp
     src/TextAlignment.cpp
     src/TranslationOverrides.cpp)
 

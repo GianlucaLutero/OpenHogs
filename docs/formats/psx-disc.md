@@ -12,7 +12,9 @@ English, French, German, Italian and Spanish. Reader:
 - Raw images (`.bin`) have 2352-byte sectors that start with a 12-byte sync
   pattern. PlayStation data sectors are *Mode 2 Form 1*: 2048 bytes of data
   at offset 24 (after the 16-byte header and the 8-byte subheader).
-- Plain `.iso` images have 2048-byte sectors.
+- The speech files are XA audio in *Mode 2 Form 2* sectors, read whole
+  (`PsxDisc::readRawSectors`, [psx-speech.md](psx-speech.md)).
+- Plain `.iso` images have 2048-byte sectors (and cannot hold XA audio).
 - Files are found through the standard ISO 9660 file system: primary volume
   descriptor in sector 16, root directory record at offset 156, names with a
   `;1` version suffix.

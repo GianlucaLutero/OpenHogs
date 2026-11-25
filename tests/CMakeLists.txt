@@ -32,6 +32,7 @@ add_executable(openhogs_tests
     formats/ModelTests.cpp
     formats/PackageArchiveTests.cpp
     formats/PsxDiscTests.cpp
+    formats/XaAudioTests.cpp
     formats/TextTableTests.cpp
     formats/TimImageTests.cpp
     formats/AudioFormatsTests.cpp

@@ -5,6 +5,10 @@ the `project()` call in `CMakeLists.txt`.
 
 ## Unreleased — refinement
 
+- **Dubbed voices** in the language packs: from a localised PAL disc
+  (French, German, Spanish or Italian) `openhogs-langpack` also takes
+  every spoken line of the hogs, the sergeant and the Boot Camp's
+  instructor (`--speech auto|yes|no`).
 - **Airstrikes** as the original: the first press of fire opens a view
   high over the map with a crosshair to move with the movement keys, the
   aim keys turn the way the airship comes in, and fire again confirms;
