@@ -55,7 +55,11 @@ public:
     // FEText/GameChars, the yellow letters over the hog in play (BIG if
     // missing). It has no accented letters.
     const render::UiFont& gameFont() const { return gameFont_ ? *gameFont_ : *bigFont_; }
-    // chars3, the font of the original front end's menus (BIG if missing).
+    // FEText/CHARS2, the narrow letters of the labels over the hogs
+    // (GameChars, then BIG, if missing).
+    const render::UiFont& labelFont() const { return labelFont_ ? *labelFont_ : gameFont(); }
+    // chars3, the font of the original front end's menus and of the match
+    // messages (BIG if missing).
     const render::UiFont& menuFont() const { return menuFont_ ? *menuFont_ : *bigFont_; }
     const ui::UiStrings& strings() const { return strings_; }
     const std::vector<std::string>& gameText() const { return gameText_; }
@@ -87,6 +91,7 @@ private:
     std::unique_ptr<render::UiFont> smallFont_;
     std::unique_ptr<render::UiFont> gameFont_;  // null if missing
     std::unique_ptr<render::UiFont> menuFont_;  // null if missing
+    std::unique_ptr<render::UiFont> labelFont_;  // null if missing
     std::map<game::WeaponId, render::UiImage> weaponIcons_;
     ui::UiStrings strings_;
     std::vector<std::string> gameText_;

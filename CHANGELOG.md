@@ -5,6 +5,13 @@ the `project()` call in `CMakeLists.txt`.
 
 ## Unreleased — refinement
 
+- **Labels over every hog** as the PC original: name and rank in turn,
+  heart and health, in the colour of the hog's nation and in the
+  original's narrow letters (CHARS2); they fade in while the camera stands
+  still, and a label that would cover another moves beside its hog with an
+  arrow. Spies and snipers stay unlabelled in the enemy's turn. Enemies
+  have names from their nation's list.
+- **Match messages** in the original's tall letters (CHARS3).
 - **Each level's look** as the PC original: the sky dome with the level's
   sky (sunny, sunrise, sunset, night, rain clouds, snow clouds...), the
   distance fog in the sky's colour, and the terrain's and objects'
@@ -32,8 +39,8 @@ the `project()` call in `CMakeLists.txt`.
 - **Rifle sight**: the mouse turns the hog and aims while it is held; the
   pad's left trigger holds it.
 - **Volumes** changed in VOLUME CONTROL are saved.
-- **Label over the hog** as on the PlayStation: its name or rank, and its
-  health after a heart; no more health bars.
+- **Label over the hog**: its name or rank, and its health after a heart;
+  no more health bars.
 - **FIELD CONDITIONS**: DEATHMATCH LIMIT (killed hogs come back; 2 points
   a kill, -1 a loss) and SELECT PIG (10 seconds to choose the hog).
 - **Rules**: the PlayStation's by default (`[Game] Version = ps1`); two

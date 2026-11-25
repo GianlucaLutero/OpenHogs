@@ -43,13 +43,6 @@ struct HudInfo {
     int turnNumber = 0;
 };
 
-// The label over the hog in play, as on the PlayStation (decision 36): a
-// named hog shows its name and its rank in turn, this long each; a hog
-// without a name shows its class (or rank). The HUD writes the health
-// under it, after a heart.
-inline constexpr double kHogLabelSwapSeconds = 2.0;
-std::string hogLabel(const HudInfo& turn, double timeSeconds);
-
 // The name of a weapon in the game's language: gtext entry number = weapon
 // id. English fallback when the table lacks it.
 std::string weaponDisplayName(game::WeaponId weapon, const std::vector<std::string>& gameText);

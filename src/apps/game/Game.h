@@ -175,6 +175,10 @@ private:
     render::Camera sceneCamera() const;
     void drawScene(int width, int height);
     void drawHud(int width, int height);
+    // The labels over every hog on the screen (ui::HogLabels).
+    void drawHogLabels(const render::Camera& camera, float aspect);
+    bool cameraStill(const render::Camera& camera) const;
+    void updateLabelFade(double seconds);
     void showMessage(const std::string& message, double seconds, bool turnMessage);
     // The teams' strength in the text box, once a round.
     void showTeamStrength();
@@ -196,6 +200,9 @@ private:
     ui::MessageBanner banner_;
     glm::vec4 bannerColour_{1.0f};  // turn messages in the team's colour, others white
     OriginalHud hud_;
+    // The labels over the hogs fade in while the camera stands still.
+    ui::HogLabelFade labelFade_;
+    std::optional<render::Camera> lastLabelCamera_;
     std::set<int> computerTeams_;
     std::vector<std::size_t> squadDeaths_;
     int promotionPoints_ = 0;

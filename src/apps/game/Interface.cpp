@@ -25,7 +25,9 @@ constexpr float kMenuPadding = 18.0f;
 constexpr float kMenuMinWidth = 300.0f;
 constexpr float kSliderWidth = 150.0f;
 constexpr float kSliderHeight = 12.0f;
-constexpr float kBannerScale = 1.25f;
+// Match messages are written in chars3 at its own size, as the executable
+// (FUN_0045b8b0 writes them with its chars3 font object at y = 140).
+constexpr float kBannerScale = 1.0f;
 constexpr float kChoiceGap = 40.0f;
 constexpr float kLineScale = 1.25f;  // information lines under a menu title (small font)
 constexpr float kLineGap = 4.0f;  // between a choice's label and its word
@@ -75,6 +77,11 @@ Interface::Interface(const core::VirtualFileSystem& vfs) {
     } catch (const std::exception& error) {
         std::cerr << "Warning: " << error.what() << "; the label over the hog uses BIG instead\n";
     }
+    try {
+        labelFont_ = loadFont(vfs, "CHARS2");
+    } catch (const std::exception& error) {
+        std::cerr << "Warning: " << error.what() << "; the labels over the hogs use GameChars instead\n";
+    }
     gameText_ = loadTextTable(vfs, "gtext");
     strings_ = ui::loadUiStrings(loadTextTable(vfs, "fetext"), gameText_);
     loadWeaponIcons(vfs);
@@ -122,11 +129,12 @@ void Interface::drawBanner(std::string_view text, float y, float alpha, const gl
     style.align = render::TextAlign::Centre;
     // Very long messages (translations) shrink to fit the screen.
     const float maxWidth = renderer_.canvasWidth() - 40.0f;
-    const float width = render::UiRenderer::textWidth(*bigFont_, text, style.scale);
+    const render::UiFont& font = menuFont();
+    const float width = render::UiRenderer::textWidth(font, text, style.scale);
     if (width > maxWidth) {
         style.scale *= maxWidth / width;
     }
-    renderer_.drawText(*bigFont_, text, renderer_.canvasWidth() / 2.0f, y, style);
+    renderer_.drawText(font, text, renderer_.canvasWidth() / 2.0f, y, style);
 }
 
 void Interface::drawMenu(const ui::Menu& menu, std::size_t rows, const std::vector<std::string>& lines) {

@@ -27,6 +27,7 @@
 #include "openhogs/core/VirtualFileSystem.h"
 #include "openhogs/render/UiRenderer.h"
 #include "openhogs/ui/FloatingNumbers.h"
+#include "openhogs/ui/HogLabels.h"
 #include "openhogs/ui/Hud.h"
 #include "openhogs/ui/HudLayout.h"
 #include "openhogs/ui/Radar.h"
@@ -63,11 +64,12 @@ public:
     void drawDamageNumbers(render::UiRenderer& ui, const glm::mat4& viewProjection,
                            const glm::vec3& cameraPosition) const;
 
-    // The label over the hog in play, as on the PlayStation: `label` (its
-    // name or rank, ui::hogLabel) in the game's yellow letters, and under
-    // it a heart with its health. `head` is the point above the hog.
-    void drawHogLabel(Interface& userInterface, const glm::mat4& viewProjection, const glm::vec3& head,
-                      const std::string& label, int health) const;
+    // One label over a hog (ui::HogLabels), laid out by
+    // ui::layoutHogLabels: its name or rank in FEText/CHARS2 and under it
+    // a heart with its health, in its nation's colour; a moved label's
+    // arrow while `arrows` (the labels are fully faded in).
+    void drawHogLabel(Interface& userInterface, const ui::HogLabelBox& box, const ui::HogLabelText& label,
+                      float alpha, bool arrows) const;
 
     // The weapon menu (ui::WeaponMenu) on its brass panel, sliding in from
     // the right while it is open: the tabs, the icons with their uses

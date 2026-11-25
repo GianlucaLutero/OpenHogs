@@ -205,3 +205,16 @@ speed each tick, and the tube goes up once it has gone by. The text is cut
 to the window, 22 pixels tall, 33 below the tube's top.
 
 OpenHogs: `ui::TextBox`, `OriginalHud::drawTextBox` (decision 155).
+
+## Labels over the hogs
+
+`FUN_00459b20` (from the HUD routine `FUN_00457840`) labels every hog on
+the screen in `FEText/CHARS2`, in the colour of its nation (VA
+`0x4CF1E0`), from the farthest hog to the nearest. The box is 70 × 48
+pixels on top of the hog's projected square (182400 / depth pixels); a
+box that clashes with another or leaves the screen moves to a corner of
+the hog (78 pixels wide) with the arrow `arrow000` of `FACETIMS.MAD`.
+`FUN_0045a5c0` writes the name or the rank (bit 7 of the clock in
+hundredths), then a heart and the health, except in the Boot Camp. The
+labels fade in by 25/255 a tick while the camera stands still and out by
+40 while it moves. Details: `docs/video/ui.md`; OpenHogs: `ui::HogLabels`.
