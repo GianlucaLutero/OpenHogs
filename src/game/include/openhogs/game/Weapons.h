@@ -110,13 +110,14 @@ enum class WeaponId {
 //     (damage, blastRadius), and a parachute brings the hog down; the
 //     turn goes on;
 //   - SpecialOps: the hog is dropped by parachute on a chosen spot;
-//   - Airstrike: bombs fall from the sky along a line over a chosen spot;
+//   - Airstrike: an airship flies over a chosen spot and drops its bombs
+//     in a line along its course (World::Airship);
 //   - InOut: gets into the building or vehicle next to the hog, or out of
 //     the one it is in (Mounts.h);
 //   - MapView, Binoculars: other ways of looking, switched on and off; they
 //     do not use up the turn.
-// The chosen spot of SpecialOps and Airstrike lies straight ahead of the
-// hog, as far as the power the player charges (up to `range`).
+// The spot of SpecialOps and Airstrike is chosen with a crosshair on an
+// aerial view of the map (Hog::StrikeAim).
 enum class WeaponKind {
     Melee, Bullet, Thrown, Shell, Placed, Heal, Suicide, SkipTurn, Surrender, Shockwave, Hide, PickPocket,
     Jetpack, SpecialOps, Airstrike, InOut, MapView, Binoculars

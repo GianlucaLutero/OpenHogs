@@ -208,6 +208,7 @@ private:
     OriginalHud hud_;
     // The labels over the hogs fade in while the camera stands still.
     ui::HogLabelFade labelFade_;
+    ui::HealthCountdown healthCountdown_;  // the labels' health running down
     std::optional<render::Camera> lastLabelCamera_;
     std::set<int> computerTeams_;
     std::vector<std::size_t> squadDeaths_;
@@ -229,6 +230,7 @@ private:
     // coming down by parachute (pickup index).
     std::map<std::size_t, glm::mat4> crateTransforms_;
     std::set<std::size_t> fallingCrates_;
+    bool airshipShown_ = false;  // its model was added to the map renderer
     // The effects' particles, and the last explosion they were made for.
     scene::ParticleSystem particles_;
     std::uint32_t lastExplosion_ = 0;
@@ -254,6 +256,7 @@ private:
     std::map<std::size_t, glm::mat4> mountTransforms_;
     void placeMounts();
     void placeFallingCrates();
+    void placeAirship();
     std::unique_ptr<render::CharacterRenderer> hogRenderer_;
     std::unique_ptr<render::EffectsRenderer> effects_;
     std::unique_ptr<render::CharacterTextureSet> weaponTextures_;

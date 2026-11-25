@@ -95,6 +95,25 @@ constexpr std::size_t kDisguiseObject = 1'000'000;
 // crates, drawn as map objects with numbers of their own.
 constexpr std::size_t kBootsObject = 2'000'000;
 constexpr std::size_t kParachuteObject = 3'000'000;
+// The airship of an airstrike, drawn as one more map object.
+constexpr std::size_t kAirshipObject = 4'000'000;
+// Choosing the spot of an airstrike: the aerial view stands this high over
+// the crosshair and this far behind it, looking down at it (part 17, 30:41).
+constexpr float kAerialViewHeight = 3500.0f;
+constexpr float kAerialViewBack = 1000.0f;
+constexpr float kAerialAimDotSize = 60.0f;
+// While the airship comes in, the camera waits on the ground this far past
+// the spot and this high, looking up at it (part 17, 30:53).
+constexpr float kAirshipWatchDistance = 1500.0f;
+constexpr float kAirshipWatchHeight = 300.0f;
+
+// Turns `camera` to look at `point` (render::Camera: yaw 0 looks towards
+// -Z, positive pitch looks up).
+void lookAt(render::Camera& camera, const glm::vec3& point) {
+    const glm::vec3 direction = glm::normalize(point - camera.position);
+    camera.yawDegrees = glm::degrees(std::atan2(direction.x, -direction.z));
+    camera.pitchDegrees = glm::degrees(std::asin(std::clamp(direction.y, -1.0f, 1.0f)));
+}
 // A hog's own parachute, in Chars/WEAPONS.MAD (worn like the jetpack).
 constexpr std::string_view kParachuteModel = "WE_PARA";
 // Hung from the root bone, the canopy opens above the hog with its cords
@@ -260,6 +279,10 @@ const formats::Model* Game::weaponModel(std::string_view name) {
 }
 
 glm::vec3 Game::cameraTarget() const {
+    // An airship coming in: the camera waits over the spot for its bombs.
+    if (const auto& ship = world_.airship(); ship && ship->bombsDropped == 0) {
+        return ship->spot + glm::vec3(0.0f, kCameraTargetHeight, 0.0f);
+    }
     // While a shot is in the air, follow it.
     if (world_.phase() == game::MatchPhase::Resolving) {
         for (const auto& projectile : world_.projectiles()) {
@@ -680,6 +703,27 @@ void Game::drawShadows() {
     }
 }
 
+void Game::placeAirship() {
+    const auto& ship = world_.airship();
+    if (!ship) {
+        if (airshipShown_) mapRenderer_->hideObject(kAirshipObject);
+        return;
+    }
+    // AIRSHIP1 faces +X like the hogs, at twice the world's size with Y
+    // down (scene::objectTransform).
+    constexpr float scale = formats::kModelToWorldScale;
+    const glm::mat4 place = glm::scale(glm::rotate(glm::translate(glm::mat4(1.0f), ship->position),
+                                                   game::yawFacing(ship->direction), glm::vec3(0.0f, 1.0f, 0.0f)),
+                                       glm::vec3(scale, -scale, scale));
+    if (!airshipShown_) {
+        mapRenderer_->addObject({"AIRSHIP1", place, kAirshipObject});
+        airshipShown_ = true;
+    } else {
+        mapRenderer_->showObject(kAirshipObject);
+        mapRenderer_->moveObject(kAirshipObject, place);
+    }
+}
+
 void Game::placeFallingCrates() {
     // A falling crate is drawn dropHeight above its place, under an open
     // parachute (WE_CHUT2); the parachute goes once it has landed.
@@ -725,6 +769,7 @@ void Game::step(double seconds) {
     handleEvents(world_.update(seconds, input, library_.animations()));
     placeMounts();
     placeFallingCrates();
+    placeAirship();
     spawnExplosionParticles();
     particles_.update(seconds);
     banner_.update(seconds);
@@ -832,7 +877,11 @@ void Game::drawEffects(const render::Camera& camera, int width, int height) {
     effects_->begin(camera, width, height);
 
     if (!world_.sightView()) {
-        effects_->drawDots(world_.aimPreview(), 14.0f, kAimColour, true);  // the sight has its crosshair
+        // The sight has its crosshair. The aerial view of an airstrike looks
+        // from far up, so its crosshair's dots are drawn larger.
+        const auto active = world_.activeHog();
+        const bool aerial = active && world_.hogs()[*active].strikeAim;
+        effects_->drawDots(world_.aimPreview(), aerial ? kAerialAimDotSize : 14.0f, kAimColour, true);
     }
 
     for (const auto& tracer : world_.tracers()) {
@@ -870,6 +919,22 @@ void Game::placeMounts() {
 
 render::Camera Game::sceneCamera() const {
     render::Camera camera;
+    if (const auto active = world_.activeHog(); active && world_.hogs()[*active].strikeAim) {
+        // Choosing an airstrike's or special ops' spot: the aerial view,
+        // high over the crosshair and looking down at it.
+        const auto& aim = *world_.hogs()[*active].strikeAim;
+        const glm::vec3 ahead{std::cos(aim.viewYaw), 0.0f, -std::sin(aim.viewYaw)};
+        camera.position = aim.spot - ahead * kAerialViewBack + glm::vec3(0.0f, kAerialViewHeight, 0.0f);
+        lookAt(camera, aim.spot);
+        return camera;
+    }
+    if (const auto& ship = world_.airship(); ship && ship->bombsDropped == 0) {
+        // The airship coming in, seen from the ground past the spot.
+        camera.position = ship->spot + ship->direction * kAirshipWatchDistance;
+        camera.position.y = world_.terrain().heightAt(camera.position.x, camera.position.z) + kAirshipWatchHeight;
+        lookAt(camera, ship->position);
+        return camera;
+    }
     if (world_.mapView()) {
         // MAP VIEW: the whole map from high above.
         const auto& terrain = world_.terrain();
@@ -938,6 +1003,7 @@ void Game::updateLabelFade(double seconds) {
     const render::Camera camera = sceneCamera();
     labelFade_.update(seconds, cameraStill(camera));
     lastLabelCamera_ = camera;
+    healthCountdown_.update(world_, seconds);
 }
 
 void Game::drawHogLabels(const render::Camera& camera, float aspect) {
@@ -961,7 +1027,8 @@ void Game::drawHogLabels(const render::Camera& camera, float aspect) {
     }
     const float focalLength = screen.y / 2.0f / std::tan(glm::radians(camera.fieldOfViewDegrees) / 2.0f);
     for (const auto& box : ui::layoutHogLabels(onScreen, screen, focalLength, true)) {
-        hud_.drawHogLabel(interface_, box, ui::describeHogLabel(world_, interface_.strings(), box.hog),
+        const float health = healthCountdown_.shown(world_, box.hog);
+        hud_.drawHogLabel(interface_, box, ui::describeHogLabel(world_, interface_.strings(), box.hog, health),
                           labelFade_.alpha(), labelFade_.full());
     }
 }

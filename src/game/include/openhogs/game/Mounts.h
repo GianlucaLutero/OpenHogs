@@ -23,6 +23,7 @@
 #include <cstddef>
 #include <map>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -60,6 +61,7 @@ const MountSpec& mountSpec(MountKind kind);
 struct Mount {
     std::size_t object = 0;  // index in the .POG
     MountKind kind = MountKind::Shelter;
+    std::string model;       // its model's name (BIG_GUN, TANK...): what its label calls it
     std::optional<std::size_t> occupant;  // the hog inside
     bool destroyed = false;
     // Uses left of its weapons that run out (MountSpec::arsenal).
@@ -76,7 +78,12 @@ struct Mount {
     std::size_t savedSlot = 0;
 };
 
-// The objects of a map a hog can get into: (object index, kind).
-std::vector<std::pair<std::size_t, MountKind>> findMounts(const std::vector<formats::MapObject>& objects);
+// An object of a map a hog can get into.
+struct FoundMount {
+    std::size_t object = 0;  // index in the .POG
+    MountKind kind = MountKind::Shelter;
+    std::string model;       // upper case
+};
+std::vector<FoundMount> findMounts(const std::vector<formats::MapObject>& objects);
 
 } // namespace openhogs::game

@@ -5,6 +5,16 @@ the `project()` call in `CMakeLists.txt`.
 
 ## Unreleased — refinement
 
+- **Airstrikes** as the original: the first press of fire opens a view
+  high over the map with a crosshair to move with the movement keys, the
+  aim keys turn the way the airship comes in, and fire again confirms;
+  the airship flies in over the spot and drops its bombs one after the
+  other along its course. Special ops choose their spot with the same
+  crosshair.
+- A hog inside a **building or vehicle** keeps a label, which shows the
+  object's name and health (ARTILLERY 200...).
+- The health on a hurt hog's **label runs down** to its new value, slowly
+  at first and then faster, as on the original.
 - **Hurt hogs limp**: at 25 health or less they run with the original's
   wounded run cycle, at 10 or less with the more wounded one.
 - **Pause menu** as the original: its framed panel, MASTER VOLUME and SFX

@@ -161,7 +161,9 @@ std::vector<std::size_t> labelledHogs(const game::World& world) {
     const std::optional<int> activeTeam = turns ? std::optional(turns->activeTeam()) : std::nullopt;
     for (std::size_t i = 0; i < world.hogs().size(); ++i) {
         const auto& hog = world.hogs()[i];
-        if (!hog.alive || hog.blownUp || hog.hidden() || hog.sheltered()) continue;
+        // A hog inside a building or vehicle keeps its label, which then
+        // names the object (describeHogLabel).
+        if (!hog.alive || hog.blownUp || hog.hidden()) continue;
         // Spies and snipers give themselves away only to their own side.
         if (isEspionage(hog) && hog.team != activeTeam) continue;
         labelled.push_back(i);
@@ -169,19 +171,57 @@ std::vector<std::size_t> labelledHogs(const game::World& world) {
     return labelled;
 }
 
-HogLabelText describeHogLabel(const game::World& world, const UiStrings& strings, std::size_t index) {
+HogLabelText describeHogLabel(const game::World& world, const UiStrings& strings, std::size_t index,
+                              std::optional<float> shownHealth) {
     const auto& hog = world.hogs()[index];
     HogLabelText label;
+    label.showHealth = !world.training();
+    label.nation = world.nationOf(hog.team);
+    if (hog.sheltered()) {
+        // Inside, the label names the building or vehicle and shows its
+        // health (FUN_0045a5c0: hog states 3 and 4), as on the footage's
+        // ARTIGLIERIA 200 (part 17, 30:45).
+        const game::Mount& mount = world.mounts()[*hog.mount];
+        label.text = strings.objectName(mount.model);
+        for (const auto& object : world.destructibles()) {
+            if (object.object == mount.object) label.health = std::max(1, static_cast<int>(std::ceil(object.health)));
+        }
+        return label;
+    }
     const std::string rank = hog.rank ? strings.rankName(*hog.rank)
                                       : (hog.characterClass ? strings.className(hog.characterClass->id) : "");
     const std::string name = hog.name.empty() ? defaultHogName(world, strings, index) : hog.name;
     const bool showRank = static_cast<long long>(world.timeSeconds() / kHogLabelSwapSeconds) % 2 == 1;
     label.text = name.empty() || (showRank && !rank.empty()) ? rank : name;
     // Rounded up, so a hog with a sliver of health left never shows 0.
-    label.health = std::max(1, static_cast<int>(std::ceil(hog.health)));
-    label.showHealth = !world.training();
-    label.nation = world.nationOf(hog.team);
+    label.health = std::max(1, static_cast<int>(std::ceil(shownHealth.value_or(hog.health))));
     return label;
+}
+
+void HealthCountdown::update(const game::World& world, double seconds) {
+    const auto& hogs = world.hogs();
+    if (hogs_.size() != hogs.size()) {
+        hogs_.assign(hogs.size(), Shown{});
+        for (std::size_t i = 0; i < hogs.size(); ++i) hogs_[i].health = hogs[i].health;
+        return;
+    }
+    const auto dt = static_cast<float>(seconds);
+    for (std::size_t i = 0; i < hogs.size(); ++i) {
+        Shown& shown = hogs_[i];
+        if (hogs[i].health >= shown.health) {
+            shown = Shown{hogs[i].health, 0.0f};  // healed, or caught up
+            continue;
+        }
+        // The speed grows with the time since the drop began.
+        const float before = shown.drainSeconds;
+        shown.drainSeconds += dt;
+        const float drained = kAcceleration / 2.0f * (shown.drainSeconds * shown.drainSeconds - before * before);
+        shown.health = std::max(hogs[i].health, shown.health - drained);
+    }
+}
+
+float HealthCountdown::shown(const game::World& world, std::size_t index) const {
+    return index < hogs_.size() ? hogs_[index].health : world.hogs()[index].health;
 }
 
 void HogLabelFade::update(double seconds, bool cameraStill) {
