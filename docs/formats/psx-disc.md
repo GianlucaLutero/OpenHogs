@@ -15,6 +15,13 @@ English, French, German, Italian and Spanish. Reader:
 - The speech files are XA audio in *Mode 2 Form 2* sectors, read whole
   (`PsxDisc::readRawSectors`, [psx-speech.md](psx-speech.md)).
 - Plain `.iso` images have 2048-byte sectors (and cannot hold XA audio).
+- Alcohol 120% `.mdf` images are raw sectors each followed by 96 bytes of
+  subchannel data (2448 bytes a sector); `PsxDisc` tells them by the
+  second sector's sync pattern. PC CDs use *Mode 1* sectors (data at
+  offset 16), told by the mode byte of the header.
+- The same reader opens a PC CD: the Italian PC release has the PC's
+  folders (`LANGUAGE/`, `SPEECH/`...) under ISO 9660 8.3 names (`FMV 01.bik`
+  is `FMV_01.BIK`; `langpack::cdName`).
 - Files are found through the standard ISO 9660 file system: primary volume
   descriptor in sector 16, root directory record at offset 156, names with a
   `;1` version suffix.

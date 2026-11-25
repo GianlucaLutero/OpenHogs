@@ -309,3 +309,51 @@ TEST_CASE("buildLanguagePack takes the dubbed speech of a localised disc", "[lan
     CHECK_FALSE(pack.exists("Speech/Sku1/Pig02/02EN0101.wav"));  // not on this disc: the PC's stays
     CHECK(content::ContentPack::load(options.outputDirectory).language == "it");
 }
+
+// A PC CD lists its files under 8.3 ISO names: each installed file must
+// find its counterpart, spaces and long names included, or the films and
+// odd names would stay English.
+TEST_CASE("cdName gives a PC file's name on an ISO 9660 CD", "[langpack][pcdisc]") {
+    CHECK(cdName("Language/Streams/FMV 01.bik") == "LANGUAGE/STREAMS/FMV_01.BIK");
+    CHECK(cdName("Language/Tims/Copy of wat02.TIM") == "LANGUAGE/TIMS/COPY_OF_.TIM");
+    CHECK(cdName("Speech/Sku1/Pig01/01fr0101.wav") == "SPEECH/SKU1/PIG01/01FR0101.WAV");
+    CHECK(cdName("Language/Text/gtext.bin") == "LANGUAGE/TEXT/GTEXT.BIN");
+}
+
+// The Italian PC release has the PC's layout with its own text, pictures
+// and dubbed speech: the pack takes exactly the files that differ from
+// the installed (English) game, under the installed names, and leaves the
+// rest alone.
+TEST_CASE("buildLanguagePack takes a localised PC CD's files", "[langpack][builder][pcdisc]") {
+    tests::TempDirectory root;
+    const auto game = root.makeFolder("game");
+    writeBinary(game / "Language/Text/gtext.bin", tests::toBytes("ENGLISH"));
+    writeBinary(game / "Language/Streams/FMV 01.bik", tests::toBytes("english film"));
+    writeBinary(game / "Speech/Sku1/Pig01/01EN0101.wav", tests::toBytes("hello"));
+    writeBinary(game / "Speech/Sku1/Pig01/01EN0102.wav", tests::toBytes("same"));
+
+    tests::writeIsoImage(root.path() / "ita.bin",
+                         {{"LANGUAGE/TEXT/GTEXT.BIN", tests::toBytes("ITALIANO")},
+                          {"LANGUAGE/STREAMS/FMV_01.BIK", tests::toBytes("film italiano")},
+                          {"SPEECH/SKU1/PIG01/01EN0101.WAV", tests::toBytes("ciao")},
+                          {"SPEECH/SKU1/PIG01/01EN0102.WAV", tests::toBytes("same")}},
+                         true);
+
+    LanguagePackOptions options;
+    options.gameDirectory = game;
+    options.discImage = root.path() / "ita.bin";
+    options.outputDirectory = root.path() / "packs/lang-it";
+    const auto report = buildLanguagePack(options);
+
+    CHECK(report.pcDisc);
+    CHECK(report.textFiles == 1);
+    CHECK(report.films == 1);
+    CHECK(report.speechLines == 1);
+    core::VirtualFileSystem pack;
+    pack.mount("lang-it", options.outputDirectory / "data");
+    CHECK(pack.readFile("Language/Text/gtext.bin") == tests::toBytes("ITALIANO"));
+    CHECK(pack.readFile("Language/Streams/FMV 01.bik") == tests::toBytes("film italiano"));
+    CHECK(pack.readFile("Speech/Sku1/Pig01/01EN0101.wav") == tests::toBytes("ciao"));
+    CHECK_FALSE(pack.exists("Speech/Sku1/Pig01/01EN0102.wav"));  // the same in both: not copied
+    CHECK(content::ContentPack::load(options.outputDirectory).language == "it");
+}

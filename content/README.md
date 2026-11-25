@@ -84,7 +84,9 @@ Keys are string indices of the PC tables (see them with
 
 From a localised PAL disc (SLES-02766 to 02769) the pack also gets the
 dubbed speech, as `data/Speech/Sku1/...` WAV files with the PC's own names
-(`docs/formats/psx-speech.md`).
+(`docs/formats/psx-speech.md`). From a localised PC CD (the Italian PC
+release) it gets every file of `Language/` and `Speech/` that differs
+from the installed game, under the installed names.
 
 ## Facial expressions
 

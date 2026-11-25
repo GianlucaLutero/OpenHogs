@@ -77,7 +77,7 @@ std::vector<Sector> makeDiscSectors() {
     return sectors;
 }
 
-void writeImage(const std::filesystem::path& path, bool raw) {
+void writeImage(const std::filesystem::path& path, bool raw, bool subchannel = false) {
     std::ofstream file(path, std::ios::binary);
     for (const Sector& data : makeDiscSectors()) {
         if (raw) {
@@ -86,6 +86,7 @@ void writeImage(const std::filesystem::path& path, bool raw) {
             for (int i = 1; i <= 10; ++i) sector[static_cast<std::size_t>(i)] = 0xFF;
             sector[15] = 2;
             std::copy(data.begin(), data.end(), sector.begin() + 24);
+            if (subchannel) sector.resize(2448, 0x5A);  // an .mdf keeps 96 subchannel bytes after each sector
             file.write(reinterpret_cast<const char*>(sector.data()), static_cast<std::streamsize>(sector.size()));
         } else {
             file.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
@@ -139,6 +140,23 @@ TEST_CASE("PsxDisc reads whole sectors for XA audio from raw images only", "[for
 
     const PsxDisc iso(folder.path() / "disc.iso");
     CHECK_THROWS(iso.readRawSectors("TEXT/GITALIAN.BIN"));
+}
+
+// Alcohol 120% .mdf images put 96 bytes of subchannel data after every
+// raw sector (the Italian PC CD comes as one): files and XA sectors must
+// be found at the right places all the same.
+TEST_CASE("PsxDisc reads .mdf images with subchannel data", "[formats][PsxDisc]") {
+    TempDirectory folder;
+    writeImage(folder.path() / "disc.mdf", true, true);
+    const PsxDisc disc(folder.path() / "disc.mdf");
+    CHECK(disc.sectorSize() == 2448u);
+    CHECK(asText(disc.readFile("README.TXT")) == "hello");
+    const auto big = disc.readFile("TEXT/GITALIAN.BIN");
+    REQUIRE(big.size() == 2100);
+    CHECK(static_cast<char>(big[2048]) == 'B');
+    const auto sectors = disc.readRawSectors("TEXT/GITALIAN.BIN");
+    REQUIRE(sectors.size() == 2 * 2352u);
+    CHECK(static_cast<char>(sectors[2352 + 24]) == 'B');
 }
 
 // Disc paths appear with different spellings (lower case, '\', ";1"

@@ -3,6 +3,11 @@
 // Builds a language content pack (content/packs/lang-<code>/) from the
 // user's own PlayStation disc and PC installation.
 //
+// A localised PC CD (the Italian PC release, say) works too: it has the
+// PC's own layout, so every file of Language/ and Speech/ that differs
+// from the installed one (text, pictures, films, the dubbed speech) is
+// copied under the installed file's name (buildFromPcDisc below).
+//
 // The European PlayStation release (SLES-01041) contains the game in five
 // languages. For one of them this produces, in the PC folder layout:
 //
@@ -63,12 +68,22 @@ struct LanguagePackReport {
     std::size_t pictures = 0;  // title screens, newspapers and headlines
     bool textFromDisc = true;  // false when the disc has no text in that language
     std::size_t speechLines = 0;  // speech files replaced
+    // From a localised PC CD: the files copied, by kind.
+    bool pcDisc = false;
+    std::size_t textFiles = 0;  // Language/Text
+    std::size_t films = 0;      // Language/Streams
     std::vector<std::string> warnings;
 };
 
 // Disc folder name of a language ("it" -> "ITALIAN"). Throws
 // std::invalid_argument for languages the PlayStation release lacks.
 std::string discLanguageName(const std::string& language);
+
+// The name a PC file has on a CD's ISO 9660 file system, where names are
+// at most 8 characters, a dot and 3 more, in A-Z 0-9 and '_' (others turn
+// into '_'): "Language/Streams/FMV 01.bik" -> "LANGUAGE/STREAMS/FMV_01.BIK",
+// "Language/Tims/Copy of wat02.TIM" -> "LANGUAGE/TIMS/COPY_OF_.TIM".
+std::string cdName(std::string_view pcPath);
 
 // Creates the pack. Existing files in the output folder are overwritten.
 // Throws std::runtime_error (or core::FormatError) if an input is missing
