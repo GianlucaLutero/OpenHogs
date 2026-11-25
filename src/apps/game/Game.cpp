@@ -56,7 +56,6 @@ constexpr glm::vec4 kTracerColour{1.0f, 0.95f, 0.5f, 1.0f};
 constexpr glm::vec4 kShellColour{0.25f, 0.25f, 0.2f, 1.0f};
 // The label over the hog in play (its name and health) starts this far
 // above its feet, just over its head.
-constexpr float kHogLabelHeight = 330.0f;
 
 // HUD layout, in canvas units (the screen is render::kCanvasHeight tall).
 constexpr float kDamageNumberHeight = 450.0f;  // above the feet, by the label
@@ -730,6 +729,7 @@ void Game::step(double seconds) {
     const auto turn = ui::describeTurn(world_, interface_.strings(), interface_.gameText());
     hud_.update(seconds, turn, weaponMenu_.isOpen(), turn && !world_.sightView() && !world_.binocularView());
     audio_.update(seconds);
+    updateLabelFade(seconds);
 
     // The camera stays behind the active hog (decision 15), swinging round
     // smoothly as it turns.
@@ -917,6 +917,48 @@ void Game::drawScene(int width, int height) {
     drawEffects(camera, width, height);
 }
 
+bool Game::cameraStill(const render::Camera& camera) const {
+    // The executable compares the camera's whole-unit position and its
+    // angles with the last frame's; a hair of slack absorbs rounding.
+    constexpr float kStillDistance = 1.0f;
+    constexpr float kStillDegrees = 0.1f;
+    return lastLabelCamera_ && glm::distance(camera.position, lastLabelCamera_->position) < kStillDistance &&
+           std::abs(camera.yawDegrees - lastLabelCamera_->yawDegrees) < kStillDegrees &&
+           std::abs(camera.pitchDegrees - lastLabelCamera_->pitchDegrees) < kStillDegrees;
+}
+
+void Game::updateLabelFade(double seconds) {
+    const render::Camera camera = sceneCamera();
+    labelFade_.update(seconds, cameraStill(camera));
+    lastLabelCamera_ = camera;
+}
+
+void Game::drawHogLabels(const render::Camera& camera, float aspect) {
+    if (labelFade_.alpha() <= 0.0f) return;
+    auto& ui = interface_.renderer();
+    const glm::mat4 view = camera.viewMatrix();
+    const glm::mat4 viewProjection = camera.projectionMatrix(aspect) * view;
+    const glm::vec2 screen{ui.canvasWidth(), render::kCanvasHeight};
+
+    // The hogs whose centre is in front of the camera and on the screen.
+    std::vector<ui::HogOnScreen> onScreen;
+    for (const std::size_t index : ui::labelledHogs(world_)) {
+        const glm::vec3 centre = world_.hogs()[index].position + glm::vec3(0.0f, ui::kHogCentreHeight, 0.0f);
+        const glm::vec4 clip = viewProjection * glm::vec4(centre, 1.0f);
+        if (clip.w <= 0.0f) continue;
+        const glm::vec2 ndc = glm::vec2(clip) / clip.w;
+        const glm::vec2 point{(ndc.x * 0.5f + 0.5f) * screen.x, (0.5f - ndc.y * 0.5f) * screen.y};
+        if (point.x <= 0.0f || point.y <= 0.0f || point.x >= screen.x || point.y >= screen.y) continue;
+        const float depth = -(view * glm::vec4(centre, 1.0f)).z;
+        onScreen.push_back({index, point, depth});
+    }
+    const float focalLength = screen.y / 2.0f / std::tan(glm::radians(camera.fieldOfViewDegrees) / 2.0f);
+    for (const auto& box : ui::layoutHogLabels(onScreen, screen, focalLength, true)) {
+        hud_.drawHogLabel(interface_, box, ui::describeHogLabel(world_, interface_.strings(), box.hog),
+                          labelFade_.alpha(), labelFade_.full());
+    }
+}
+
 void Game::drawHud(int width, int height) {
     // The damage numbers float in the scene, under the instruments.
     const render::Camera camera = sceneCamera();
@@ -924,15 +966,7 @@ void Game::drawHud(int width, int height) {
     hud_.drawDamageNumbers(interface_.renderer(), camera.projectionMatrix(aspect) * camera.viewMatrix(),
                            camera.position);
     const auto turn = ui::describeTurn(world_, interface_.strings(), interface_.gameText());
-    const auto active = world_.activeHog();
-    if (turn && turn->playing && active && !world_.sightView() && !world_.binocularView() &&
-        !world_.hogs()[*active].sheltered()) {
-        // No health bars: as on the PlayStation, only the hog in play has a
-        // label, its name (or rank) and its health (decision 36).
-        hud_.drawHogLabel(interface_, camera.projectionMatrix(aspect) * camera.viewMatrix(),
-                          world_.hogs()[*active].position + glm::vec3(0.0f, kHogLabelHeight, 0.0f),
-                          ui::hogLabel(*turn, world_.timeSeconds()), turn->health);
-    }
+    if (!world_.sightView() && !world_.binocularView()) drawHogLabels(camera, aspect);
     if (world_.sightView()) hud_.drawRifleSight(interface_.renderer());
     if (world_.binocularView()) hud_.drawRifleSight(interface_.renderer(), false);  // the round view, no crosshair
     hud_.draw(interface_, turn);

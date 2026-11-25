@@ -17,12 +17,6 @@ std::string weaponDisplayName(game::WeaponId weapon, const std::vector<std::stri
     return std::string(game::weaponSpec(weapon).fallbackName);
 }
 
-std::string hogLabel(const HudInfo& turn, double timeSeconds) {
-    if (turn.hogName.empty()) return turn.className;
-    const bool showRank = static_cast<long long>(timeSeconds / kHogLabelSwapSeconds) % 2 == 1;
-    return showRank && !turn.className.empty() ? turn.className : turn.hogName;
-}
-
 std::optional<HudInfo> describeTurn(const game::World& world, const UiStrings& strings,
                                     const std::vector<std::string>& gameText) {
     const auto& turns = world.turns();

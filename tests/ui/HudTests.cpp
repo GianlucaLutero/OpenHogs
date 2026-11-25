@@ -139,18 +139,3 @@ TEST_CASE("The HUD is hidden once the match is over", "[ui][hud]") {
     CHECK_FALSE(describeTurn(world, UiStrings{}, {}));
 }
 
-TEST_CASE("The label over the hog shows its name and rank in turn", "[ui][hud]") {
-    // As on the PlayStation (decision 36): a campaign hog's label switches
-    // between its name and its rank, so both can be read; a hog without a
-    // name shows its class, never an empty label.
-    HudInfo named;
-    named.hogName = "GINO";
-    named.className = "RECLUTA";
-    CHECK(hogLabel(named, 0.5) == "GINO");
-    CHECK(hogLabel(named, kHogLabelSwapSeconds + 0.5) == "RECLUTA");
-    CHECK(hogLabel(named, 2.0 * kHogLabelSwapSeconds + 0.5) == "GINO");
-
-    HudInfo unnamed;
-    unnamed.className = "GRUNT";
-    CHECK(hogLabel(unnamed, kHogLabelSwapSeconds + 0.5) == "GRUNT");
-}

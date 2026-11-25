@@ -10,6 +10,7 @@
 #   MessageBanner - timed messages in the middle of the screen
 #   FloatingNumbers - damage numbers rising above hurt hogs
 #   Hud           - what the HUD shows; messages for game events
+#   HogLabels     - the labels over the hogs: which, where, what they say
 #   HudLayout     - the original HUD's layout and moving parts (from the executable)
 #   KeyBindings   - which keys do what in a match (the CONTROLS screen, [Controls])
 #   WeaponMenu    - the original weapon menu: tabs, windows, cursor
@@ -36,6 +37,7 @@ add_library(openhogs_ui STATIC
     src/CampaignMenu.cpp
     src/FloatingNumbers.cpp
     src/FrontEnd.cpp
+    src/HogLabels.cpp
     src/Hud.cpp
     src/HudLayout.cpp
     src/WeaponMenu.cpp
